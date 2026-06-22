@@ -1,0 +1,1729 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Audio Visualizer - Master Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/nosleep/0.12.0/NoSleep.min.js"></script>
+    <style>
+        :root { --item-bg-opacity: 0.1; }
+        body { margin: 0; overflow: hidden; background-color: #000000; transition: background-color 0.3s ease; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; touch-action: manipulation; }
+        canvas { display: block; width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 0; pointer-events: none;}
+        input[type="file"] { display: none; }
+
+        input[type=range].setting-slider { -webkit-appearance: none; width: 100%; height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; outline: none; }
+        input[type=range].setting-slider::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #ffffff; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+        
+        .eq-slider-container { width: 20px; height: 100px; position: relative; display: flex; justify-content: center; align-items: center; }
+        input[type=range].eq-slider { -webkit-appearance: none; width: 100px; height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; outline: none; transform: rotate(-90deg); position: absolute; }
+        input[type=range].eq-slider::-webkit-slider-thumb { -webkit-appearance: none; height: 14px; width: 14px; border-radius: 50%; background: #8b5cf6; cursor: pointer; box-shadow: 0 0 5px rgba(139, 92, 246, 0.8); }
+
+        input[type=color].color-picker { -webkit-appearance: none; border: none; padding: 0; border-radius: 6px; overflow: hidden; cursor: pointer; width: 32px; height: 32px; }
+        input[type=color].color-picker::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type=color].color-picker::-webkit-color-swatch { border: none; border-radius: 6px; }
+
+        input[type=range].music-slider { -webkit-appearance: none; width: 100%; height: 12px; background: rgba(255, 255, 255, 0.2); outline: none; margin: 0; cursor: pointer; transition: height 0.1s ease; }
+        input[type=range].music-slider:hover, input[type=range].music-slider:active { height: 16px; }
+        input[type=range].music-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 8px; height: 24px; border-radius: 4px; background: #fff; cursor: pointer; box-shadow: 0 0 10px rgba(0,0,0,0.8); transition: transform 0.1s ease, background-color 0.2s; }
+        input[type=range].music-slider:hover::-webkit-slider-thumb, input[type=range].music-slider:active::-webkit-slider-thumb { transform: scale(1.1); background: #38bdf8; }
+
+        .glass-panel { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .drawer-glass { background: rgba(10, 10, 15, 0.95); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); }
+        
+        .fade-enter { opacity: 0; transform: scale(0.95); pointer-events: none; }
+        .fade-enter-active { opacity: 1; transform: scale(1); pointer-events: auto; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        
+        .sub-text-glow { text-shadow: 0 2px 10px rgba(0,0,0,0.9), 0 0 15px rgba(56, 189, 248, 0.6); }
+
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .animate-spin-slow { animation: spin 6s linear infinite; }
+        .paused { animation-play-state: paused !important; }
+
+        @keyframes eq-bounce { 0% { height: 20%; } 50% { height: 100%; } 100% { height: 20%; } }
+        .eq-bar { width: 3px; background: #38bdf8; border-radius: 2px; height: 20%; }
+        .eq-1 { animation: eq-bounce 0.8s ease-in-out infinite; }
+        .eq-2 { animation: eq-bounce 0.6s ease-in-out infinite 0.2s; }
+        .eq-3 { animation: eq-bounce 0.7s ease-in-out infinite 0.4s; }
+
+        @keyframes flyNote { 0% { opacity: 0; transform: translate(0, 0) scale(0.5) rotate(-10deg); } 20% { opacity: 1; transform: translate(15px, -30px) scale(1.2) rotate(10deg); } 100% { opacity: 0; transform: translate(-25px, -100px) scale(0.8) rotate(-20deg); } }
+        .music-note { position: absolute; font-size: 1.2rem; pointer-events: none; z-index: 10; animation: flyNote 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; text-shadow: 0 0 5px currentColor; }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .playlist-item { animation: slideIn 0.3s ease-out forwards; }
+        
+        .sub-edit-mode input, .sub-edit-mode textarea { background: rgba(0,0,0,0.6); border: 1px solid rgba(14, 165, 233, 0.5); color: #fff; padding: 4px 8px; border-radius: 6px; font-family: monospace; outline: none; }
+        .sub-edit-mode input:focus, .sub-edit-mode textarea:focus { border-color: #38bdf8; box-shadow: 0 0 5px rgba(56, 189, 248, 0.5); }
+    </style>
+</head>
+<body class="text-white h-screen flex flex-col relative overflow-hidden bg-[#000000]">
+
+    <canvas id="visualizer" class="opacity-0 transition-opacity duration-700 z-0"></canvas>
+
+    <div id="loading-shield" class="fixed inset-0 z-[200] bg-black/80 flex flex-col items-center justify-center hidden backdrop-blur-sm transition-opacity duration-300">
+        <svg class="animate-spin h-12 w-12 text-sky-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+        <p id="loading-text" class="text-white font-semibold tracking-wider text-sm">Đang xử lý...</p>
+    </div>
+
+    <!-- PLAYLIST VIEW (Apple Music Style UI) -->
+    <div id="playlist-view" class="absolute inset-0 z-[60] flex flex-col bg-[#000000] transition-transform duration-500 overflow-hidden">
+        <div id="playlist-bg" class="absolute inset-0 bg-cover bg-center bg-no-repeat pointer-events-none z-0 transition-all duration-300" style="filter: blur(0px); transform: scale(1.1);"></div>
+        <div class="absolute inset-0 bg-black/40 pointer-events-none z-0"></div>
+
+        <!-- Header -->
+        <div class="px-5 pt-12 pb-4 z-10 relative shrink-0">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-[34px] leading-none font-bold tracking-tight text-white">Bài hát</h1>
+                <div class="flex items-center gap-5 text-white">
+                    <label for="audio-upload" class="cursor-pointer hover:text-sky-400 transition-colors" title="Thêm nhạc">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                    </label>
+                    <button id="btn-settings-playlist" class="hover:text-sky-400 transition-colors" title="Cài đặt">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    </button>
+                    <button id="btn-toggle-view" class="hover:text-sky-400 transition-colors" title="Đổi giao diện">
+                        <svg id="icon-grid-view" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                        <svg id="icon-list-view" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="flex gap-4">
+                <button onclick="if(playlist.length > 0) playSong(currentIndex > -1 ? currentIndex : 0);" class="flex-1 bg-white/10 hover:bg-white/20 backdrop-blur-md active:scale-95 transition-all py-3.5 rounded-2xl flex items-center justify-center gap-2 font-semibold text-[15px] text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>
+                    Phát
+                </button>
+                <button onclick="if(!isShuffle) btnShuffle.click(); if(playlist.length > 0) playSong(shuffleIndices[0]);" class="flex-1 bg-white/10 hover:bg-white/20 backdrop-blur-md active:scale-95 transition-all py-3.5 rounded-2xl flex items-center justify-center gap-2 font-semibold text-[15px] text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                    Trộn bài
+                </button>
+            </div>
+        </div>
+
+        <div class="flex-grow overflow-y-auto z-10 w-full">
+            <div id="playlist-empty" class="h-[60%] flex flex-col items-center justify-center text-slate-400 gap-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                <p class="text-sm">Chưa có bài hát nào. Hãy thêm nhạc để bắt đầu.</p>
+            </div>
+            <!-- Chứa layout động của danh sách phát -->
+            <div id="playlist-container" class="flex flex-col pb-32"></div>
+        </div>
+    </div>
+
+    <!-- VISUALIZER UI OVERLAY -->
+    <div id="visualizer-ui" class="absolute inset-0 z-30 pointer-events-none fade-enter hidden flex flex-col">
+        <div id="stats-panel" class="w-full glass-panel !border-x-0 !border-t-0 border-b border-white/10 p-2 flex justify-around sm:justify-center sm:gap-16 items-center pointer-events-none select-none z-50 relative">
+            <div class="flex flex-col items-center"><span class="text-slate-400 font-semibold tracking-wider text-[9px] mb-0.5">EST. BPM</span><span id="stat-bpm" class="font-mono text-green-400 font-bold text-sm">---</span></div>
+            <div class="flex flex-col items-center"><span class="text-slate-400 font-semibold tracking-wider text-[9px] mb-0.5">PITCH (YIN)</span><span id="stat-note" class="font-mono text-yellow-400 font-bold text-sm">---</span></div>
+            <div class="flex flex-col items-center"><span class="text-slate-400 font-semibold tracking-wider text-[9px] mb-0.5">ENERGY</span><span id="stat-energy" class="font-mono text-rose-400 font-bold text-sm">0%</span></div>
+        </div>
+
+        <div class="flex-grow relative">
+            <!-- DISPLAY PHỤ ĐỀ -->
+            <div id="subtitle-display" class="absolute bottom-[20%] w-full px-4 sm:px-10 flex flex-col items-center justify-center pointer-events-none transition-opacity duration-300 opacity-0 z-[60]">
+                <div class="bg-black/40 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/10 text-center max-w-4xl shadow-2xl">
+                    <p id="sub-line-1" class="text-xl sm:text-3xl font-bold text-white sub-text-glow leading-snug transition-all duration-200 empty:hidden"></p>
+                    <p id="sub-line-2" class="text-lg sm:text-2xl font-medium text-sky-200 sub-text-glow leading-snug mt-1 transition-all duration-200 empty:hidden"></p>
+                </div>
+            </div>
+
+            <!-- Right Controls -->
+            <div class="absolute top-4 right-3 sm:right-6 flex flex-col gap-3 pointer-events-auto z-40">
+                <button id="btn-back-playlist" class="w-10 h-10 flex items-center justify-center glass-panel hover:bg-white/10 rounded-full transition-colors group shadow-lg" title="Quay lại Danh sách"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" /></svg></button>
+                <button id="btn-cycle-mode" class="w-10 h-10 flex items-center justify-center glass-panel hover:bg-white/10 rounded-full transition-colors group shadow-lg relative" title="Đổi hiệu ứng">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 11a9 9 0 019 9M4 11a9 9 0 019-9m9 9a9 9 0 01-9-9m9 9a9 9 0 01-9 9m-9-9h18" /></svg>
+                    <span id="mode-badge" class="absolute -bottom-1 -right-1 bg-sky-500 text-[9px] font-bold px-1 rounded-full border border-slate-900 shadow-md">1/8</span>
+                </button>
+                <button id="btn-subtitle" class="w-10 h-10 flex items-center justify-center glass-panel hover:bg-white/10 rounded-full transition-colors group shadow-lg relative" title="Phụ đề (Subtitles)">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" /></svg>
+                    <span id="sub-toggle-badge" class="hidden absolute -bottom-1 -right-1 bg-green-500 text-[9px] font-bold w-3.5 h-3.5 flex items-center justify-center rounded-full border border-slate-900 text-white shadow-md"></span>
+                </button>
+                <button id="btn-settings" class="w-10 h-10 flex items-center justify-center glass-panel hover:bg-white/10 rounded-full transition-colors group shadow-lg" title="Cài đặt">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                </button>
+                <div class="h-[1px] w-full bg-white/20 my-1"></div>
+                <button id="btn-shuffle" class="w-10 h-10 flex items-center justify-center glass-panel hover:bg-white/10 rounded-full transition-colors text-slate-400 group shadow-lg" title="Trộn bài"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg></button>
+                <button id="btn-repeat" class="w-10 h-10 flex items-center justify-center glass-panel hover:bg-white/10 rounded-full transition-colors text-slate-400 group shadow-lg relative" title="Lặp lại">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    <span id="repeat-badge" class="hidden absolute -bottom-1 -right-1 bg-sky-500 text-[9px] font-bold w-3.5 h-3.5 flex items-center justify-center rounded-full border border-slate-900 text-white">1</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FULLSCREEN SUBTITLE EDITOR MODAL -->
+    <div id="subtitle-modal" class="fixed inset-0 z-[110] bg-[#0f172a] transform translate-y-full transition-transform duration-300 flex flex-col">
+        <div class="flex justify-between items-center px-4 sm:px-6 py-4 border-b border-white/10 shrink-0 bg-[#0f172a]">
+            <h3 class="text-base font-bold text-yellow-400 flex items-center gap-2">
+                <span class="bg-yellow-400/20 p-1.5 rounded-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" /></svg>
+                </span>
+                Quản lý Phụ đề
+            </h3>
+            <div class="flex gap-2">
+                <button id="btn-toggle-sub" class="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-sm font-semibold rounded-xl transition-colors text-white shadow-md">Bật Sub</button>
+                <button id="btn-close-sub-modal" class="px-5 py-2.5 bg-slate-700/80 hover:bg-slate-600 text-sm font-semibold rounded-xl transition-colors text-white shadow-md">Đóng</button>
+            </div>
+        </div>
+        <div class="p-4 sm:p-6 flex-grow flex flex-col gap-6 overflow-hidden max-w-4xl w-full mx-auto bg-[#0f172a]">
+            
+            <div class="flex justify-center gap-4 shrink-0">
+                <label class="w-14 h-14 bg-blue-600 hover:bg-blue-500 rounded-2xl cursor-pointer shadow-lg flex items-center justify-center transition-transform hover:scale-105" title="Tải file (.srt) lên">
+                    <input type="file" id="srt-upload" accept=".srt" class="hidden">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                </label>
+                <!-- Nút canh giờ Sub -->
+                <button id="btn-auto-timing" class="w-14 h-14 bg-rose-600 hover:bg-rose-500 rounded-2xl shadow-lg flex items-center justify-center transition-colors" title="Canh giờ Tự động (Auto Timing)">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </button>
+                <button id="btn-add-sub" class="w-14 h-14 bg-indigo-500 hover:bg-indigo-400 rounded-2xl shadow-lg flex items-center justify-center transition-transform hover:scale-105" title="Thêm dòng Sub">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                </button>
+                <button id="btn-apply-sub" class="w-14 h-14 bg-emerald-500 hover:bg-emerald-400 rounded-2xl shadow-lg flex items-center justify-center transition-transform hover:scale-105" title="Áp dụng & Phát lại">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                </button>
+            </div>
+            
+            <div class="text-xs font-bold text-slate-400 uppercase flex justify-between items-center mt-2 tracking-wider border-b border-white/5 pb-2">
+                <span>Danh sách các dòng:</span>
+                <button id="btn-export-srt" class="text-sky-400 hover:text-sky-300 underline font-semibold normal-case">Xuất file .SRT</button>
+            </div>
+            
+            <div id="sub-list-container" class="flex-grow overflow-y-auto space-y-3 pb-10 pr-2">
+                <div class="flex flex-col items-center justify-center h-full text-slate-500 gap-3 opacity-60" id="sub-empty-state">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    <span class="font-medium text-sm">Chưa có phụ đề nào</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOTTOM PLAYER -->
+    <div id="player-container" class="absolute bottom-0 left-0 w-full z-[70] pointer-events-auto flex flex-col hidden">
+        <div class="w-full bg-gradient-to-t from-black via-black/90 to-transparent pt-12 pb-3 px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-6">
+            <div class="flex items-center gap-3 w-1/3 min-w-[120px]">
+                <div class="relative shrink-0 w-12 h-12 sm:w-14 sm:h-14" id="record-container">
+                    <img id="record-art" src="" class="w-full h-full rounded-full object-cover shadow-lg relative z-20" alt="Record">
+                    <div class="absolute inset-0 m-auto w-3 h-3 bg-slate-900 rounded-full border border-slate-700 z-30"></div>
+                </div>
+                <div class="flex-grow flex flex-col justify-center overflow-hidden z-20 relative">
+                    <h2 id="player-title" class="text-white font-bold text-xs sm:text-sm truncate drop-shadow-md">Chưa chọn bài</h2>
+                    <p id="player-artist" class="text-sky-300 text-[10px] sm:text-xs truncate font-medium mt-0.5">---</p>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-center gap-4 sm:gap-6 w-1/3">
+                <button id="btn-prev" class="w-8 h-8 flex items-center justify-center text-white hover:text-sky-400 transition-colors" title="Bài trước"><svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 20 20" fill="currentColor"><path d="M8.445 14.832A1 1 0 0010 14v-2.798l5.445 3.63A1 1 0 0017 14V6a1 1 0 00-1.555-.832L10 8.798V6a1 1 0 00-1.555-.832l-6 4a1 1 0 000 1.664l6 4z" /></svg></button>
+                <button id="play-pause-btn" class="shrink-0 w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-full bg-white text-black hover:bg-sky-100 hover:scale-105 transition-all focus:outline-none shadow-[0_0_15px_rgba(255,255,255,0.2)]">
+                    <svg id="icon-play" class="w-6 h-6 sm:w-7 sm:h-7 ml-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                    <svg id="icon-pause" class="w-6 h-6 sm:w-7 sm:h-7 hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                </button>
+                <button id="btn-next" class="w-8 h-8 flex items-center justify-center text-white hover:text-sky-400 transition-colors" title="Bài tiếp"><svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 20 20" fill="currentColor"><path d="M11.555 14.832A1 1 0 0010 14v-2.798l-5.445 3.63A1 1 0 013 14V6a1 1 0 011.555-.832L10 8.798V6a1 1 0 011.555-.832l6 4a1 1 0 010 1.664l-6 4z" /></svg></button>
+            </div>
+
+            <div class="flex items-center justify-end w-1/3 text-[10px] sm:text-xs font-mono text-slate-400 pr-2">
+                <span id="current-time" class="text-white font-semibold">0:00</span>&nbsp;/&nbsp;<span id="duration-time">0:00</span>
+            </div>
+        </div>
+
+        <div class="w-full bg-black pb-2 sm:pb-0"><input type="range" id="progress-bar" value="0" step="0.1" min="0" class="music-slider block"></div>
+        <audio id="audio-player" style="display: none;" playsinline></audio>
+    </div>
+
+    <!-- SETTINGS DRAWER -->
+    <div id="drawer-settings" class="fixed inset-0 drawer-glass z-[80] transform -translate-y-full transition-transform duration-500 ease-in-out flex flex-col">
+        <div class="flex justify-between items-center px-4 py-3 sm:px-6 border-b border-white/10 shrink-0 bg-black/40">
+            <h2 class="text-base sm:text-lg font-bold tracking-wider text-white uppercase">Cài đặt Hệ thống</h2>
+            <button id="close-drawer" class="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-rose-500 transition-colors text-white"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+        </div>
+        
+        <div class="flex-grow overflow-y-auto px-4 py-6 sm:px-8 pb-20">
+            <div class="max-w-2xl mx-auto space-y-8">
+                
+                <!-- SECTION: HỆ THỐNG & PLAYLIST -->
+                <div>
+                    <h3 class="text-xs font-bold text-sky-400 uppercase tracking-widest mb-2 ml-2">Danh sách phát</h3>
+                    <div class="bg-white/5 rounded-2xl border border-white/10 flex flex-col overflow-hidden">
+                        <div class="flex justify-between items-center p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
+                            <div><div class="text-sm font-medium">Ảnh nền Playlist</div></div>
+                            <label class="px-3 py-1.5 bg-sky-500 hover:bg-sky-400 text-white rounded-lg text-xs font-bold cursor-pointer transition-colors shadow">
+                                Đổi ảnh
+                                <input type="file" id="setting-bg-upload" accept="image/*" class="hidden">
+                            </label>
+                        </div>
+                        <div class="flex flex-col p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm font-medium">Độ mờ nhòe nền (Blur)</span>
+                                <span id="val-bg-blur" class="text-xs text-sky-400 font-mono">0px</span>
+                            </div>
+                            <input type="range" id="setting-bg-blur" min="0" max="20" step="1" class="setting-slider">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION: VISUALIZER -->
+                <div>
+                    <h3 class="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-2 ml-2">Hình học Visualizer</h3>
+                    <div class="bg-white/5 rounded-2xl border border-white/10 flex flex-col overflow-hidden mb-6">
+                        <div class="flex justify-between items-center p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
+                            <span class="text-sm font-medium">Chất lượng Render</span>
+                            <select id="setting-quality" class="bg-black/50 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white outline-none w-32 text-right">
+                                <option value="high">Cao (Mượt)</option>
+                                <option value="medium">Trung bình</option>
+                                <option value="low">Thấp (Nhẹ máy)</option>
+                            </select>
+                        </div>
+                        <div id="block-geometry" class="flex flex-col w-full">
+                            <div class="flex flex-col p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
+                                <div class="flex justify-between items-center mb-2"><span class="text-sm font-medium">Độ cao tối đa</span><span id="val-max" class="text-xs text-emerald-400 font-mono">400</span></div>
+                                <input type="range" id="setting-max-height" min="50" max="1000" step="10" class="setting-slider">
+                            </div>
+                            <div class="flex flex-col p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
+                                <div class="flex justify-between items-center mb-2"><span class="text-sm font-medium">Độ dày thanh (px)</span><span id="val-width" class="text-xs text-emerald-400 font-mono">4</span></div>
+                                <input type="range" id="setting-bar-width" min="1" max="15" step="1" class="setting-slider">
+                            </div>
+                        </div>
+                        <div id="block-vortex" class="hidden flex justify-between items-center p-4 hover:bg-white/5 transition-colors bg-indigo-900/10 border-b border-indigo-500/20">
+                            <div><div class="text-sm font-medium text-indigo-300">Kiểu hố đen (Vortex)</div></div>
+                            <select id="setting-vortex-style" class="bg-black/60 border border-indigo-500/30 rounded-lg px-2 py-1.5 text-xs text-white outline-none w-36 text-right">
+                                <option value="classic">Hạt cổ điển</option><option value="rings">Vòng xoáy</option>
+                            </select>
+                        </div>
+                        <div id="block-rain" class="hidden flex-col bg-blue-900/10 border-b border-blue-500/20">
+                            <div class="flex justify-between items-center p-4 hover:bg-white/5 transition-colors border-b border-blue-500/10">
+                                <div><div class="text-sm font-medium text-blue-300">Kiểu hiệu ứng mưa</div></div>
+                                <select id="setting-rain-style" class="bg-black/60 border border-blue-500/30 rounded-lg px-2 py-1.5 text-xs text-white outline-none w-36 text-right">
+                                    <option value="classic">Mưa rơi sấm sét (Cũ)</option><option value="glass">Trôi trên cửa kính</option>
+                                </select>
+                            </div>
+                            <div class="flex justify-between items-center p-4 hover:bg-white/5 transition-colors">
+                                <div class="text-sm font-medium text-blue-300">Chớp sáng ngoài ô kính</div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="setting-glass-flash" class="sr-only peer">
+                                    <div class="w-9 h-5 bg-slate-600 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-500 shadow-inner"></div>
+                                </label>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <h3 class="text-xs font-bold text-rose-400 uppercase tracking-widest mb-2 ml-2">Màu sắc Visualizer</h3>
+                    <div class="bg-white/5 rounded-2xl border border-white/10 flex flex-col overflow-hidden">
+                        <div class="flex justify-between items-center p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
+                            <span class="text-sm font-medium">Màu nền đen</span>
+                            <div class="w-8 h-8 rounded-full border border-white/20 overflow-hidden shrink-0"><input type="color" id="bg-color-picker" class="w-10 h-10 -m-1 cursor-pointer"></div>
+                        </div>
+                        <div class="flex justify-between items-center p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
+                            <span class="text-sm font-medium">Chế độ sóng âm</span>
+                            <select id="setting-color-mode" class="bg-black/50 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white outline-none w-36 text-right">
+                                <option value="solid">Màu đơn sắc</option><option value="dynamic">Pha trộn 2 màu</option><option value="gradient">Gradient theo nhạc</option>
+                            </select>
+                        </div>
+                        <div id="solid-color-container" class="flex justify-between items-center p-4 hover:bg-white/5 transition-colors bg-black/20">
+                            <span class="text-sm text-slate-300">Chọn màu đơn</span>
+                            <div class="flex items-center gap-2">
+                                <input type="text" id="solid-color-text" class="w-20 bg-transparent border-b border-white/20 px-1 py-0.5 text-xs text-white outline-none font-mono text-right uppercase">
+                                <div class="w-8 h-8 rounded-full border border-white/20 overflow-hidden shrink-0"><input type="color" id="solid-color-picker" class="w-10 h-10 -m-1 cursor-pointer"></div>
+                            </div>
+                        </div>
+                        <div id="dynamic-color-container" class="hidden flex justify-between items-center p-4 hover:bg-white/5 transition-colors bg-black/20">
+                            <span class="text-sm text-slate-300">Chọn 2 màu pha trộn</span>
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-full border border-white/20 overflow-hidden shrink-0"><input type="color" id="dyn-color-a" class="w-10 h-10 -m-1 cursor-pointer"></div>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+                                <div class="w-8 h-8 rounded-full border border-white/20 overflow-hidden shrink-0"><input type="color" id="dyn-color-b" class="w-10 h-10 -m-1 cursor-pointer"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION: AUDIO EQ & VOLUME -->
+                <div>
+                    <h3 class="text-xs font-bold text-violet-400 uppercase tracking-widest mb-2 ml-2">Âm thanh & Equalizer</h3>
+                    <div class="bg-white/5 rounded-2xl border border-white/10 flex flex-col overflow-hidden">
+                        <div class="flex flex-col p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm font-medium flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-violet-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clip-rule="evenodd" /></svg> Âm lượng tổng</span>
+                                <span id="val-volume" class="text-xs text-sky-400 font-mono">100%</span>
+                            </div>
+                            <input type="range" id="setting-volume" min="0" max="100" step="1" value="100" class="setting-slider">
+                        </div>
+                        <div class="flex justify-between items-center p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
+                            <div><div class="text-sm font-medium">Chế độ Equalizer</div></div>
+                            <select id="setting-eq" class="bg-black/50 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white outline-none w-36 text-right">
+                                <option value="flat">Mặc định (Flat)</option>
+                                <option value="bass_boost">Siêu Trầm (Bass)</option>
+                                <option value="pop">Nhạc Pop</option>
+                                <option value="rock">Nhạc Rock</option>
+                                <option value="acoustic">Mộc (Acoustic)</option>
+                                <option value="electronic">Điện tử (EDM)</option>
+                                <option value="manual">Tùy chỉnh thủ công</option>
+                            </select>
+                        </div>
+                        <div id="eq-manual-container" class="p-4 bg-black/20 flex flex-col gap-2 transition-all">
+                            <span class="text-xs text-slate-400 text-center mb-1">Dải tần số (Hz)</span>
+                            <div class="flex justify-between items-end h-32 px-2" id="eq-sliders-wrapper">
+                                <!-- Tạo bằng JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="audio-upload" accept=".mp3,audio/mp3,audio/mpeg,audio/wav,audio/*" multiple>
+
+    <script>
+        // CẤU HÌNH HỆ THỐNG
+        const APP_CONFIG = { fftSizeStandard: 256, fftSizeHighRes: 2048, fftSizePitch: 2048, bpmMinWaitTime: 250 };
+        const PERFORMANCE_PROFILES = {
+            high: { stars: 200, tunnel: 200, glassDrops: 250, bldMult: 1.0, streakProb: 0.8, blurMult: 1.0 },
+            medium: { stars: 100, tunnel: 100, glassDrops: 100, bldMult: 1.5, streakProb: 0.9, blurMult: 0.5 },
+            low: { stars: 40, tunnel: 40, glassDrops: 40, bldMult: 2.5, streakProb: 0.95, blurMult: 0 } 
+        };
+        const DEFAULT_VINYL = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0OCIgZmlsbD0iIzFlMjkzYiIvPjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjE2IiBmaWxsPSIjMGYxNzJhIi8+PGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iMTUiIGZpbGw9IiNjYmQ1ZTEiLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0IiBmaWxsPSIjMGYxNzJhIi8+PC9zdmc+';
+
+        const EQ_FREQS = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
+        const EQ_LABELS = ['32', '64', '125', '250', '500', '1K', '2K', '4K', '8K', '16K'];
+        const EQ_PRESETS = {
+            'flat': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 'bass_boost': [6, 5, 4, 1, 0, 0, 0, 0, 0, 0], 'pop': [-2, -1, 0, 2, 4, 4, 2, 0, -1, -2],
+            'rock': [5, 4, 3, 1, -1, -1, 1, 2, 3, 4], 'acoustic': [2, 1, 0, 0, 1, 2, 3, 4, 3, 2], 'electronic': [5, 4, 1, -1, -2, 0, 1, 3, 4, 5],
+            'manual': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        };
+
+        const MODES = ['circle', 'bar', 'wave', 'vortex', 'synthesia', 'rubik', 'rain', 'lightning'];
+
+        const DEFAULT_VIZ_CONFIG = {
+            quality: 'high', type: 'circle', vortexStyle: 'classic', rainStyle: 'glass', glassFlash: true, mode: 'solid', 
+            bgColor: '#000000', solidColor: '#ffffff', dynA: '#ec4899', dynB: '#3b82f6', 
+            minH: 4, maxH: 400, barWidth: 4, bgImage: '', bgBlur: 0,
+            volume: 100, eqMode: 'flat', manualEq: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        };
+        let vizConfig = { ...DEFAULT_VIZ_CONFIG };
+        let isGridView = false;
+
+        // DOM Elements
+        const fileInput = document.getElementById('audio-upload'), audioPlayer = document.getElementById('audio-player');
+        const canvas = document.getElementById('visualizer'), ctx = canvas.getContext('2d');
+        const playlistView = document.getElementById('playlist-view'), visualizerUI = document.getElementById('visualizer-ui'), playerContainer = document.getElementById('player-container');
+        const playlistBg = document.getElementById('playlist-bg');
+        const playlistEmpty = document.getElementById('playlist-empty'), playlistContainer = document.getElementById('playlist-container');
+        const btnBackPlaylist = document.getElementById('btn-back-playlist'), loadingShield = document.getElementById('loading-shield'), loadingText = document.getElementById('loading-text');
+        
+        // Controls
+        const playPauseBtn = document.getElementById('play-pause-btn'), iconPlay = document.getElementById('icon-play'), iconPause = document.getElementById('icon-pause');
+        const btnPrev = document.getElementById('btn-prev'), btnNext = document.getElementById('btn-next');
+        const btnShuffle = document.getElementById('btn-shuffle'), btnRepeat = document.getElementById('btn-repeat'), repeatBadge = document.getElementById('repeat-badge');
+        const progressBar = document.getElementById('progress-bar');
+        const currentTimeDisplay = document.getElementById('current-time'), durationTimeDisplay = document.getElementById('duration-time');
+        const playerTitle = document.getElementById('player-title'), playerArtist = document.getElementById('player-artist');
+        const recordArt = document.getElementById('record-art'), recordContainer = document.getElementById('record-container');
+        const statBpm = document.getElementById('stat-bpm'), statNote = document.getElementById('stat-note'), statEnergy = document.getElementById('stat-energy');
+        
+        // Settings Elements
+        const drawerSettings = document.getElementById('drawer-settings'), btnSettings = document.getElementById('btn-settings'), btnSettingsPlaylist = document.getElementById('btn-settings-playlist'), closeDrawer = document.getElementById('close-drawer');
+        const btnToggleView = document.getElementById('btn-toggle-view'), iconGridView = document.getElementById('icon-grid-view'), iconListView = document.getElementById('icon-list-view');
+        const btnCycleMode = document.getElementById('btn-cycle-mode'), modeBadge = document.getElementById('mode-badge');
+        const qualitySelect = document.getElementById('setting-quality'), bgColorPicker = document.getElementById('bg-color-picker');
+        const bgUploadInput = document.getElementById('setting-bg-upload'), bgBlurSlider = document.getElementById('setting-bg-blur'), valBgBlurDisplay = document.getElementById('val-bg-blur');
+        const colorModeSelect = document.getElementById('setting-color-mode'), solidColorContainer = document.getElementById('solid-color-container'), solidColorPicker = document.getElementById('solid-color-picker'), solidColorText = document.getElementById('solid-color-text');
+        const dynColorContainer = document.getElementById('dynamic-color-container'), dynColorA = document.getElementById('dyn-color-a'), dynColorB = document.getElementById('dyn-color-b');
+        const maxHeightSlider = document.getElementById('setting-max-height'), barWidthSlider = document.getElementById('setting-bar-width'), valMaxDisplay = document.getElementById('val-max'), valWidthDisplay = document.getElementById('val-width');
+        const blockGeometry = document.getElementById('block-geometry'), blockVortex = document.getElementById('block-vortex'), vortexStyleSelect = document.getElementById('setting-vortex-style');
+        const blockRain = document.getElementById('block-rain'), rainStyleSelect = document.getElementById('setting-rain-style'), glassFlashToggle = document.getElementById('setting-glass-flash');
+        
+        const volumeSlider = document.getElementById('setting-volume'), valVolumeDisplay = document.getElementById('val-volume');
+        const eqSelect = document.getElementById('setting-eq'), eqSlidersWrapper = document.getElementById('eq-sliders-wrapper');
+
+        // Subtitle Elements
+        const btnSubtitle = document.getElementById('btn-subtitle'), subToggleBadge = document.getElementById('sub-toggle-badge');
+        const subtitleModal = document.getElementById('subtitle-modal'), btnCloseSubModal = document.getElementById('btn-close-sub-modal');
+        const srtUpload = document.getElementById('srt-upload'), btnApplySub = document.getElementById('btn-apply-sub');
+        const btnToggleSub = document.getElementById('btn-toggle-sub'), btnAddSub = document.getElementById('btn-add-sub'), btnExportSrt = document.getElementById('btn-export-srt');
+        const subtitleDisplay = document.getElementById('subtitle-display'), subLine1 = document.getElementById('sub-line-1'), subLine2 = document.getElementById('sub-line-2');
+        const subListContainer = document.getElementById('sub-list-container'), subEmptyState = document.getElementById('sub-empty-state');
+        const btnAutoTiming = document.getElementById('btn-auto-timing');
+        let autoSubStartTime = null;
+
+        // State Variables
+        let audioContext, analyser, analyserPitch, source, animationId;
+        let masterGainNode; let eqBandNodes = []; 
+        let isSeeking = false, dpr = 1, currentObjectURL = null, frameCounter = 0; 
+        let smoothedBeatRadius = 0, smoothedEnergy = 0, globalHueOffset = 0, smoothedPitchY = 0;
+        let vizDataArray, pitchTimeDomainArray, waveTimeDomainArray, previousSpectrumArray;
+        let beatTimes = [], lastBeatTime = 0, fluxHistory = [], runningFluxMean = 0;
+
+        let currentModeIndex = 0; 
+        const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+        // Specific Visualizer states
+        let stars = [], tunnelParticles = [], tunnelAngle = 0;
+        let starFlashes = []; 
+        let rubikCubes = [], rubikRotX = 0, rubikRotY = 0, rubikAnim = { active: false, axis: 'x', layer: 0, angle: 0, dir: 1 };
+        let raindrops = [], ripples = [], bgRaindrops = [];
+        let glassStaticDrops = [], glassStreaks = [], cityBuildings = [];
+        let activeLightnings = [];
+        
+        // Subtitle Data Arrays
+        let subtitles = []; let isSubtitlesEnabled = true; let currentActiveSubIndex = -1; let editingSubId = null;
+        let currentCalculatedBpm = "---";
+
+        let playlist = [], currentIndex = -1, isShuffle = false, shuffleIndices = [], repeatMode = 0; 
+        window.currentMediaSessionCover = null; window.lastValidNoteStr = null; window.lastValidNoteTime = 0;
+
+        // ==========================================
+        // UI GIAO DIỆN LƯỚI / DANH SÁCH
+        // ==========================================
+        btnToggleView.addEventListener('click', () => {
+            isGridView = !isGridView;
+            if (isGridView) {
+                iconGridView.classList.add('hidden');
+                iconListView.classList.remove('hidden');
+                playlistContainer.className = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-4 gap-y-6 px-5 pb-32';
+            } else {
+                iconGridView.classList.remove('hidden');
+                iconListView.classList.add('hidden');
+                playlistContainer.className = 'flex flex-col pb-32';
+            }
+            renderPlaylist();
+        });
+
+
+        // ==========================================
+        // SUBTITLE UI & LOGIC
+        // ==========================================
+        function secToStr(sec) {
+            if (isNaN(sec)) return "00:00:00,000";
+            let h = Math.floor(sec / 3600); let m = Math.floor((sec % 3600) / 60); let s = Math.floor(sec % 60); let ms = Math.floor((sec % 1) * 1000);
+            return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')},${ms.toString().padStart(3,'0')}`;
+        }
+        function strToSec(str) {
+            let parts = str.trim().split(/[:,]/); if (parts.length !== 4) return 0;
+            return parseInt(parts[0])*3600 + parseInt(parts[1])*60 + parseInt(parts[2]) + parseInt(parts[3])/1000;
+        }
+
+        function parseSRT(data) {
+            const regex = /(\d+)\n(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})\n([\s\S]*?)(?=\n\n|\n*$)/g;
+            let result = []; let match;
+            while ((match = regex.exec(data)) !== null) {
+                result.push({ id: Date.now() + Math.random(), displayId: match[1], start: strToSec(match[2]), end: strToSec(match[3]), startStr: match[2], endStr: match[3], text: match[4] });
+            }
+            return result;
+        }
+
+        function buildSRTString() {
+            let out = "";
+            subtitles.forEach((s, i) => { out += `${i+1}\n${s.startStr} --> ${s.endStr}\n${s.text}\n\n`; });
+            return out.trim();
+        }
+
+        function renderSubList() {
+            subListContainer.innerHTML = '';
+            if (subtitles.length === 0) { subListContainer.appendChild(subEmptyState); subEmptyState.classList.remove('hidden'); return; }
+            subEmptyState.classList.add('hidden');
+            
+            subtitles.sort((a,b) => a.start - b.start); 
+            
+            subtitles.forEach((sub, index) => {
+                const isEditing = editingSubId === sub.id;
+                const isActive = (index === currentActiveSubIndex);
+                
+                const card = document.createElement('div');
+                card.className = `sub-item-block group p-4 rounded-xl border transition-all ${isActive ? 'bg-emerald-900/30 border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)] ring-1 ring-emerald-500' : 'bg-slate-800/50 border-white/10 hover:border-sky-500/50 hover:bg-slate-800'}`;
+                card.id = `sub-card-${index}`;
+
+                if (isEditing) {
+                    card.classList.add('sub-edit-mode');
+                    card.innerHTML = `
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <div class="flex-grow flex flex-col gap-2">
+                                <div class="flex items-center gap-2">
+                                    <input type="text" id="edit-start-${sub.id}" value="${sub.startStr}" class="w-32 text-center text-sky-300 bg-black/60 border border-slate-600 rounded" placeholder="00:00:00,000">
+                                    <span class="text-slate-500">--></span>
+                                    <input type="text" id="edit-end-${sub.id}" value="${sub.endStr}" class="w-32 text-center text-sky-300 bg-black/60 border border-slate-600 rounded" placeholder="00:00:00,000">
+                                </div>
+                                <textarea id="edit-text-${sub.id}" rows="2" class="w-full text-white bg-black/60 border border-slate-600 rounded resize-none" placeholder="Nhập nội dung sub...">${sub.text}</textarea>
+                            </div>
+                            <div class="flex sm:flex-col gap-2 shrink-0 justify-end sm:justify-start mt-2 sm:mt-0">
+                                <button onclick="saveSubItem('${sub.id}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded shadow transition-colors">Lưu</button>
+                                <button onclick="deleteSubItem('${sub.id}')" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded shadow transition-colors">Xóa</button>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    let formattedText = sub.text.replace(/\n/g, '<br>');
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start gap-4 cursor-pointer" onclick="editSubItem('${sub.id}')">
+                            <div class="flex-grow">
+                                <div class="text-xs font-mono text-sky-400 mb-1 flex items-center gap-2">
+                                    ${isActive ? '<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>' : ''}
+                                    ${sub.startStr} <span class="text-slate-500">⟶</span> ${sub.endStr}
+                                </div>
+                                <div class="text-sm font-medium text-slate-200 line-clamp-2">${formattedText}</div>
+                            </div>
+                            <div class="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                            </div>
+                        </div>
+                    `;
+                }
+                subListContainer.appendChild(card);
+            });
+        }
+
+        window.editSubItem = function(id) { editingSubId = id; renderSubList(); };
+        window.saveSubItem = function(id) {
+            let sub = subtitles.find(s => s.id === id); if(!sub) return;
+            sub.startStr = document.getElementById(`edit-start-${id}`).value;
+            sub.endStr = document.getElementById(`edit-end-${id}`).value;
+            sub.text = document.getElementById(`edit-text-${id}`).value;
+            sub.start = strToSec(sub.startStr); sub.end = strToSec(sub.endStr);
+            editingSubId = null; renderSubList();
+        };
+        window.deleteSubItem = function(id) { subtitles = subtitles.filter(s => s.id !== id); editingSubId = null; renderSubList(); };
+        
+        function resetAutoSub() {
+            autoSubStartTime = null;
+            btnAutoTiming.classList.remove('bg-red-500', 'animate-pulse');
+            btnAutoTiming.classList.add('bg-rose-600');
+        }
+
+        btnAutoTiming.addEventListener('click', () => {
+            if (autoSubStartTime === null) {
+                autoSubStartTime = audioPlayer.currentTime;
+                btnAutoTiming.classList.remove('bg-rose-600');
+                btnAutoTiming.classList.add('bg-red-500', 'animate-pulse');
+            } else {
+                let endTime = audioPlayer.currentTime;
+                if (endTime < autoSubStartTime) { let temp = autoSubStartTime; autoSubStartTime = endTime; endTime = temp; }
+                let newSub = { 
+                    id: Date.now().toString(), 
+                    start: autoSubStartTime, 
+                    end: endTime, 
+                    startStr: secToStr(autoSubStartTime), 
+                    endStr: secToStr(endTime), 
+                    text: "" 
+                };
+                subtitles.push(newSub); 
+                editingSubId = newSub.id; 
+                resetAutoSub();
+                renderSubList();
+                setTimeout(() => { document.getElementById('sub-list-container').scrollTop = document.getElementById('sub-list-container').scrollHeight; }, 100);
+            }
+        });
+
+        btnAddSub.addEventListener('click', () => {
+            let lastSub = subtitles[subtitles.length - 1];
+            let newStart = lastSub ? lastSub.end + 0.1 : 0;
+            let newEnd = newStart + 2;
+            let newSub = { id: Date.now().toString(), start: newStart, end: newEnd, startStr: secToStr(newStart), endStr: secToStr(newEnd), text: "Dòng phụ đề mới..." };
+            subtitles.push(newSub); editingSubId = newSub.id; renderSubList();
+            setTimeout(() => { document.getElementById('sub-list-container').scrollTop = document.getElementById('sub-list-container').scrollHeight; }, 100);
+        });
+
+        btnExportSrt.addEventListener('click', () => {
+            if(subtitles.length === 0) { alert("Chưa có phụ đề để xuất!"); return; }
+            const blob = new Blob([buildSRTString()], { type: "text/plain;charset=utf-8" });
+            const url = URL.createObjectURL(blob); const a = document.createElement('a');
+            a.href = url; a.download = `${playlist[currentIndex]?.title || 'VisualMaster_Sub'}.srt`;
+            a.click(); URL.revokeObjectURL(url);
+        });
+
+        srtUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (evt) => { subtitles = parseSRT(evt.target.result); renderSubList(); }; reader.readAsText(file);
+        });
+
+        btnApplySub.addEventListener('click', () => {
+            editingSubId = null; resetAutoSub(); renderSubList();
+            if (!isSubtitlesEnabled) { isSubtitlesEnabled = true; updateSubToggleUI(); }
+            subtitleModal.classList.add('translate-y-full'); currentActiveSubIndex = -1; subLine1.textContent = ''; subLine2.textContent = '';
+            if (!audioPlayer.paused || audioPlayer.currentTime > 0) { audioPlayer.currentTime = 0; audioPlayer.play(); }
+        });
+
+        // ==========================================
+        // KHỞI TẠO EQ SLIDERS UI
+        // ==========================================
+        function initEQSliders() {
+            eqSlidersWrapper.innerHTML = '';
+            for(let i=0; i<10; i++) {
+                const col = document.createElement('div'); col.className = 'flex flex-col items-center gap-1 w-6';
+                col.innerHTML = `<span class="text-[8px] text-sky-300 w-full text-center" id="eq-val-${i}">0</span><div class="eq-slider-container"><input type="range" class="eq-slider" min="-12" max="12" step="1" value="0" data-index="${i}"></div><span class="text-[8px] text-slate-400 mt-1">${EQ_LABELS[i]}</span>`;
+                eqSlidersWrapper.appendChild(col);
+                const slider = col.querySelector('.eq-slider');
+                slider.addEventListener('input', (e) => {
+                    const val = parseFloat(e.target.value); document.getElementById(`eq-val-${i}`).textContent = val > 0 ? `+${val}` : val;
+                    vizConfig.manualEq[i] = val;
+                    if(vizConfig.eqMode !== 'manual') { vizConfig.eqMode = 'manual'; eqSelect.value = 'manual'; }
+                    if(eqBandNodes[i]) eqBandNodes[i].gain.value = val;
+                    saveConfig();
+                });
+            }
+        }
+
+        function updateEQSlidersUI(mode) {
+            const gains = mode === 'manual' ? vizConfig.manualEq : (EQ_PRESETS[mode] || EQ_PRESETS['flat']);
+            const sliders = document.querySelectorAll('.eq-slider');
+            for(let i=0; i<10; i++) { if(sliders[i]) { sliders[i].value = gains[i]; document.getElementById(`eq-val-${i}`).textContent = gains[i] > 0 ? `+${gains[i]}` : gains[i]; } }
+        }
+
+        // ==========================================
+        // LOCAL STORAGE & CONFIG
+        // ==========================================
+
+        function saveConfig() { localStorage.setItem('visualMasterConfigV18', JSON.stringify(vizConfig)); }
+
+        function loadConfig() {
+            const saved = localStorage.getItem('visualMasterConfigV18');
+            if (saved) { try { vizConfig = { ...vizConfig, ...JSON.parse(saved) }; } catch(e) {} }
+            if(!vizConfig.manualEq) vizConfig.manualEq = [0,0,0,0,0,0,0,0,0,0];
+            
+            if(vizConfig.type === 'journey') vizConfig.type = 'circle';
+
+            qualitySelect.value = vizConfig.quality; bgColorPicker.value = vizConfig.bgColor;
+            bgBlurSlider.value = vizConfig.bgBlur; valBgBlurDisplay.textContent = vizConfig.bgBlur + 'px';
+            
+            colorModeSelect.value = vizConfig.mode;
+            solidColorPicker.value = vizConfig.solidColor; solidColorText.value = vizConfig.solidColor;
+            dynColorA.value = vizConfig.dynA; dynColorB.value = vizConfig.dynB;
+            maxHeightSlider.value = vizConfig.maxH; valMaxDisplay.textContent = vizConfig.maxH;
+            barWidthSlider.value = vizConfig.barWidth; valWidthDisplay.textContent = vizConfig.barWidth;
+            vortexStyleSelect.value = vizConfig.vortexStyle;
+            rainStyleSelect.value = vizConfig.rainStyle;
+            glassFlashToggle.checked = vizConfig.glassFlash;
+            
+            volumeSlider.value = vizConfig.volume; valVolumeDisplay.textContent = vizConfig.volume + '%';
+            if(masterGainNode) masterGainNode.gain.value = vizConfig.volume / 100;
+            
+            initEQSliders(); eqSelect.value = vizConfig.eqMode; updateEQSlidersUI(vizConfig.eqMode); applyEQPreset(vizConfig.eqMode);
+
+            currentModeIndex = MODES.indexOf(vizConfig.type); if(currentModeIndex === -1) currentModeIndex = 0;
+            updateDOMBackground(); updatePlaylistBg(); updateColorMenuUI(); updateTypeUI();
+        }
+
+        // ==========================================
+        // SUBTITLE LOGIC - PLAYBACK
+        // ==========================================
+        btnSubtitle.addEventListener('click', () => { subtitleModal.classList.remove('translate-y-full'); renderSubList(); });
+        btnCloseSubModal.addEventListener('click', () => { resetAutoSub(); subtitleModal.classList.add('translate-y-full'); });
+        btnToggleSub.addEventListener('click', () => { isSubtitlesEnabled = !isSubtitlesEnabled; updateSubToggleUI(); });
+
+        function updateSubToggleUI() {
+            if (isSubtitlesEnabled) {
+                btnToggleSub.textContent = "Tắt Sub"; btnToggleSub.classList.replace('bg-emerald-500', 'bg-slate-700/80');
+                subToggleBadge.classList.remove('hidden'); subtitleDisplay.classList.remove('hidden');
+            } else {
+                btnToggleSub.textContent = "Bật Sub"; btnToggleSub.classList.replace('bg-slate-700/80', 'bg-emerald-500');
+                subToggleBadge.classList.add('hidden'); subtitleDisplay.classList.add('hidden');
+            }
+        }
+
+        function processSubtitles(currentTime) {
+            if (!isSubtitlesEnabled || subtitles.length === 0) return;
+            let foundIndex = -1;
+            if (currentActiveSubIndex !== -1 && currentActiveSubIndex < subtitles.length) {
+                let activeSub = subtitles[currentActiveSubIndex];
+                if (currentTime >= activeSub.start && currentTime <= activeSub.end) { foundIndex = currentActiveSubIndex; }
+            }
+            if (foundIndex === -1) {
+                for (let i = 0; i < subtitles.length; i++) { if (currentTime >= subtitles[i].start && currentTime <= subtitles[i].end) { foundIndex = i; break; } }
+            }
+
+            if (foundIndex !== currentActiveSubIndex) {
+                let oldIndex = currentActiveSubIndex;
+                currentActiveSubIndex = foundIndex;
+                
+                if(!subtitleModal.classList.contains('translate-y-full')) {
+                    if (oldIndex !== -1) { let oldCard = document.getElementById(`sub-card-${oldIndex}`); if(oldCard && editingSubId !== subtitles[oldIndex].id) renderSubList(); }
+                    if (foundIndex !== -1) { let newCard = document.getElementById(`sub-card-${foundIndex}`); if(newCard && editingSubId !== subtitles[foundIndex].id) renderSubList(); }
+                }
+
+                if (foundIndex !== -1) {
+                    let lines = subtitles[foundIndex].text.split('\n');
+                    subLine1.innerHTML = lines[0] || ''; subLine2.innerHTML = lines[1] || '';
+                    subtitleDisplay.classList.remove('opacity-0');
+                } else {
+                    subtitleDisplay.classList.add('opacity-0');
+                    setTimeout(() => { if (currentActiveSubIndex === -1) { subLine1.innerHTML = ''; subLine2.innerHTML = ''; } }, 300);
+                }
+            }
+        }
+
+        // ==========================================
+        // QUẢN LÝ WAKELOCK (NATIVE + NOSLEEP FALLBACK)
+        // ==========================================
+        const noSleep = new NoSleep();
+        let nativeWakeLock = null;
+
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    nativeWakeLock = await navigator.wakeLock.request('screen');
+                    nativeWakeLock.addEventListener('release', () => { /* console.log('Màn hình được phép tắt.'); */ });
+                } else {
+                    try { if (!noSleep.isEnabled) noSleep.enable(); } catch(e) {}
+                }
+            } catch (err) {
+                // Môi trường (iframe/trình duyệt nhúng) cấm Feature-Policy, chuyển qua NoSleep
+                try {
+                    if (!noSleep.isEnabled) noSleep.enable(); // Fallback trên iOS
+                } catch (e) {
+                    // Âm thầm bỏ qua lỗi nếu bị chặn hoàn toàn để tránh gián đoạn các tính năng khác
+                }
+            }
+        }
+
+        function releaseWakeLock() {
+            try {
+                if (nativeWakeLock !== null) { 
+                    nativeWakeLock.release().then(() => { nativeWakeLock = null; }).catch(()=>{}); 
+                }
+                if (noSleep.isEnabled) noSleep.disable();
+            } catch (e) {
+                // Âm thầm bỏ qua lỗi
+            }
+        }
+
+        // Tái kích hoạt WakeLock nếu tab bị ẩn rồi bật lại
+        document.addEventListener('visibilitychange', async () => {
+            if (document.visibilityState === 'visible' && !audioPlayer.paused) { requestWakeLock(); }
+        });
+        
+        // Gắn sự kiện touch đầu tiên để iOS cho phép NoSleep.js
+        document.body.addEventListener('touchstart', () => { if(!audioPlayer.paused) requestWakeLock(); }, { once: true });
+        document.body.addEventListener('click', () => { if(!audioPlayer.paused) requestWakeLock(); }, { once: true });
+
+        window.addEventListener('beforeunload', () => {
+            if (animationId) cancelAnimationFrame(animationId);
+            if (audioContext && audioContext.state !== 'closed') audioContext.close();
+            if (currentObjectURL) URL.revokeObjectURL(currentObjectURL);
+            if (window.currentMediaSessionCover) URL.revokeObjectURL(window.currentMediaSessionCover);
+            releaseWakeLock();
+        });
+
+        // ==========================================
+        // UTILS
+        // ==========================================
+        function hexToRgb(hex) {
+            let r = 0, g = 0, b = 0;
+            if (hex.length == 4) { r = "0x" + hex[1] + hex[1]; g = "0x" + hex[2] + hex[2]; b = "0x" + hex[3] + hex[3]; } 
+            else if (hex.length == 7) { r = "0x" + hex[1] + hex[2]; g = "0x" + hex[3] + hex[4]; b = "0x" + hex[5] + hex[6]; }
+            return {r: +r, g: +g, b: +b};
+        }
+
+        function interpolateColor(color1, color2, factor) {
+            const rgb1 = hexToRgb(color1); const rgb2 = hexToRgb(color2);
+            let result = { r: Math.round(rgb1.r + factor * (rgb2.r - rgb1.r)), g: Math.round(rgb1.g + factor * (rgb2.g - rgb1.g)), b: Math.round(rgb1.b + factor * (rgb2.b - rgb1.b)) };
+            return `rgb(${result.r}, ${result.g}, ${result.b})`;
+        }
+
+        function updateDOMBackground() { document.body.style.backgroundColor = vizConfig.bgColor; }
+        
+        function updatePlaylistBg() {
+            if (vizConfig.bgImage) { playlistBg.style.backgroundImage = `url(${vizConfig.bgImage})`; playlistBg.style.filter = `blur(${vizConfig.bgBlur}px)`; } 
+            else { playlistBg.style.backgroundImage = 'none'; playlistBg.style.filter = `blur(0px)`;}
+        }
+        
+        function allocateBuffers() {
+            if(!analyser || !analyserPitch) return;
+            vizDataArray = new Uint8Array(analyser.frequencyBinCount); previousSpectrumArray = new Uint8Array(analyser.frequencyBinCount);
+            waveTimeDomainArray = new Uint8Array(analyser.frequencyBinCount); pitchTimeDomainArray = new Float32Array(analyserPitch.fftSize);
+        }
+
+        function dataURItoBlobUrl(dataURI) {
+            try {
+                let parts = dataURI.split(','); let byteString = atob(parts[1]); let mimeString = parts[0].split(':')[1].split(';')[0];
+                let ab = new ArrayBuffer(byteString.length); let ia = new Uint8Array(ab);
+                for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+                return URL.createObjectURL(new Blob([ab], {type: mimeString}));
+            } catch(e) { return null; }
+        }
+
+        function resizeCanvas() {
+            dpr = window.devicePixelRatio || 1;
+            canvas.width = window.innerWidth * dpr; canvas.height = window.innerHeight * dpr;
+            initStars(); initTunnel(); initRubik(); raindrops = []; ripples = [];
+            glassStaticDrops = []; glassStreaks = []; activeLightnings = []; starFlashes = [];
+            
+            const perfProfile = PERFORMANCE_PROFILES[vizConfig.quality];
+
+            bgRaindrops = [];
+            for(let i = 0; i < 150; i++) bgRaindrops.push({x: Math.random() * canvas.width, y: Math.random() * canvas.height, speed: Math.random() * 8 + 4, length: Math.random() * 20 + 10, alpha: Math.random() * 0.15 + 0.05});
+            
+            for(let i=0; i < perfProfile.glassDrops; i++) {
+                glassStaticDrops.push({x: Math.random() * canvas.width, y: Math.random() * canvas.height, r: (Math.random() * 1.5 + 0.5) * dpr});
+            }
+            
+            cityBuildings = [];
+            let currentX = -50 * dpr;
+            while(currentX < canvas.width + 50 * dpr) {
+                let w = (Math.random() * 60 + 30) * dpr * perfProfile.bldMult; 
+                let h = (Math.random() * 250 + 80) * dpr;
+                
+                let winStepX = 14 * dpr * (perfProfile.bldMult > 1 ? 1.5 : 1);
+                let winStepY = 18 * dpr * (perfProfile.bldMult > 1 ? 1.5 : 1);
+                
+                let cols = Math.floor(w / winStepX); let rows = Math.floor(h / winStepY); let windows = [];
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        if (Math.random() > 0.3) {
+                            windows.push({ r: r, c: c, isAlwaysOn: Math.random() > 0.85, fftBin: Math.floor(Math.random() * 40), colorType: Math.random() > 0.6 ? '#fff5e6' : '#ffdd44' });
+                        }
+                    }
+                }
+                cityBuildings.push({x: currentX, w: w, h: h, cols: cols, rows: rows, windows: windows});
+                currentX += w + (Math.random() * 15 * dpr); 
+            }
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        function initStars() {
+            stars = []; const maxDist = Math.max(canvas.width, canvas.height); const count = PERFORMANCE_PROFILES[vizConfig.quality].stars;
+            for(let i=0; i < count; i++) {
+                let clusterAngle = (Math.floor(Math.random() * 5) / 5) * Math.PI * 2; let angle = clusterAngle + (Math.random() * 1.5 - 0.75); 
+                let layer = Math.random(); let baseSpeed, sizeMult;
+                if (layer < 0.2) { baseSpeed = 0.1; sizeMult = 0.5; } else if (layer < 0.7) { baseSpeed = 0.4; sizeMult = 1.0; } else { baseSpeed = 1.0; sizeMult = 2.0; } 
+                let colorTint = '255, 255, 255'; let colorRand = Math.random();
+                if (colorRand > 0.9) colorTint = '200, 220, 255'; else if (colorRand > 0.8) colorTint = '255, 240, 200'; 
+                stars.push({ angle: angle, distance: Math.random() * maxDist, size: (Math.random() * 1.5 + 0.5) * sizeMult * dpr, baseSpeed: baseSpeed * dpr, colorTint: colorTint });
+            }
+        }
+
+        function initTunnel() {
+            tunnelParticles = []; const count = PERFORMANCE_PROFILES[vizConfig.quality].tunnel;
+            for(let i=0; i < count; i++) tunnelParticles.push({ angle: Math.random() * Math.PI * 2, z: Math.random() * 2000, radiusOffset: (Math.random() * 100 - 50) * dpr });
+        }
+
+        function initRubik() {
+            rubikCubes = [];
+            for (let x = -1; x <= 1; x++) for (let y = -1; y <= 1; y++) for (let z = -1; z <= 1; z++) rubikCubes.push({ cx: x, cy: y, cz: z, binIdx: Math.abs(x*9 + y*3 + z) % 27 });
+        }
+
+        function formatTime(seconds) {
+            if (isNaN(seconds)) return "0:00";
+            const min = Math.floor(seconds / 60); const sec = Math.floor(seconds % 60);
+            return `${min}:${sec < 10 ? '0' : ''}${sec}`;
+        }
+
+        // ==========================================
+        // QUẢN LÝ PLAYLIST & ĐỌC FILE
+        // ==========================================
+        fileInput.addEventListener('change', async function(e) {
+            const files = Array.from(e.target.files); if (files.length === 0) return;
+            playlistEmpty.classList.add('hidden'); loadingShield.classList.remove('hidden');
+
+            for(let i = 0; i < files.length; i++) {
+                let file = files[i]; loadingText.textContent = `Đang nạp ${i + 1} / ${files.length}...`;
+                let songObj = { id: Date.now() + i, file: file, title: file.name.replace(/\.[^/.]+$/, ""), artist: "Đang phân tích...", cover: DEFAULT_VINYL };
+
+                await new Promise(resolve => {
+                    if (window.jsmediatags) {
+                        jsmediatags.read(file, {
+                            onSuccess: function(tag) {
+                                if(tag.tags.title) songObj.title = tag.tags.title;
+                                if(tag.tags.artist) songObj.artist = tag.tags.artist; else songObj.artist = "Không rõ nghệ sĩ";
+                                if (tag.tags.picture) {
+                                    let base64String = "";
+                                    for (let j = 0; j < tag.tags.picture.data.length; j++) base64String += String.fromCharCode(tag.tags.picture.data[j]);
+                                    songObj.cover = "data:" + tag.tags.picture.format + ";base64," + window.btoa(base64String);
+                                }
+                                resolve();
+                            },
+                            onError: function() { songObj.artist = "Âm thanh cục bộ"; resolve(); }
+                        });
+                    } else { songObj.artist = "Âm thanh cục bộ"; resolve(); }
+                });
+
+                playlist.push(songObj);
+                if(i % 10 === 0 || i === files.length - 1) { renderPlaylist(); await new Promise(r => setTimeout(r, 10)); }
+            }
+
+            updateShuffleArray(); loadingShield.classList.add('hidden'); loadingText.textContent = "Đang xử lý..."; 
+        });
+
+        function updateShuffleArray() {
+            shuffleIndices = Array.from({length: playlist.length}, (_, i) => i);
+            if (isShuffle) {
+                for (let i = shuffleIndices.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [shuffleIndices[i], shuffleIndices[j]] = [shuffleIndices[j], shuffleIndices[i]];
+                }
+            }
+        }
+
+        // Render Playlist (List / Grid)
+        function renderPlaylist() {
+            playlistContainer.innerHTML = '';
+            playlist.forEach((song, idx) => {
+                let isPlaying = (idx === currentIndex); 
+                let isActuallyPlaying = isPlaying && !audioPlayer.paused;
+                
+                // Nút xóa: Hình Thùng rác
+                let deleteBtnHtml = `
+                    <button onclick="event.stopPropagation(); removeSong(${idx})" class="p-2 text-slate-400 hover:text-rose-500 transition-colors z-10" title="Xóa bài">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
+                `;
+                
+                // Icon sóng âm
+                let eqIconHtml = isActuallyPlaying 
+                    ? `<div class="flex items-end gap-[2px] h-3 w-3"><div class="w-[3px] bg-sky-400 eq-1"></div><div class="w-[3px] bg-sky-400 eq-2"></div><div class="w-[3px] bg-sky-400 eq-3"></div></div>`
+                    : (isPlaying ? `<div class="w-2 h-2 rounded-full bg-sky-500 shadow-[0_0_5px_rgba(14,165,233,0.8)]"></div>` : '');
+
+                let itemHtml = '';
+                
+                if (isGridView) {
+                    // DẠNG LƯỚI (GRID)
+                    itemHtml = `
+                        <div onclick="playSong(${idx})" class="flex flex-col cursor-pointer active:scale-[0.98] transition-transform group relative w-full">
+                            <div class="w-full aspect-square relative mb-2.5">
+                                <img src="${song.cover}" class="w-full h-full rounded-2xl object-cover shadow-lg">
+                                ${isPlaying ? `<div class="absolute inset-0 bg-black/30 rounded-2xl flex items-center justify-center backdrop-blur-[2px]">${eqIconHtml}</div>` : ''}
+                                <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded-full">
+                                    ${deleteBtnHtml}
+                                </div>
+                            </div>
+                            <h3 class="text-white text-[15px] font-semibold leading-tight line-clamp-1 px-1">${song.title}</h3>
+                            <p class="text-slate-400 text-[13px] font-medium line-clamp-1 px-1 mt-0.5">${song.artist}</p>
+                        </div>
+                    `;
+                } else {
+                    // DẠNG DANH SÁCH (LIST) - Full Width Mobile
+                    itemHtml = `
+                        <div onclick="playSong(${idx})" class="flex items-center gap-4 px-5 py-3 hover:bg-white/5 active:bg-white/10 transition-colors cursor-pointer w-full group border-b border-white/5">
+                            <img src="${song.cover}" class="w-12 h-12 rounded-lg flex-shrink-0 object-cover shadow-md">
+                            <div class="flex-grow flex flex-col justify-center overflow-hidden gap-0.5">
+                                <div class="flex items-center gap-2">
+                                    <h3 class="text-[16px] leading-tight font-semibold truncate ${isPlaying ? 'text-sky-300' : 'text-slate-100'}">${song.title}</h3>
+                                    ${isPlaying ? eqIconHtml : ''}
+                                </div>
+                                <p class="text-[13px] text-slate-400 truncate font-medium">${song.artist}</p>
+                            </div>
+                            <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+                                ${deleteBtnHtml}
+                            </div>
+                        </div>
+                    `;
+                }
+                playlistContainer.insertAdjacentHTML('beforeend', itemHtml);
+            });
+        }
+
+        window.removeSong = function(index) {
+            if (index === currentIndex) return; 
+            let wasPlaying = !audioPlayer.paused; if (wasPlaying) audioPlayer.pause(); 
+            loadingText.textContent = "Đang xóa..."; loadingShield.classList.remove('hidden'); 
+
+            setTimeout(() => {
+                playlist.splice(index, 1); if (currentIndex > index) currentIndex--;
+                updateShuffleArray(); renderPlaylist();
+                if (playlist.length === 0) playlistEmpty.classList.remove('hidden');
+                loadingShield.classList.add('hidden'); loadingText.textContent = "Đang xử lý...";
+                if (wasPlaying && playlist.length > 0) audioPlayer.play();
+            }, 400); 
+        };
+
+        window.playSong = function(index) {
+            requestWakeLock();
+            if (index === currentIndex) { switchToVisualizer(); if (audioPlayer.paused) audioPlayer.play(); return; }
+            if (index < 0 || index >= playlist.length) return;
+            currentIndex = index; let song = playlist[currentIndex];
+
+            playerTitle.textContent = song.title; playerArtist.textContent = song.artist; 
+            recordContainer.innerHTML = `<img id="record-art" src="${song.cover}" class="w-full h-full rounded-full object-cover shadow-lg relative z-20 ${audioPlayer.paused ? 'paused' : 'animate-spin-slow'}" alt="Record"><div class="absolute inset-0 m-auto w-3 h-3 bg-slate-900 rounded-full border border-slate-700 z-30"></div>`;
+
+            if (currentObjectURL) URL.revokeObjectURL(currentObjectURL);
+            currentObjectURL = URL.createObjectURL(song.file); audioPlayer.src = currentObjectURL; 
+            
+            if ('mediaSession' in navigator) {
+                if (window.currentMediaSessionCover) { URL.revokeObjectURL(window.currentMediaSessionCover); window.currentMediaSessionCover = null; }
+                let artworkArray = [];
+                if (song.cover !== DEFAULT_VINYL) {
+                    window.currentMediaSessionCover = dataURItoBlobUrl(song.cover);
+                    if (window.currentMediaSessionCover) artworkArray = [{ src: window.currentMediaSessionCover, sizes: '512x512', type: 'image/jpeg' }];
+                }
+                navigator.mediaSession.metadata = new MediaMetadata({ title: song.title || "Visual Master", artist: song.artist || "Unknown Artist", artwork: artworkArray });
+            }
+
+            audioPlayer.play(); switchToVisualizer(); renderPlaylist(); 
+            beatTimes = []; fluxHistory = []; currentCalculatedBpm = "---"; statBpm.textContent = "---"; statNote.textContent = "---"; 
+            raindrops = []; ripples = []; glassStaticDrops = []; glassStreaks = []; activeLightnings = []; starFlashes = [];
+            setupAudioContext(); updateTypeUI(); 
+            subtitles = []; currentActiveSubIndex = -1; resetAutoSub(); renderSubList(); subtitleDisplay.classList.add('opacity-0');
+        }
+
+        function playNext(force = false) {
+            if (playlist.length === 0) return;
+            if (!force && repeatMode === 2) { audioPlayer.currentTime = 0; audioPlayer.play(); return; }
+            let nextIdx;
+            if (isShuffle) {
+                let currentPos = shuffleIndices.indexOf(currentIndex);
+                if (currentPos === -1 || currentPos === playlist.length - 1) { if (repeatMode === 1 || force) nextIdx = shuffleIndices[0]; else { audioPlayer.pause(); return; } } 
+                else nextIdx = shuffleIndices[currentPos + 1];
+            } else {
+                if (currentIndex === playlist.length - 1) { if (repeatMode === 1 || force) nextIdx = 0; else { audioPlayer.pause(); return; } } 
+                else nextIdx = currentIndex + 1;
+            }
+            window.playSong(nextIdx);
+        }
+
+        function playPrev() {
+            if (playlist.length === 0) return;
+            if (audioPlayer.currentTime > 3) { audioPlayer.currentTime = 0; return; }
+            let prevIdx;
+            if (isShuffle) {
+                let currentPos = shuffleIndices.indexOf(currentIndex); prevIdx = (currentPos <= 0) ? shuffleIndices[playlist.length - 1] : shuffleIndices[currentPos - 1];
+            } else { prevIdx = (currentIndex <= 0) ? playlist.length - 1 : currentIndex - 1; }
+            window.playSong(prevIdx);
+        }
+
+        function switchToVisualizer() {
+            playlistView.classList.add('-translate-y-full'); visualizerUI.classList.remove('hidden'); playerContainer.classList.remove('hidden');
+            setTimeout(() => { visualizerUI.classList.add('fade-enter-active'); canvas.classList.remove('opacity-0'); }, 50);
+        }
+
+        btnBackPlaylist.addEventListener('click', () => {
+            visualizerUI.classList.remove('fade-enter-active'); canvas.classList.add('opacity-0');
+            setTimeout(() => { visualizerUI.classList.add('hidden'); playerContainer.classList.add('hidden'); playlistView.classList.remove('-translate-y-full'); renderPlaylist(); }, 300);
+        });
+
+        // ==========================================
+        // AUDIO EVENTS & MEDIA SESSION CONTROLS
+        // ==========================================
+        playPauseBtn.addEventListener('click', () => {
+            requestWakeLock();
+            if (playlist.length === 0) return;
+            if (currentIndex === -1) { window.playSong(0); return; }
+            if (audioPlayer.paused) { audioPlayer.play(); if (audioContext && audioContext.state === 'suspended') audioContext.resume(); } 
+            else { audioPlayer.pause(); }
+        });
+
+        btnNext.addEventListener('click', () => { requestWakeLock(); playNext(true); }); btnPrev.addEventListener('click', () => { requestWakeLock(); playPrev(); });
+        btnShuffle.addEventListener('click', () => { isShuffle = !isShuffle; btnShuffle.classList.toggle('!text-sky-400', isShuffle); btnShuffle.classList.toggle('text-slate-400', !isShuffle); updateShuffleArray(); });
+        btnRepeat.addEventListener('click', () => {
+            repeatMode = (repeatMode + 1) % 3;
+            if (repeatMode === 0) { btnRepeat.classList.remove('!text-sky-400'); btnRepeat.classList.add('text-slate-400'); repeatBadge.classList.add('hidden'); } 
+            else if (repeatMode === 1) { btnRepeat.classList.remove('text-slate-400'); btnRepeat.classList.add('!text-sky-400'); repeatBadge.classList.add('hidden'); } 
+            else if (repeatMode === 2) { btnRepeat.classList.add('!text-sky-400'); repeatBadge.classList.remove('hidden'); }
+        });
+
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.setActionHandler('play', () => { requestWakeLock(); audioPlayer.play(); });
+            navigator.mediaSession.setActionHandler('pause', () => { audioPlayer.pause(); releaseWakeLock(); });
+            navigator.mediaSession.setActionHandler('previoustrack', playPrev); navigator.mediaSession.setActionHandler('nexttrack', () => playNext(true));
+            navigator.mediaSession.setActionHandler('seekto', (details) => { if (details.fastSeek && ('fastSeek' in audioPlayer)) audioPlayer.fastSeek(details.seekTime); else audioPlayer.currentTime = details.seekTime; });
+        }
+
+        function updateMediaPositionState() {
+            if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession) {
+                if (isFinite(audioPlayer.duration) && isFinite(audioPlayer.currentTime) && isFinite(audioPlayer.playbackRate)) {
+                    try { navigator.mediaSession.setPositionState({ duration: audioPlayer.duration, playbackRate: audioPlayer.playbackRate, position: audioPlayer.currentTime }); } catch(e) {}
+                }
+            }
+        }
+
+        audioPlayer.addEventListener('play', () => { 
+            iconPlay.classList.add('hidden'); iconPause.classList.remove('hidden'); 
+            let recordArtDynamic = document.getElementById('record-art'); if(recordArtDynamic) recordArtDynamic.classList.remove('paused');
+            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing"; renderPlaylist(); 
+        });
+        audioPlayer.addEventListener('pause', () => { 
+            iconPlay.classList.remove('hidden'); iconPause.classList.add('hidden'); 
+            let recordArtDynamic = document.getElementById('record-art'); if(recordArtDynamic) recordArtDynamic.classList.add('paused');
+            releaseWakeLock(); if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "paused"; renderPlaylist(); 
+        });
+        audioPlayer.addEventListener('ended', () => { playNext(false); });
+        audioPlayer.addEventListener('loadedmetadata', () => { progressBar.max = audioPlayer.duration; durationTimeDisplay.textContent = formatTime(audioPlayer.duration); updateMediaPositionState(); });
+
+        let lastPositionSync = 0;
+        audioPlayer.addEventListener('timeupdate', () => { 
+            if (!isSeeking) { progressBar.value = audioPlayer.currentTime; updateProgressBarCSS(); } 
+            currentTimeDisplay.textContent = formatTime(audioPlayer.currentTime); 
+            processSubtitles(audioPlayer.currentTime);
+            if (Date.now() - lastPositionSync > 5000) { updateMediaPositionState(); lastPositionSync = Date.now(); }
+        });
+        
+        audioPlayer.addEventListener('seeked', updateMediaPositionState);
+        progressBar.addEventListener('input', () => { isSeeking = true; currentTimeDisplay.textContent = formatTime(progressBar.value); updateProgressBarCSS(); processSubtitles(progressBar.value); });
+        progressBar.addEventListener('change', () => { audioPlayer.currentTime = progressBar.value; isSeeking = false; updateMediaPositionState(); });
+
+        function updateProgressBarCSS() {
+            const percentage = (progressBar.value / (progressBar.max || 100)) * 100;
+            const color = vizConfig.mode === 'solid' ? vizConfig.solidColor : (vizConfig.mode === 'dynamic' ? vizConfig.dynB : '#38bdf8');
+            progressBar.style.background = `linear-gradient(to right, ${color} 0%, ${color} ${percentage}%, rgba(255,255,255,0.2) ${percentage}%, rgba(255,255,255,0.2) 100%)`;
+        }
+
+        // ==========================================
+        // CÀI ĐẶT UI & SETTINGS
+        // ==========================================
+        btnSettings.addEventListener('click', () => drawerSettings.classList.remove('-translate-y-full'));
+        btnSettingsPlaylist.addEventListener('click', () => drawerSettings.classList.remove('-translate-y-full'));
+        closeDrawer.addEventListener('click', () => drawerSettings.classList.add('-translate-y-full'));
+        
+        btnCycleMode.addEventListener('click', () => { currentModeIndex = (currentModeIndex + 1) % MODES.length; updateTypeUI(); saveConfig(); });
+
+        function updateTypeUI() {
+            vizConfig.type = MODES[currentModeIndex]; modeBadge.textContent = `${currentModeIndex + 1}/${MODES.length}`;
+            blockGeometry.classList.add('hidden'); blockVortex.classList.add('hidden'); blockRain.classList.add('hidden');
+            
+            if (vizConfig.type === 'vortex') { blockVortex.classList.remove('hidden'); blockVortex.classList.add('flex'); }
+            else if (vizConfig.type === 'rain') { blockRain.classList.remove('hidden'); blockRain.classList.add('flex'); }
+            else if (vizConfig.type !== 'rubik' && vizConfig.type !== 'synthesia' && vizConfig.type !== 'lightning') { 
+                blockGeometry.classList.remove('hidden'); blockGeometry.classList.add('flex'); 
+            }
+
+            if(analyser) { analyser.fftSize = (vizConfig.type === 'wave' || vizConfig.type === 'vortex' || vizConfig.type === 'lightning') ? APP_CONFIG.fftSizeHighRes : APP_CONFIG.fftSizeStandard; allocateBuffers(); }
+        }
+
+        function updateColorMenuUI() {
+            if (vizConfig.mode === 'solid') { solidColorContainer.classList.remove('hidden'); dynColorContainer.classList.add('hidden'); dynColorContainer.classList.remove('flex'); } 
+            else if (vizConfig.mode === 'dynamic') { solidColorContainer.classList.add('hidden'); dynColorContainer.classList.remove('hidden'); dynColorContainer.classList.add('flex'); } 
+            else { solidColorContainer.classList.add('hidden'); dynColorContainer.classList.add('hidden'); dynColorContainer.classList.remove('flex'); }
+            updateProgressBarCSS();
+        }
+
+        function applyEQPreset(mode) {
+            if (!eqBandNodes || eqBandNodes.length === 0) return;
+            const gains = mode === 'manual' ? vizConfig.manualEq : (EQ_PRESETS[mode] || EQ_PRESETS['flat']);
+            for(let i = 0; i < eqBandNodes.length; i++) { if(eqBandNodes[i]) eqBandNodes[i].gain.value = gains[i] || 0; }
+        }
+
+        qualitySelect.addEventListener('change', (e) => { vizConfig.quality = e.target.value; resizeCanvas(); saveConfig(); });
+        bgUploadInput.addEventListener('change', (e) => {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const img = new Image(); img.onload = () => {
+                    const cvs = document.createElement('canvas'); const MAX = 1080; let w = img.width, h = img.height;
+                    if (w > MAX) { h *= MAX/w; w = MAX; }
+                    cvs.width = w; cvs.height = h; cvs.getContext('2d').drawImage(img, 0, 0, w, h);
+                    vizConfig.bgImage = cvs.toDataURL('image/jpeg', 0.6); updatePlaylistBg(); saveConfig();
+                }; img.src = evt.target.result;
+            }; reader.readAsDataURL(file);
+        });
+        bgBlurSlider.addEventListener('input', (e) => { vizConfig.bgBlur = e.target.value; valBgBlurDisplay.textContent = e.target.value + 'px'; updatePlaylistBg(); saveConfig(); });
+        
+        bgColorPicker.addEventListener('input', (e) => { vizConfig.bgColor = e.target.value; updateDOMBackground(); saveConfig(); });
+        colorModeSelect.addEventListener('change', (e) => { vizConfig.mode = e.target.value; updateColorMenuUI(); saveConfig(); });
+        solidColorPicker.addEventListener('input', (e) => { vizConfig.solidColor = e.target.value; solidColorText.value = e.target.value; updateProgressBarCSS(); saveConfig(); });
+        solidColorText.addEventListener('input', (e) => { if (/^#[0-9A-F]{6}$/i.test(e.target.value)) { vizConfig.solidColor = e.target.value; solidColorPicker.value = e.target.value; updateProgressBarCSS(); saveConfig(); } });
+        dynColorA.addEventListener('input', (e) => { vizConfig.dynA = e.target.value; saveConfig(); }); 
+        dynColorB.addEventListener('input', (e) => { vizConfig.dynB = e.target.value; updateProgressBarCSS(); saveConfig(); });
+        vortexStyleSelect.addEventListener('change', (e) => { vizConfig.vortexStyle = e.target.value; saveConfig(); });
+        rainStyleSelect.addEventListener('change', (e) => { vizConfig.rainStyle = e.target.value; saveConfig(); });
+        glassFlashToggle.addEventListener('change', (e) => { vizConfig.glassFlash = e.target.checked; saveConfig(); });
+        maxHeightSlider.addEventListener('input', (e) => { vizConfig.maxH = parseInt(e.target.value); valMaxDisplay.textContent = vizConfig.maxH; saveConfig(); });
+        barWidthSlider.addEventListener('input', (e) => { vizConfig.barWidth = parseInt(e.target.value); valWidthDisplay.textContent = vizConfig.barWidth; saveConfig(); });
+
+        volumeSlider.addEventListener('input', (e) => { 
+            vizConfig.volume = parseInt(e.target.value); valVolumeDisplay.textContent = vizConfig.volume + '%'; 
+            if(masterGainNode) masterGainNode.gain.value = vizConfig.volume / 100;
+            saveConfig();
+        });
+        eqSelect.addEventListener('change', (e) => { vizConfig.eqMode = e.target.value; updateEQSlidersUI(vizConfig.eqMode); applyEQPreset(vizConfig.eqMode); saveConfig(); });
+
+        function setupAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                source = audioContext.createMediaElementSource(audioPlayer);
+                
+                analyser = audioContext.createAnalyser(); analyser.fftSize = APP_CONFIG.fftSizeStandard;
+                analyserPitch = audioContext.createAnalyser(); analyserPitch.fftSize = APP_CONFIG.fftSizePitch; 
+                
+                masterGainNode = audioContext.createGain(); masterGainNode.gain.value = vizConfig.volume / 100;
+
+                let prevNode = source; eqBandNodes = [];
+                EQ_FREQS.forEach(freq => {
+                    let filter = audioContext.createBiquadFilter();
+                    filter.type = "peaking"; filter.frequency.value = freq; filter.Q.value = 1; filter.gain.value = 0;
+                    prevNode.connect(filter); prevNode = filter; eqBandNodes.push(filter);
+                });
+                
+                applyEQPreset(vizConfig.eqMode);
+                prevNode.connect(masterGainNode); masterGainNode.connect(analyser); masterGainNode.connect(analyserPitch); analyser.connect(audioContext.destination);
+
+                allocateBuffers(); resizeCanvas(); drawVisualizer(); updateDOMBackground();
+            } else if (audioContext.state === 'suspended') audioContext.resume();
+        }
+
+        // ==========================================
+        // VẼ VISUALIZER & UPDATE STATS
+        // ==========================================
+        function detectPitchYIN(buf, sampleRate) {
+            const halfLen = Math.floor(buf.length / 2); let yinBuffer = new Float32Array(halfLen); let threshold = 0.15;
+            yinBuffer[0] = 1; let runningSum = 0;
+            for (let tau = 1; tau < halfLen; tau++) {
+                let sum = 0; for (let j = 0; j < halfLen; j++) { let diff = buf[j] - buf[j + tau]; sum += diff * diff; }
+                runningSum += sum; yinBuffer[tau] = sum * tau / (runningSum === 0 ? 1 : runningSum);
+            }
+            for (let tau = 2; tau < halfLen; tau++) {
+                if (yinBuffer[tau] < threshold) {
+                    while (tau + 1 < halfLen && yinBuffer[tau + 1] < yinBuffer[tau]) tau++;
+                    return sampleRate / tau;
+                }
+            }
+            let minTau = 2; let minVal = yinBuffer[2];
+            for (let tau = 2; tau < halfLen; tau++) { if (yinBuffer[tau] < minVal) { minVal = yinBuffer[tau]; minTau = tau; } }
+            if (minVal < 0.6) return sampleRate / minTau; 
+            return -1;
+        }
+
+        function getComputedColor(i, totalLength, dataValue) {
+            if (vizConfig.mode === 'dynamic') return { fill: interpolateColor(vizConfig.dynA, vizConfig.dynB, i / totalLength), glow: interpolateColor(vizConfig.dynA, vizConfig.dynB, i / totalLength) };
+            else if (vizConfig.mode === 'gradient') {
+                let baseHue = (globalHueOffset + (i / totalLength) * 240) % 360; 
+                let finalHue = (baseHue + (dataValue / 255) * 80) % 360; let lightness = 40 + (dataValue / 255) * 30;
+                return { fill: `hsla(${finalHue}, ${70 + (dataValue/255)*30}%, ${lightness}%, 0.9)`, glow: `hsl(${finalHue}, 100%, ${lightness+15}%)` };
+            } else return { fill: vizConfig.solidColor, glow: vizConfig.solidColor };
+        }
+
+        function updateStatsDashboard(bufferLength) {
+            const now = Date.now();
+            let totalAmplitude = 0; let currentFlux = 0;
+            for(let i=0; i<bufferLength; i++) {
+                totalAmplitude += vizDataArray[i]; let diff = vizDataArray[i] - previousSpectrumArray[i];
+                if (diff > 0) currentFlux += diff; previousSpectrumArray[i] = vizDataArray[i]; 
+            }
+            
+            let energyPercent = Math.min(100, Math.round(((totalAmplitude / bufferLength) / 255) * 100 * 1.5)); 
+            statEnergy.textContent = energyPercent + '%'; 
+            
+            let isPlaying = !audioPlayer.paused && audioPlayer.currentTime > 0;
+
+            if(isPlaying) {
+                fluxHistory.push(currentFlux); if(fluxHistory.length > 45) fluxHistory.shift(); 
+                let sumFlux = 0; for (let i=0; i<fluxHistory.length; i++) sumFlux += fluxHistory[i];
+                runningFluxMean = sumFlux / fluxHistory.length; let fluxThreshold = runningFluxMean * 1.3;
+
+                if (currentFlux > fluxThreshold && currentFlux > 150 && (now - lastBeatTime > APP_CONFIG.bpmMinWaitTime)) {
+                    if (lastBeatTime > 0) { beatTimes.push(now - lastBeatTime); if (beatTimes.length > 5) beatTimes.shift(); }
+                    lastBeatTime = now;
+                    if (beatTimes.length >= 2) {
+                        let avgInterval = beatTimes.reduce((a, b) => a + b) / beatTimes.length;
+                        let calcBpm = Math.round(60000 / avgInterval);
+                        if (calcBpm > 40 && calcBpm < 220) currentCalculatedBpm = calcBpm;
+                    }
+                }
+                statBpm.textContent = currentCalculatedBpm;
+
+                if (energyPercent > 1) { 
+                    analyserPitch.getFloatTimeDomainData(pitchTimeDomainArray);
+                    let frequency = detectPitchYIN(pitchTimeDomainArray, audioContext.sampleRate);
+                    if (frequency > 0) {
+                        let midiNote = Math.round(12 * Math.log2(frequency / 440)) + 69;
+                        if (midiNote > 0 && midiNote < 128) { window.lastValidNoteStr = `${noteNames[midiNote % 12]}${Math.floor(midiNote / 12) - 1}`; window.lastValidNoteTime = now; statNote.textContent = window.lastValidNoteStr; }
+                    } else if (window.lastValidNoteStr && (now - window.lastValidNoteTime < 250)) { statNote.textContent = window.lastValidNoteStr;
+                    } else { statNote.textContent = "---"; }
+                } else { statNote.textContent = "---"; }
+            } else { currentCalculatedBpm = "---"; statBpm.textContent = "---"; statNote.textContent = "---"; }
+        }
+
+        // HÀM TOÁN HỌC 3D CHO RUBIK
+        function rotate3D(point, rx, ry, rz) {
+            let y1 = point.y * Math.cos(rx) - point.z * Math.sin(rx); let z1 = point.y * Math.sin(rx) + point.z * Math.cos(rx);
+            let x2 = point.x * Math.cos(ry) + z1 * Math.sin(ry); let z2 = -point.x * Math.sin(ry) + z1 * Math.cos(ry);
+            let x3 = x2 * Math.cos(rz) - y1 * Math.sin(rz); let y3 = x2 * Math.sin(rz) + y1 * Math.cos(rz);
+            return { x: x3, y: y3, z: z2 };
+        }
+        function project3D(p, fov, viewDist, cx, cy) { let factor = fov / (viewDist + p.z); return { x: p.x * factor + cx, y: p.y * factor + cy, z: p.z }; }
+        function rotateRubikIndices(axis, layer, dir) {
+            rubikCubes.forEach(rc => {
+                if (rc['c' + axis] === layer) {
+                    let tempX = rc.cx, tempY = rc.cy, tempZ = rc.cz;
+                    if (axis === 'x') { rc.cy = dir > 0 ? -tempZ : tempZ; rc.cz = dir > 0 ? tempY : -tempY; } 
+                    else if (axis === 'y') { rc.cx = dir > 0 ? tempZ : -tempZ; rc.cz = dir > 0 ? -tempX : tempX; } 
+                    else if (axis === 'z') { rc.cx = dir > 0 ? -tempY : tempY; rc.cy = dir > 0 ? tempX : -tempX; }
+                }
+            });
+        }
+
+        function drawWaterDrop(ctx, x, y, r, alpha=1) {
+            let safeR = Math.max(0.1, r); // Fixed bug: Cannot have negative radius
+            ctx.globalAlpha = alpha; ctx.beginPath(); ctx.arc(x, y, safeR, 0, Math.PI*2); ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fill();
+            ctx.beginPath(); ctx.arc(x, y+safeR*0.2, safeR*0.8, 0, Math.PI*2); ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fill();
+            ctx.beginPath(); ctx.arc(x-safeR*0.3, y-safeR*0.3, safeR*0.2, 0, Math.PI*2); ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fill(); ctx.globalAlpha = 1;
+        }
+
+        function drawWindowFrame(ctx) {
+            let fw = 25 * dpr; let midW = 15 * dpr; 
+            ctx.fillStyle = '#11131a'; 
+            ctx.fillRect(0, 0, canvas.width, fw); ctx.fillRect(0, canvas.height - fw, canvas.width, fw);
+            ctx.fillRect(0, 0, fw, canvas.height); ctx.fillRect(canvas.width - fw, 0, fw, canvas.height);
+            ctx.fillRect(canvas.width/2 - midW/2, 0, midW, canvas.height); ctx.fillRect(0, canvas.height/2 - midW/2, canvas.width, midW);
+            
+            ctx.fillStyle = 'rgba(255,255,255,0.1)';
+            ctx.fillRect(fw, fw, canvas.width/2 - fw - midW/2, 2*dpr); 
+            
+            // Dòng này đã được sửa lại đủ 4 tham số (x, y, width, height) thay vì 3 tham số
+            ctx.fillRect(canvas.width/2 + midW/2, fw, canvas.width/2 - fw - midW/2, 2*dpr);
+            
+            ctx.fillRect(fw, canvas.height/2 - midW/2, canvas.width/2 - fw - midW/2, 2*dpr); ctx.fillRect(canvas.width/2 + midW/2, canvas.height/2 - midW/2, canvas.width/2 - fw - midW/2, 2*dpr);
+            
+            ctx.fillStyle = 'rgba(0,0,0,0.6)';
+            ctx.fillRect(canvas.width/2 - midW/2 - 2*dpr, 0, 2*dpr, canvas.height); ctx.fillRect(0, canvas.height/2 + midW/2, canvas.width, 2*dpr); 
+        }
+
+        function spawnFlyingNote() {
+            if (frameCounter % 8 !== 0) return;
+            const symbols = ['♪', '♫', '♩', '♬'];
+            const note = document.createElement('div'); note.className = 'music-note'; note.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+            const offsetX = Math.random() * 40 - 20; const offsetY = Math.random() * 20 - 10;
+            note.style.left = `calc(50% + ${offsetX}px)`; note.style.top = `calc(50% + ${offsetY}px)`;
+            note.style.color = `hsl(${globalHueOffset + Math.random()*60}, 100%, 70%)`; recordContainer.appendChild(note);
+            setTimeout(() => { if (note.parentNode) note.parentNode.removeChild(note); }, 1500);
+        }
+
+        function drawVisualizer() {
+            animationId = requestAnimationFrame(drawVisualizer);
+            frameCounter++;
+            const perf = PERFORMANCE_PROFILES[vizConfig.quality];
+            if(!vizDataArray) return;
+            analyser.getByteFrequencyData(vizDataArray);
+            const bufferLength = analyser.frequencyBinCount;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const centerY = canvas.height / 2, centerX = canvas.width / 2, scaledMinH = vizConfig.minH * dpr;
+            const isPlaying = !audioPlayer.paused;
+            
+            let bassSum = 0; const bassCount = Math.floor(bufferLength * 0.1);
+            for(let i = 0; i < bassCount; i++) bassSum += vizDataArray[i];
+            let beatScale = (bassSum / bassCount) / 255; 
+            smoothedEnergy += (beatScale - smoothedEnergy) * 0.15; 
+
+            if (isPlaying) globalHueOffset = (globalHueOffset + 0.5 + (beatScale * 5)) % 360;
+            
+            updateStatsDashboard(bufferLength);
+
+            if (isPlaying && (vizConfig.quality === 'high' || vizConfig.quality === 'medium') && smoothedEnergy > 0.3 && Math.random() > 0.6) {
+                spawnFlyingNote();
+            }
+
+            if (vizConfig.type === 'rain') {
+                ctx.lineCap = 'round'; 
+                if (vizConfig.rainStyle === 'classic') {
+                    ctx.strokeStyle = `rgba(255,255,255,0.4)`; ctx.lineWidth = 1 * dpr; ctx.beginPath();
+                    for(let drop of bgRaindrops) {
+                        drop.y += drop.speed + (isPlaying ? smoothedEnergy * 15 : 0);
+                        if(drop.y > canvas.height) { drop.y = -drop.length; drop.x = Math.random() * canvas.width; }
+                        ctx.moveTo(drop.x, drop.y); ctx.lineTo(drop.x, drop.y - drop.length);
+                    }
+                    ctx.stroke();
+
+                    const dropCount = Math.floor(bufferLength * 0.2); 
+                    const maxRipplesAllowed = Math.floor(10 + smoothedEnergy * 15);
+                    
+                    if (isPlaying) {
+                        for (let i = 0; i < dropCount; i += 4) { 
+                            let val = vizDataArray[i] || 0;
+                            if (val > 150 && Math.random() > 0.85) { raindrops.push({ x: Math.random() * canvas.width, y: -20, targetY: (Math.random() * 0.8 + 0.1) * canvas.height, speed: (15 + (val / 255) * 20) * dpr, val: val, idx: i }); }
+                        }
+                    }
+
+                    ctx.lineWidth = 2 * dpr;
+                    for (let i = raindrops.length - 1; i >= 0; i--) {
+                        let drop = raindrops[i]; drop.y += drop.speed; const colors = getComputedColor(drop.idx, dropCount, drop.val);
+                        ctx.strokeStyle = colors.fill; ctx.globalAlpha = 0.8;
+                        ctx.beginPath(); ctx.moveTo(drop.x, drop.y); ctx.lineTo(drop.x, drop.y - 30 * dpr); ctx.stroke();
+                        if (drop.y >= drop.targetY) {
+                            if (ripples.length < maxRipplesAllowed) { ripples.push({ x: drop.x, y: drop.targetY, radius: 5 * dpr, maxRadius: (40 + (drop.val / 255) * 120) * dpr * (1 + smoothedEnergy), speed: (2 + (drop.val / 255) * 3) * dpr, alpha: 1, color: colors.fill, glow: colors.glow }); }
+                            raindrops.splice(i, 1);
+                        }
+                    }
+                    
+                    for (let i = ripples.length - 1; i >= 0; i--) {
+                        let rip = ripples[i]; rip.radius += rip.speed; rip.alpha -= (rip.speed / rip.maxRadius) * 1.5;
+                        if (rip.alpha <= 0) ripples.splice(i, 1);
+                        else {
+                            ctx.beginPath(); ctx.arc(rip.x, rip.y, Math.max(0.1, rip.radius), 0, Math.PI * 2); 
+                            ctx.strokeStyle = rip.color; ctx.globalAlpha = Math.max(0, rip.alpha); ctx.lineWidth = 2 * dpr; ctx.stroke();
+                            if (perf.blurMult > 0) {
+                                ctx.beginPath(); ctx.arc(rip.x, rip.y, Math.max(0.1, rip.radius), 0, Math.PI * 2); 
+                                ctx.strokeStyle = rip.glow; ctx.globalAlpha = Math.max(0, rip.alpha * 0.3); ctx.lineWidth = 6 * dpr; ctx.stroke();
+                            }
+                        }
+                    }
+                } else {
+                    ctx.fillStyle = vizConfig.bgColor; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    let progress = 0;
+                    if (audioPlayer && isFinite(audioPlayer.duration) && audioPlayer.duration > 0) progress = audioPlayer.currentTime / audioPlayer.duration;
+                    let moonX = canvas.width * 0.70; let moonY = canvas.height * 0.35;
+                    let baseScale = 4 + Math.sin(progress * Math.PI) * 1; let baseMoonRadius = baseScale * 8 * dpr; 
+                    let dynamicMoonRadius = baseMoonRadius + (smoothedEnergy * 8 * dpr);
+
+                    ctx.beginPath(); ctx.arc(moonX, moonY, Math.max(0.1, dynamicMoonRadius), 0, Math.PI * 2); ctx.fillStyle = '#e0e8ff';
+                    if (perf.blurMult > 0) { ctx.shadowBlur = (30 + smoothedEnergy * 20) * dpr * perf.blurMult; ctx.shadowColor = '#aaccff'; }
+                    ctx.globalAlpha = 0.6 + (smoothedEnergy * 0.3); ctx.fill(); ctx.shadowBlur = 0;
+
+                    if (vizConfig.glassFlash && isPlaying) {
+                        let energySpike = smoothedEnergy * ((vizDataArray[3] || 0) / 255);
+                        let flashAlpha = energySpike > 0.4 ? (energySpike - 0.4) * 1.2 : 0;
+                        if (flashAlpha > 0) { ctx.fillStyle = `rgba(200, 220, 255, ${Math.min(flashAlpha, 0.4)})`; ctx.globalAlpha = 1.0; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+                    }
+
+                    ctx.globalAlpha = 0.4; 
+                    cityBuildings.forEach(b => {
+                        ctx.fillStyle = '#03060a'; ctx.fillRect(b.x, canvas.height - b.h, b.w, b.h);
+                        let winW = 3 * dpr; let winH = 5 * dpr;
+                        let paddingX = (b.w - (b.cols * winW)) / (b.cols + 1); let paddingY = (b.h - (b.rows * winH)) / (b.rows + 1);
+                        b.windows.forEach(win => {
+                            let wx = b.x + paddingX + win.c * (winW + paddingX); let wy = canvas.height - b.h + paddingY + win.r * (winH + paddingY);
+                            let isLit = win.isAlwaysOn; let alpha = isLit ? 0.3 : 0;
+                            if (isPlaying) { let audioVal = vizDataArray[win.fftBin] || 0; if (audioVal > 140) { isLit = true; alpha = Math.max(alpha, (audioVal / 255) * 0.9); } }
+                            if (isLit) { ctx.fillStyle = win.colorType; ctx.globalAlpha = alpha * 0.6; ctx.fillRect(wx, wy, winW, winH); }
+                        });
+                        ctx.globalAlpha = 0.4;
+                    });
+                    ctx.globalAlpha = 1.0;
+
+                    ctx.fillStyle = 'rgba(10, 15, 25, 0.4)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    for (let i = 0; i < glassStaticDrops.length; i++) { let drop = glassStaticDrops[i]; drawWaterDrop(ctx, drop.x, drop.y, drop.r, 0.6); }
+
+                    if (isPlaying && smoothedEnergy > 0.4 && Math.random() > perf.streakProb) {
+                        let cVal = vizDataArray[Math.floor(Math.random() * 10)] || 0;
+                        glassStreaks.push({ x: Math.random() * canvas.width, y: -20, r: (Math.random() * 2 + 1.5) * dpr, speed: (Math.random() * 2 + 3) * dpr, colorVal: cVal });
+                    }
+
+                    for (let i = glassStreaks.length - 1; i >= 0; i--) {
+                        let streak = glassStreaks[i]; streak.y += streak.speed + (smoothedEnergy * 8 * dpr); streak.x += (Math.random() - 0.5) * 2 * dpr; 
+                        for (let j = glassStaticDrops.length - 1; j >= 0; j--) {
+                            let drop = glassStaticDrops[j]; let dx = drop.x - streak.x; let dy = drop.y - streak.y;
+                            if (dx*dx + dy*dy < (streak.r + drop.r) * (streak.r + drop.r)) {
+                                streak.r = Math.min(streak.r + drop.r * 0.3, 4.5 * dpr); glassStaticDrops.splice(j, 1);
+                                glassStaticDrops.push({x: Math.random() * canvas.width, y: Math.random() * canvas.height, r: (Math.random() * 1.5 + 0.5) * dpr});
+                            }
+                        }
+                        
+                        // Limit Static Drops generated by streak to prevent memory leak
+                        if (Math.random() > 0.7 && glassStaticDrops.length <= (perf.glassDrops * 2)) {
+                            glassStaticDrops.push({x: streak.x + (Math.random()-0.5)*4*dpr, y: streak.y - streak.r*1.5, r: Math.max(0.1, streak.r * 0.3)});
+                        }
+                        // Fallback clamp
+                        if(glassStaticDrops.length > (perf.glassDrops * 2) + 50) glassStaticDrops.shift();
+
+                        drawWaterDrop(ctx, streak.x, streak.y, streak.r, 0.9); if (streak.y > canvas.height + 50) glassStreaks.splice(i, 1);
+                    }
+                    
+                    let glassGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+                    glassGradient.addColorStop(0, 'rgba(255, 255, 255, 0.0)'); glassGradient.addColorStop(0.3, 'rgba(255, 255, 255, 0.02)');
+                    glassGradient.addColorStop(0.4, 'rgba(255, 255, 255, 0.08)'); glassGradient.addColorStop(0.41, 'transparent'); glassGradient.addColorStop(1, 'transparent');
+                    ctx.fillStyle = glassGradient; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    drawWindowFrame(ctx);
+                }
+                ctx.globalAlpha = 1.0;
+
+            } else if (vizConfig.type === 'lightning') {
+                ctx.lineCap = 'round'; ctx.lineJoin = 'miter';
+                let energySpike = smoothedEnergy * ((vizDataArray[5] || 0)/255);
+                let flashAlpha = isPlaying && energySpike > 0.35 ? (energySpike - 0.35) * 2.5 : 0;
+                if (flashAlpha > 0) { ctx.fillStyle = `rgba(200, 220, 255, ${flashAlpha * 0.5})`; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+
+                if (isPlaying && energySpike > 0.4 && Math.random() > 0.8 && activeLightnings.length < (perf.blurMult > 0 ? 5 : 3)) {
+                    let startX = (Math.random() * 0.8 + 0.1) * canvas.width; let boltColor = getComputedColor(Math.floor(Math.random()*10), 10, 255);
+                    let bolt = { life: 1.0, color: boltColor, segments: [] };
+                    let cx = startX, cy = 0;
+                    while (cy < canvas.height) { let nx = cx + (Math.random() - 0.5) * 120 * dpr; let ny = cy + (Math.random() * 60 + 20) * dpr; bolt.segments.push({x1: cx, y1: cy, x2: nx, y2: ny}); cx = nx; cy = ny; }
+                    activeLightnings.push(bolt);
+                }
+
+                for (let i = activeLightnings.length - 1; i >= 0; i--) {
+                    let b = activeLightnings[i]; b.life -= 0.04 + (1 - Math.min(1, smoothedEnergy)) * 0.06;
+                    if (b.life <= 0) { activeLightnings.splice(i, 1); continue; }
+                    ctx.beginPath(); b.segments.forEach(seg => { ctx.moveTo(seg.x1, seg.y1); ctx.lineTo(seg.x2, seg.y2); });
+                    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3 * dpr * b.life;
+                    if (perf.blurMult > 0) { ctx.shadowBlur = 20 * dpr * perf.blurMult; ctx.shadowColor = b.color.glow; }
+                    ctx.stroke();
+                    ctx.strokeStyle = b.color.fill; ctx.lineWidth = 8 * dpr * b.life; ctx.globalAlpha = b.life * 0.6; ctx.stroke();
+                    ctx.globalAlpha = 1.0; ctx.shadowBlur = 0;
+                }
+
+            } else if (vizConfig.type === 'synthesia') {
+                const keysY = canvas.height; const NUM_KEYS = 64; const keyWidth = canvas.width / NUM_KEYS;
+                for(let i=0; i<NUM_KEYS; i++) {
+                    let val = vizDataArray[i + 5] || 0; let finalHeight = scaledMinH + ((val / 255) * vizConfig.maxH * dpr);
+                    let kx = i * keyWidth; let kw = keyWidth * 0.8; let cx = kx + kw/2;
+                    const colors = getComputedColor(i, NUM_KEYS, val);
+                    ctx.shadowBlur = 10 * dpr * perf.blurMult; ctx.shadowColor = perf.blurMult > 0 ? colors.glow : 'transparent';
+                    ctx.fillStyle = colors.fill; ctx.globalAlpha = 0.2; ctx.fillRect(cx - vizConfig.barWidth*dpr/2, keysY - finalHeight, vizConfig.barWidth*dpr, finalHeight);
+                    ctx.globalAlpha = 1.0; ctx.beginPath(); ctx.roundRect(cx - vizConfig.barWidth*dpr/2, keysY - finalHeight, vizConfig.barWidth*dpr, Math.max(5, finalHeight * 0.1), 2*dpr); ctx.fill();
+                }
+                ctx.shadowBlur = 0;
+
+            } else if (vizConfig.type === 'rubik') {
+                rubikRotY += (isPlaying ? 0.01 + smoothedEnergy * 0.05 : 0.005); rubikRotX += (isPlaying ? 0.005 + smoothedEnergy * 0.02 : 0.002);
+                if (!rubikAnim.active && smoothedEnergy > 0.4 && isPlaying && Math.random() > 0.9) {
+                    const axes = ['x', 'y', 'z']; rubikAnim.axis = axes[Math.floor(Math.random() * 3)];
+                    rubikAnim.layer = Math.floor(Math.random() * 3) - 1; rubikAnim.dir = Math.random() > 0.5 ? 1 : -1; rubikAnim.angle = 0; rubikAnim.active = true;
+                }
+                if (rubikAnim.active) { rubikAnim.angle += 0.08 * (1 + smoothedEnergy * 2); if (rubikAnim.angle >= Math.PI / 2) { rubikAnim.angle = Math.PI / 2; rotateRubikIndices(rubikAnim.axis, rubikAnim.layer, rubikAnim.dir); rubikAnim.active = false; rubikAnim.angle = 0; } }
+                const cubeSize = Math.min(canvas.width, canvas.height) * 0.08; const spacing = cubeSize * 1.05; const viewDist = cubeSize * 25; const fov = cubeSize * 18; 
+                const unitVertices = [{x:-0.5,y:-0.5,z:-0.5}, {x:0.5,y:-0.5,z:-0.5}, {x:0.5,y:0.5,z:-0.5}, {x:-0.5,y:0.5,z:-0.5}, {x:-0.5,y:-0.5,z:0.5}, {x:0.5,y:-0.5,z:0.5}, {x:0.5,y:0.5,z:0.5}, {x:-0.5,y:0.5,z:0.5}];
+                const faces = [ [0,1,2,3], [1,5,6,2], [5,4,7,6], [4,0,3,7], [3,2,6,7], [4,5,1,0] ];
+                let drawnCubes = [];
+                for(let i=0; i<rubikCubes.length; i++) {
+                    let rc = rubikCubes[i]; let val = vizDataArray[rc.binIdx * 4] || 0; let scaleBounce = 1 + (val / 255) * 0.4; let extraDist = (val / 255) * cubeSize * 1.2 * (isPlaying ? 1 : 0); 
+                    let lx = rc.cx * spacing + Math.sign(rc.cx) * extraDist; let ly = rc.cy * spacing + Math.sign(rc.cy) * extraDist; let lz = rc.cz * spacing + Math.sign(rc.cz) * extraDist; let pos = {x: lx, y: ly, z: lz};
+                    if (rubikAnim.active && rc['c' + rubikAnim.axis] === rubikAnim.layer) {
+                        let currentRot = rubikAnim.angle * rubikAnim.dir;
+                        if (rubikAnim.axis === 'x') pos = rotate3D(pos, currentRot, 0, 0); if (rubikAnim.axis === 'y') pos = rotate3D(pos, 0, currentRot, 0); if (rubikAnim.axis === 'z') pos = rotate3D(pos, 0, 0, currentRot);
+                    }
+                    let cCenter = rotate3D(pos, rubikRotX, rubikRotY, 0); drawnCubes.push({ rc: rc, centerZ: cCenter.z, val: val, pos: pos, scale: scaleBounce });
+                }
+                drawnCubes.sort((a, b) => b.centerZ - a.centerZ); 
+                for(let i=0; i<drawnCubes.length; i++) {
+                    let c = drawnCubes[i]; let colors = getComputedColor(c.rc.binIdx, 27, c.val); let projVerts = []; 
+                    for(let v=0; v<8; v++) {
+                        let uv = unitVertices[v]; let vx = c.pos.x + uv.x * cubeSize * c.scale; let vy = c.pos.y + uv.y * cubeSize * c.scale; let vz = c.pos.z + uv.z * cubeSize * c.scale; let vertPos = {x: vx, y: vy, z: vz};
+                        if (rubikAnim.active && c.rc['c' + rubikAnim.axis] === rubikAnim.layer) {
+                            let currentRot = rubikAnim.angle * rubikAnim.dir; vertPos.x -= c.pos.x; vertPos.y -= c.pos.y; vertPos.z -= c.pos.z;
+                            if (rubikAnim.axis === 'x') vertPos = rotate3D(vertPos, currentRot, 0, 0); if (rubikAnim.axis === 'y') vertPos = rotate3D(vertPos, 0, currentRot, 0); if (rubikAnim.axis === 'z') vertPos = rotate3D(vertPos, 0, 0, currentRot);
+                            vertPos.x += c.pos.x; vertPos.y += c.pos.y; vertPos.z += c.pos.z;
+                        }
+                        let rotV = rotate3D(vertPos, rubikRotX, rubikRotY, 0); projVerts.push(project3D(rotV, fov, viewDist, centerX, centerY));
+                    }
+                    ctx.lineWidth = 1.5 * dpr; ctx.lineJoin = 'round';
+                    for(let f=0; f<6; f++) {
+                        let face = faces[f]; let p0 = projVerts[face[0]], p1 = projVerts[face[1]], p2 = projVerts[face[2]];
+                        let dx1 = p1.x - p0.x, dy1 = p1.y - p0.y; let dx2 = p2.x - p1.x, dy2 = p2.y - p1.y; let crossZ = dx1 * dy2 - dy1 * dx2;
+                        if (crossZ > 0) { 
+                            ctx.beginPath(); ctx.moveTo(p0.x, p0.y); for(let vIdx=1; vIdx<4; vIdx++) ctx.lineTo(projVerts[face[vIdx]].x, projVerts[face[vIdx]].y); ctx.closePath();
+                            let lightFactor = 0.5 + (f * 0.1); ctx.fillStyle = colors.fill; ctx.globalAlpha = 0.8 * lightFactor; ctx.fill(); ctx.globalAlpha = 1.0; ctx.strokeStyle = vizConfig.bgColor; ctx.stroke();
+                        }
+                    }
+                    if (c.val > 200 && perf.blurMult > 0) {
+                        ctx.shadowBlur = 15 * dpr * perf.blurMult; ctx.shadowColor = colors.glow;
+                        for(let f=0; f<6; f++) {
+                            let face = faces[f]; let p0 = projVerts[face[0]], p1 = projVerts[face[1]], p2 = projVerts[face[2]];
+                            let crossZ = (p1.x - p0.x)*(p2.y - p1.y) - (p1.y - p0.y)*(p2.x - p1.x);
+                            if(crossZ > 0) { ctx.beginPath(); ctx.moveTo(p0.x, p0.y); for(let vIdx=1; vIdx<4; vIdx++) ctx.lineTo(projVerts[face[vIdx]].x, projVerts[face[vIdx]].y); ctx.closePath(); ctx.strokeStyle = colors.glow; ctx.stroke(); }
+                        }
+                        ctx.shadowBlur = 0;
+                    }
+                }
+
+            } else if (vizConfig.type === 'bar') {
+                const barWidth = (canvas.width / bufferLength) * 2.5; let x = 0;
+                for (let i = 0; i < bufferLength; i++) {
+                    let finalHeight = scaledMinH + ((vizDataArray[i] || 0) / 255) * vizConfig.maxH * dpr; if (!vizDataArray[i] || vizDataArray[i] === 0) finalHeight = 0;
+                    const colors = getComputedColor(i, bufferLength, vizDataArray[i] || 0);
+                    ctx.shadowBlur = 15 * dpr * perf.blurMult; ctx.shadowColor = perf.blurMult > 0 ? colors.glow : 'transparent'; ctx.fillStyle = colors.fill;
+                    ctx.beginPath(); ctx.roundRect(x, centerY - finalHeight / 2, vizConfig.barWidth * dpr, finalHeight / 2, 4 * dpr); ctx.fill();
+                    ctx.shadowBlur = 0; ctx.globalAlpha = 0.3; ctx.beginPath(); ctx.roundRect(x, centerY, vizConfig.barWidth * dpr, finalHeight / 2, 4 * dpr); ctx.fill(); ctx.globalAlpha = 1.0; x += barWidth;
+                }
+                
+            } else if (vizConfig.type === 'circle') {
+                const minDimension = Math.min(canvas.width, canvas.height); const maxDist = Math.max(canvas.width, canvas.height);
+                const targetRadius = (minDimension * 0.13) + (smoothedEnergy * minDimension * 0.05);
+                smoothedBeatRadius += (targetRadius - smoothedBeatRadius) * 0.15; const currentRadius = smoothedBeatRadius + (beatScale * minDimension * 0.03); 
+                let currentSuction = 0.2 + (isPlaying ? smoothedEnergy * 2.5 : 0); 
+
+                if (isPlaying && smoothedEnergy > 0.65) {
+                    let flareAlpha = (smoothedEnergy - 0.65) * 2.5; let grad = ctx.createRadialGradient(centerX, centerY, currentRadius, centerX, centerY, currentRadius * 4);
+                    grad.addColorStop(0, `hsla(${globalHueOffset}, 100%, 70%, ${flareAlpha * 0.3})`); grad.addColorStop(1, 'transparent');
+                    ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
+
+                stars.forEach(star => {
+                    let distRatio = Math.max(0.05, star.distance / maxDist); let accel = 1 + (0.05 / distRatio); 
+                    star.angle += star.baseSpeed * 0.002 * accel; star.distance -= star.baseSpeed * currentSuction * accel;
+                    if (star.distance < currentRadius) { 
+                        starFlashes.push({ x: centerX + Math.cos(star.angle) * currentRadius, y: centerY + Math.sin(star.angle) * currentRadius, alpha: 1, size: star.size });
+                        star.distance = maxDist * (1 + Math.random() * 0.2); star.angle = Math.random() * Math.PI * 2; 
+                    }
+                    let ratio = star.distance / maxDist; ctx.fillStyle = `rgba(${star.colorTint}, ${0.1 + ratio})`; ctx.beginPath(); 
+                    ctx.arc(centerX + Math.cos(star.angle) * star.distance, centerY + Math.sin(star.angle) * star.distance, Math.max(0.1, star.size * ratio + 0.5 * dpr), 0, Math.PI*2); ctx.fill();
+                });
+
+                for(let i = starFlashes.length - 1; i >= 0; i--) {
+                    let f = starFlashes[i]; f.alpha -= 0.08; f.size += 1.5 * dpr;
+                    if(f.alpha <= 0) starFlashes.splice(i, 1);
+                    else { ctx.beginPath(); ctx.arc(f.x, f.y, Math.max(0.1, f.size), 0, Math.PI*2); ctx.fillStyle = `rgba(255, 255, 255, ${f.alpha})`; ctx.shadowBlur = 10 * dpr; ctx.shadowColor = 'white'; ctx.fill(); ctx.shadowBlur = 0; }
+                }
+
+                const usefulLength = Math.floor(bufferLength * 0.35); let dynamicMaxBarHeight = (vizConfig.maxH / 1000) * (minDimension * 0.25);
+                ctx.lineWidth = vizConfig.barWidth * dpr; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+                for (let i = 0; i < usefulLength; i++) {
+                    let rawVal = vizDataArray[i] || 0; let freqBoost = 1 + (i / usefulLength) * 1.2; let boostedVal = Math.min(255, rawVal * freqBoost);
+                    let val = boostedVal;
+                    if (i > 0 && i < usefulLength - 1) {
+                        let prev = Math.min(255, (vizDataArray[i-1] || 0) * (1 + ((i-1)/usefulLength)*1.2)); let next = Math.min(255, (vizDataArray[i+1] || 0) * (1 + ((i+1)/usefulLength)*1.2));
+                        val = (prev + boostedVal * 3 + next) / 5; 
+                    }
+
+                    let normalized = val / 255; let contrastNormalized = Math.pow(normalized, 2.0);
+                    let barHeight = scaledMinH + (contrastNormalized * dynamicMaxBarHeight * 1.2); if (!vizDataArray[i] || vizDataArray[i] === 0) barHeight = scaledMinH;
+                    
+                    let angleOffset = (i / (usefulLength - 1)) * Math.PI; let angleR = (Math.PI / 2) - angleOffset, angleL = (Math.PI / 2) + angleOffset;
+
+                    const colors = getComputedColor(i, usefulLength, val); ctx.strokeStyle = colors.fill; ctx.shadowColor = perf.blurMult > 0 ? colors.glow : 'transparent'; ctx.shadowBlur = 10 * dpr * perf.blurMult; 
+                    ctx.beginPath(); ctx.moveTo(centerX + Math.cos(angleR) * currentRadius, centerY + Math.sin(angleR) * currentRadius); ctx.lineTo(centerX + Math.cos(angleR) * (currentRadius + barHeight), centerY + Math.sin(angleR) * (currentRadius + barHeight)); ctx.stroke();
+                    if (i !== usefulLength - 1) { ctx.beginPath(); ctx.moveTo(centerX + Math.cos(angleL) * currentRadius, centerY + Math.sin(angleL) * currentRadius); ctx.lineTo(centerX + Math.cos(angleL) * (currentRadius + barHeight), centerY + Math.sin(angleL) * (currentRadius + barHeight)); ctx.stroke(); }
+                }
+                ctx.shadowBlur = 0;
+                ctx.beginPath(); ctx.arc(centerX, centerY, Math.max(0.1, currentRadius), 0, 2 * Math.PI); ctx.fillStyle = vizConfig.bgColor; ctx.fill();
+
+            } else if (vizConfig.type === 'vortex') {
+                analyser.getByteTimeDomainData(waveTimeDomainArray);
+                const maxZ = 1500, fov = 400 + (smoothedEnergy * 100); let speed = isPlaying ? (15 + smoothedEnergy * 50) : 4; ctx.lineCap = 'round';
+                
+                if (vizConfig.vortexStyle === 'rings') {
+                    tunnelAngle += (isPlaying ? 0.02 + smoothedEnergy * 0.08 : 0.005);
+                    const numRings = Math.floor(40 * (perf.tunnel / 200)); const ringSpacing = maxZ / numRings; const zOffset = (Date.now() * speed * 0.01) % ringSpacing;
+                    for(let i=numRings; i>=0; i--) {
+                        let z = i * ringSpacing - zOffset; if (z <= 0) z += maxZ;
+                        const scale = fov / z, alpha = Math.max(0, 1 - (z / maxZ)); const val = waveTimeDomainArray[Math.floor((z / maxZ) * (waveTimeDomainArray.length * 0.5))] || 128;
+                        const baseRadius = 200 + (((val - 128) / 128) * 150) + (smoothedEnergy * 150); const colors = getComputedColor(i, numRings, val);
+
+                        ctx.beginPath(); const segments = 16;
+                        for(let j=0; j<=segments; j++) { const angle = (j / segments) * Math.PI * 2 + tunnelAngle + (z * 0.002); const x = centerX + Math.cos(angle) * baseRadius * scale, y = centerY + Math.sin(angle) * baseRadius * scale; if (j === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+                        ctx.strokeStyle = colors.fill; ctx.globalAlpha = alpha * 0.8; ctx.lineWidth = Math.max(1, 3 * scale) * dpr; ctx.shadowBlur = 10 * dpr * perf.blurMult; ctx.shadowColor = perf.blurMult > 0 ? colors.glow : 'transparent'; ctx.stroke();
+                    }
+                } else {
+                    tunnelAngle += (isPlaying ? 0.02 + smoothedEnergy * 0.08 : 0.005);
+                    tunnelParticles.forEach((p, index) => {
+                        p.z -= speed; if (p.z <= 0) { p.z = maxZ; p.angle = Math.random() * Math.PI * 2; }
+                        const scale = fov / p.z, currentAngle = p.angle + tunnelAngle + (p.z * 0.002);
+                        const distortion = (((waveTimeDomainArray[Math.floor((p.z / maxZ) * waveTimeDomainArray.length)] || 128) - 128) / 128) * 100;
+                        const radius = 250 + p.radiusOffset + distortion + (smoothedEnergy * 200);
+                        const x2d = centerX + (Math.cos(currentAngle) * radius * scale), y2d = centerY + (Math.sin(currentAngle) * radius * scale);
+                        const alpha = Math.max(0, 1 - (p.z / maxZ)); const colors = getComputedColor(index, tunnelParticles.length, 128);
+
+                        ctx.beginPath(); const nextAngle = currentAngle + 0.3, nextX = centerX + (Math.cos(nextAngle) * radius * scale), nextY = centerY + (Math.sin(nextAngle) * radius * scale);
+                        ctx.moveTo(x2d, y2d); ctx.lineTo(nextX, nextY); ctx.strokeStyle = colors.fill; ctx.globalAlpha = alpha; ctx.lineWidth = Math.max(1, 6 * scale) * dpr; ctx.shadowBlur = 15 * dpr * perf.blurMult; ctx.shadowColor = perf.blurMult > 0 ? colors.glow : 'transparent'; ctx.stroke();
+                    });
+                }
+                ctx.globalAlpha = 1.0;
+            } else {
+                analyser.getByteTimeDomainData(waveTimeDomainArray);
+                ctx.lineWidth = vizConfig.barWidth * dpr; ctx.shadowBlur = 20 * dpr * perf.blurMult;
+                const mainColors = getComputedColor(0, bufferLength, 128); ctx.shadowColor = perf.blurMult > 0 ? mainColors.glow : 'transparent'; ctx.strokeStyle = mainColors.fill;
+
+                if(vizConfig.mode !== 'solid') {
+                    let gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+                    for(let i=0; i<=10; i++) gradient.addColorStop(i / 10, getComputedColor(i, 10, 128 + smoothedEnergy * 50).fill);
+                    ctx.strokeStyle = gradient; ctx.shadowColor = perf.blurMult > 0 ? 'rgba(255,255,255,0.3)' : 'transparent';
+                }
+
+                ctx.beginPath(); const sliceWidth = canvas.width * 1.0 / bufferLength; let x = 0;
+                for (let i = 0; i < bufferLength; i++) { const y = ((waveTimeDomainArray[i] || 128) / 128.0) * centerY; if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); x += sliceWidth; }
+                ctx.lineTo(canvas.width, centerY); ctx.stroke();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => { loadConfig(); updateSubToggleUI(); });
+
+    </script>
+</body>
+</html>
+
+```
