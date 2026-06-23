@@ -156,12 +156,27 @@
                 // Hệ số rung lắc do người dùng điều chỉnh (0 = đứng yên hoàn toàn, 1 = mặc định gốc)
                 const shakeAmt = vortexShakeAmt;
 
-                // LookAt điểm phía trước một đoạn, lắc lư nhẹ
+                // LookAt điểm phía trước một đoạn. QUAN TRỌNG: điểm "thô" lấy trực tiếp từ
+                // getVortexCenterAt() di chuyển theo sin/cos của Z, nên khi tWarpSpeed tăng
+                // (nhạc mạnh / BPM cao) nó đổi hướng rất gấp giữa các frame. Trước đây điểm
+                // thô này được đưa thẳng vào lookAt() mỗi frame -> camera xoay/giật góc nhìn
+                // (kể cả roll) đột ngột -> hiện tượng rung lắc nhoằng nhoằng trái-phải-trên-dưới.
+                // Cách khắc phục: nội suy (lerp) RIÊNG điểm lookAt thực dùng để gọi lookAt(),
+                // độc lập với tốc độ bay, để hướng nhìn luôn đổi mượt theo thời gian thực,
+                // không phụ thuộc bao nhiêu Z đã trôi qua trong frame đó.
                 const lookAheadZ = tCurrentWarpZ - 800;
-                const lookPos = getVortexCenterAt(lookAheadZ);
+                const lookPosRaw = getVortexCenterAt(lookAheadZ);
                 const swayX = Math.sin(frameCounter * 0.02) * 50 * smoothedEnergy * shakeAmt;
                 const swayY = Math.cos(frameCounter * 0.015) * 30 * smoothedEnergy * shakeAmt;
-                tCamera.lookAt(lookPos.x + swayX, lookPos.y + swayY, lookAheadZ);
+                if (!tLookTarget) tLookTarget = { x: lookPosRaw.x + swayX, y: lookPosRaw.y + swayY, z: lookAheadZ };
+                // Tốc độ nội suy góc nhìn cố định (không tăng theo BPM/energy) -> camera xoay
+                // êm dù ống đổi hướng nhanh. shakeAmt vẫn cho phép người dùng giảm sâu hơn nữa.
+                const lookLerpK = 0.06 * Math.max(0.15, shakeAmt);
+                tLookTarget.x += ((lookPosRaw.x + swayX) - tLookTarget.x) * lookLerpK;
+                tLookTarget.y += ((lookPosRaw.y + swayY) - tLookTarget.y) * lookLerpK;
+                tLookTarget.z = lookAheadZ; // Z luôn đồng bộ tuyệt đối với quãng đường đã bay, không lerp
+                tCamera.up.set(0, 1, 0); // Giữ "up" cố định để lookAt() không tự xoay roll ngoài ý muốn
+                tCamera.lookAt(tLookTarget.x, tLookTarget.y, tLookTarget.z);
 
                 tRenderer.render(tScene, tCamera);
             }
@@ -497,4 +512,3 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => { loadConfig(); updateSubToggleUI(); });
-
