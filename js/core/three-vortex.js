@@ -11,6 +11,7 @@
         let tGroupRings, tGroupBars, tGroupWaves;
         let tRings = [];
         let tBarsMesh; // InstancedMesh
+        let tBarRingZs = []; // vị trí Z hiện tại của từng "vòng" bar (sliding window, giống tRings)
         let tWaveMeshes = [];
 
         const BARS_RINGS_COUNT = 40;
@@ -24,17 +25,19 @@
             };
         }
 
-        // Thay đổi hình dáng uốn lượn của ống (khi có bass)
+        // Thay đổi hình dáng uốn lượn của ống (khi có bass) — thay đổi nhẹ nhàng so với target hiện tại,
+        // tránh nhảy đột ngột sang một hình dạng hoàn toàn khác gây cảm giác giật khi nội suy.
         function rollNewVortexCurve() {
-            tPathTarget.freqX = 0.0005 + Math.random() * 0.0015;
-            tPathTarget.freqY = 0.0005 + Math.random() * 0.0015;
-            tPathTarget.ampX = 200 + Math.random() * 400;
-            tPathTarget.ampY = 150 + Math.random() * 300;
+            const jitter = (base, range) => base + (Math.random() - 0.5) * range;
+            tPathTarget.freqX = Math.max(0.0004, Math.min(0.0022, jitter(tPathTarget.freqX, 0.0006)));
+            tPathTarget.freqY = Math.max(0.0004, Math.min(0.0022, jitter(tPathTarget.freqY, 0.0006)));
+            tPathTarget.ampX = Math.max(180, Math.min(620, jitter(tPathTarget.ampX, 160)));
+            tPathTarget.ampY = Math.max(130, Math.min(470, jitter(tPathTarget.ampY, 120)));
         }
 
         // Nội suy mượt mà hình dáng ống
         function updateVortexCurveLerp() {
-            const k = 0.01;
+            const k = 0.006;
             tPathParams.freqX += (tPathTarget.freqX - tPathParams.freqX) * k;
             tPathParams.freqY += (tPathTarget.freqY - tPathParams.freqY) * k;
             tPathParams.ampX += (tPathTarget.ampX - tPathParams.ampX) * k;
@@ -86,9 +89,13 @@
             const totalBars = BARS_RINGS_COUNT * BARS_PER_RING;
             tBarsMesh = new THREE.InstancedMesh(barGeo, barMat, totalBars);
             
+            // Vị trí Z ban đầu của từng vòng bar — dùng sliding window giống tRings, tránh trôi lệch theo thời gian
+            tBarRingZs = [];
+            for(let r=0; r<BARS_RINGS_COUNT; r++) tBarRingZs.push(-(r / BARS_RINGS_COUNT) * TUNNEL_DEPTH);
+
             const dummy = new THREE.Object3D();
             for(let r=0; r<BARS_RINGS_COUNT; r++) {
-                const z = -(r / BARS_RINGS_COUNT) * TUNNEL_DEPTH;
+                const z = tBarRingZs[r];
                 for(let b=0; b<BARS_PER_RING; b++) {
                     const ang = (b / BARS_PER_RING) * Math.PI * 2;
                     dummy.position.set(Math.cos(ang) * 350, Math.sin(ang) * 350, z);
