@@ -31,6 +31,7 @@
         const dynColorContainer = document.getElementById('dynamic-color-container'), dynColorA = document.getElementById('dyn-color-a'), dynColorB = document.getElementById('dyn-color-b');
         const maxHeightSlider = document.getElementById('setting-max-height'), barWidthSlider = document.getElementById('setting-bar-width'), valMaxDisplay = document.getElementById('val-max'), valWidthDisplay = document.getElementById('val-width');
         const blockGeometry = document.getElementById('block-geometry'), blockVortex = document.getElementById('block-vortex'), vortexStyleSelect = document.getElementById('setting-vortex-style');
+        const vortexShakeSlider = document.getElementById('setting-vortex-shake'), valVortexShakeDisplay = document.getElementById('val-vortex-shake');
         const blockRain = document.getElementById('block-rain'), rainStyleSelect = document.getElementById('setting-rain-style'), glassFlashToggle = document.getElementById('setting-glass-flash');
         
         const volumeSlider = document.getElementById('setting-volume'), valVolumeDisplay = document.getElementById('val-volume');

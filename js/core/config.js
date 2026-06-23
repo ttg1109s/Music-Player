@@ -20,7 +20,7 @@
         const MODES = ['bar', 'synthesia', 'wave', 'lightning', 'rubik', 'vortex', 'black hole', 'rain', 'firefly_forest'];
 
         const DEFAULT_VIZ_CONFIG = {
-            quality: 'high', type: 'bar', vortexStyle: 'dust', rainStyle: 'glass', glassFlash: true, mode: 'solid', 
+            quality: 'high', type: 'bar', vortexStyle: 'dust', vortexShakeIntensity: 100, rainStyle: 'glass', glassFlash: true, mode: 'solid', 
             bgColor: '#000000', solidColor: '#ffffff', dynA: '#ec4899', dynB: '#3b82f6', 
             minH: 4, maxH: 400, barWidth: 4, bgImage: '', bgBlur: 0,
             volume: 100, eqMode: 'flat', manualEq: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],

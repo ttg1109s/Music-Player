@@ -34,12 +34,19 @@
             trees.sort((a,b) => b.layer - a.layer);
         }
 
-        function resizeCanvas() {
+        function resizeCanvas(forceRebuildThree = false) {
             dpr = window.devicePixelRatio || 1;
             canvas.width = window.innerWidth * dpr; canvas.height = window.innerHeight * dpr;
             if(tRenderer) { tRenderer.setSize(window.innerWidth, window.innerHeight); tCamera.aspect = window.innerWidth/window.innerHeight; tCamera.updateProjectionMatrix(); }
-            
-            initStars(); initThreeJS(); updateThreeJSColors(); initRubik(); raindrops = []; ripples = [];
+
+            // Chỉ build lại toàn bộ Three.js scene (particles, bars, rings...) khi thực sự cần
+            // (lần đầu tiên, hoặc đổi Quality). Việc resize cửa sổ thông thường (vd: thanh địa chỉ
+            // trên mobile ẩn/hiện khi cuộn) KHÔNG được phép phá huỷ & tạo lại toàn bộ hệ hạt Vortex,
+            // nếu không hiệu ứng "dust" sẽ bị giật/biến mất giữa lúc đang chạy.
+            if (forceRebuildThree || !tInitialized) initThreeJS();
+            updateThreeJSColors();
+
+            initStars(); initRubik(); raindrops = []; ripples = [];
             glassStaticDrops = []; glassStreaks = []; activeLightnings = []; starFlashes = [];
             
             const perfProfile = PERFORMANCE_PROFILES[vizConfig.quality];
@@ -79,7 +86,10 @@
             }
             generateTrees();
         }
-        window.addEventListener('resize', resizeCanvas);
+        // QUAN TRỌNG: không truyền resizeCanvas trực tiếp làm callback — trình duyệt sẽ gọi nó
+        // với đối tượng Event làm tham số đầu tiên (forceRebuildThree), và Event luôn là truthy,
+        // vô tình bắt buộc build lại toàn bộ Three.js scene mỗi lần resize (đúng cái lỗi cần sửa).
+        window.addEventListener('resize', () => resizeCanvas());
 
         function initStars() {
             stars = []; const maxDist = Math.max(canvas.width, canvas.height); const count = PERFORMANCE_PROFILES[vizConfig.quality].stars;

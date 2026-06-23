@@ -12,6 +12,7 @@
         let tDustParticles;
         let tRings = [];
         let tBarsMesh; // InstancedMesh
+        let tBarRingZ = []; // Z thế giới thực hiện tại của từng ring bar (persistent, không tính lại từ đầu mỗi frame)
         let tWaveMeshes = [];
 
         const BARS_RINGS_COUNT = 40;
@@ -33,14 +34,17 @@
             tPathTarget.ampY = 150 + Math.random() * 300;
         }
 
-        // Nội suy mượt mà hình dáng ống
+        // Nội suy mượt mà hình dáng ống. Tốc độ nội suy (k) bị giảm theo vortexShakeIntensity
+        // (mặc định 100 = gốc) để khi người dùng hạ thấp slider, ống đổi hướng chậm & êm hơn,
+        // tránh cảm giác camera "giật" khi nhạc mạnh liên tục đẩy đường ống đổi chiều gấp.
         function updateVortexCurveLerp() {
-            const k = 0.01;
+            const shakeAmt = (vizConfig.vortexShakeIntensity ?? 100) / 100;
+            const k = 0.01 * Math.max(0.08, shakeAmt); // không cho k về 0 tuyệt đối để ống vẫn "sống"
             tPathParams.freqX += (tPathTarget.freqX - tPathParams.freqX) * k;
             tPathParams.freqY += (tPathTarget.freqY - tPathParams.freqY) * k;
             tPathParams.ampX += (tPathTarget.ampX - tPathParams.ampX) * k;
             tPathParams.ampY += (tPathTarget.ampY - tPathParams.ampY) * k;
-            // Tiến pha để ống luôn "sống"
+            // Tiến pha để ống luôn "sống" (giữ tốc độ pha cố định, chỉ giảm biên độ đổi hướng ở trên)
             tPathParams.phaseX += 0.005;
             tPathParams.phaseY += 0.005;
         }
@@ -59,8 +63,22 @@
             return new THREE.CanvasTexture(canvas);
         }
 
+        function disposeThreeObject(obj) {
+            if (!obj) return;
+            if (obj.geometry) obj.geometry.dispose();
+            if (obj.material) {
+                const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+                mats.forEach(m => { if (m.map) m.map.dispose(); m.dispose(); });
+            }
+        }
+
         function initThreeJS() {
-            if (tInitialized && tScene) { while(tScene.children.length > 0){ tScene.remove(tScene.children[0]); } }
+            if (tInitialized && tScene) {
+                // Giải phóng đúng cách bộ nhớ GPU (geometry/material/texture) trước khi tạo lại,
+                // tránh leak khi initThreeJS được gọi lại nhiều lần (vd: đổi Quality).
+                tScene.traverse(disposeThreeObject);
+                while(tScene.children.length > 0){ tScene.remove(tScene.children[0]); }
+            }
             
             const tCanvas = document.getElementById('webgl-canvas');
             tScene = new THREE.Scene();
@@ -124,10 +142,17 @@
             const barMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
             const totalBars = BARS_RINGS_COUNT * BARS_PER_RING;
             tBarsMesh = new THREE.InstancedMesh(barGeo, barMat, totalBars);
-            
+
+            // Lưu Z thế giới thực (world Z) của từng "ring" bar — giống cách tRings lưu
+            // mesh.position.z — để mỗi frame chỉ cần TRƯỢT dần theo tốc độ bay và cuộn (wrap)
+            // khi đi quá xa, thay vì tính lại từ đầu dựa trên index ring (cách cũ khiến các
+            // ring bị "bỏ lại" phía sau xa dần camera và không bao giờ wrap về lại, làm Bar 3D
+            // biến mất hoàn toàn sau vài giây).
+            tBarRingZ = [];
             const dummy = new THREE.Object3D();
             for(let r=0; r<BARS_RINGS_COUNT; r++) {
                 const z = -(r / BARS_RINGS_COUNT) * TUNNEL_DEPTH;
+                tBarRingZ.push(z);
                 for(let b=0; b<BARS_PER_RING; b++) {
                     const ang = (b / BARS_PER_RING) * Math.PI * 2;
                     dummy.position.set(Math.cos(ang) * 350, Math.sin(ang) * 350, z);
