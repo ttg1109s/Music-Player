@@ -36,7 +36,8 @@
             // ================== THREEJS VORTEX ENGINE MỚI ==================
             if (vizConfig.type === 'vortex' && tInitialized) {
                 // 1. Cập nhật đường ống bay (Cinematic Path)
-                if(isPlaying && smoothedEnergy > 0.6 && Math.random() > 0.9) rollNewVortexCurve();
+                const vortexShakeAmt = (vizConfig.vortexShakeIntensity ?? 100) / 100;
+                if(isPlaying && smoothedEnergy > 0.6 && Math.random() > (0.9 + (1 - vortexShakeAmt) * 0.09)) rollNewVortexCurve();
                 updateVortexCurveLerp();
 
                 // 2. Cập nhật tốc độ bay (Gia tốc mượt theo nhạc)
@@ -97,10 +98,14 @@
                 else if (vizConfig.vortexStyle === 'bars') {
                     const dummy = new THREE.Object3D();
                     for(let r=0; r<BARS_RINGS_COUNT; r++) {
-                        // Tính toán Z "ảo" cho ring này
-                        let z = -(r / BARS_RINGS_COUNT) * TUNNEL_DEPTH + (tCurrentWarpZ % (TUNNEL_DEPTH / BARS_RINGS_COUNT));
-                        if(z > tCurrentWarpZ + 200) z -= TUNNEL_DEPTH;
-                        
+                        // Trượt dần Z theo tốc độ bay (giống dust/rings), rồi wrap khi đi quá xa
+                        // camera. Cách cũ tính z = -(r/COUNT)*DEPTH + (tCurrentWarpZ % ...) khiến
+                        // ring càng ngày càng lùi xa phía sau camera không giới hạn vì điều kiện
+                        // wrap không bao giờ đúng lại sau khi tCurrentWarpZ trôi quá TUNNEL_DEPTH.
+                        tBarRingZ[r] += tWarpSpeed * 0.8;
+                        if (tBarRingZ[r] > tCurrentWarpZ + 200) tBarRingZ[r] -= TUNNEL_DEPTH;
+                        const z = tBarRingZ[r];
+
                         const center = getVortexCenterAt(z);
                         const val = vizDataArray[r % 40] || 0;
                         const barScaleY = 1 + (val/255) * 8 * smoothedEnergy;
@@ -148,11 +153,14 @@
                 tCamera.position.y += (camTargetPos.y - tCamera.position.y) * 0.08;
                 tCamera.position.z = tCurrentWarpZ;
 
+                // Hệ số rung lắc do người dùng điều chỉnh (0 = đứng yên hoàn toàn, 1 = mặc định gốc)
+                const shakeAmt = vortexShakeAmt;
+
                 // LookAt điểm phía trước một đoạn, lắc lư nhẹ
                 const lookAheadZ = tCurrentWarpZ - 800;
                 const lookPos = getVortexCenterAt(lookAheadZ);
-                const swayX = Math.sin(frameCounter * 0.02) * 50 * smoothedEnergy;
-                const swayY = Math.cos(frameCounter * 0.015) * 30 * smoothedEnergy;
+                const swayX = Math.sin(frameCounter * 0.02) * 50 * smoothedEnergy * shakeAmt;
+                const swayY = Math.cos(frameCounter * 0.015) * 30 * smoothedEnergy * shakeAmt;
                 tCamera.lookAt(lookPos.x + swayX, lookPos.y + swayY, lookAheadZ);
 
                 tRenderer.render(tScene, tCamera);
