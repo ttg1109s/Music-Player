@@ -79,14 +79,24 @@ const TPL_SETTINGS_DRAWER = `
                                 <input type="range" id="setting-bar-width" min="1" max="15" step="1" class="setting-slider">
                             </div>
                         </div>
-                        <div id="block-vortex" class="hidden flex justify-between items-center p-4 hover:bg-white/5 transition-colors bg-indigo-900/10 border-b border-indigo-500/20">
-                            <div><div class="text-sm font-medium text-indigo-300">Kiểu Ống Vortex</div></div>
-                            <select id="setting-vortex-style" class="bg-black/60 border border-indigo-500/30 rounded-lg px-2 py-1.5 text-xs text-white outline-none w-44 text-right">
-                                <option value="dust">Bụi Lượng Tử</option>
-                                <option value="rings">Vòng Ring Ánh Sáng</option>
-                                <option value="bars">Đoạn Bar 3D (Equalizer)</option>
-                                <option value="wave">Nhiễu Động Sóng (Fade)</option>
-                            </select>
+                        <div id="block-vortex" class="hidden flex-col bg-indigo-900/10 border-b border-indigo-500/20">
+                            <div class="flex justify-between items-center p-4 hover:bg-white/5 transition-colors">
+                                <div><div class="text-sm font-medium text-indigo-300">Kiểu Ống Vortex</div></div>
+                                <select id="setting-vortex-style" class="bg-black/60 border border-indigo-500/30 rounded-lg px-2 py-1.5 text-xs text-white outline-none w-44 text-right">
+                                    <option value="dust">Bụi Lượng Tử</option>
+                                    <option value="rings">Vòng Ring Ánh Sáng</option>
+                                    <option value="bars">Đoạn Bar 3D (Equalizer)</option>
+                                    <option value="wave">Nhiễu Động Sóng (Fade)</option>
+                                </select>
+                            </div>
+                            <div class="flex flex-col p-4 pt-0 hover:bg-white/5 transition-colors">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-sm font-medium text-indigo-300">Độ rung lắc Camera</span>
+                                    <span id="val-vortex-shake" class="text-xs text-indigo-400 font-mono">100%</span>
+                                </div>
+                                <input type="range" id="setting-vortex-shake" min="0" max="100" step="5" class="setting-slider">
+                                <div class="text-xs text-slate-400 mt-1">Giảm để camera đổi hướng êm hơn khi nhạc mạnh, tránh giật/lắc liên tục</div>
+                            </div>
                         </div>
                         <div id="block-rain" class="hidden flex-col bg-blue-900/10 border-b border-blue-500/20">
                             <div class="flex justify-between items-center p-4 hover:bg-white/5 transition-colors border-b border-blue-500/10">
