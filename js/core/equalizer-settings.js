@@ -30,8 +30,7 @@
             const saved = localStorage.getItem('visualMasterConfigV21') || localStorage.getItem('visualMasterConfigV20');
             if (saved) { try { vizConfig = { ...vizConfig, ...JSON.parse(saved) }; } catch(e) {} }
             if(!vizConfig.manualEq) vizConfig.manualEq = [0,0,0,0,0,0,0,0,0,0];
-            if(vizConfig.vortexShakeIntensity === undefined || vizConfig.vortexShakeIntensity === null) vizConfig.vortexShakeIntensity = 100;
-            if(vizConfig.vortexStyle === 'tardis' || vizConfig.vortexStyle === 'classic') vizConfig.vortexStyle = 'dust';
+            if(vizConfig.vortexStyle === 'tardis' || vizConfig.vortexStyle === 'classic' || vizConfig.vortexStyle === 'dust') vizConfig.vortexStyle = 'rings';
 
             qualitySelect.value = vizConfig.quality; bgColorPicker.value = vizConfig.bgColor;
             bgBlurSlider.value = vizConfig.bgBlur; valBgBlurDisplay.textContent = vizConfig.bgBlur + 'px';
@@ -45,7 +44,6 @@
             maxHeightSlider.value = vizConfig.maxH; valMaxDisplay.textContent = vizConfig.maxH;
             barWidthSlider.value = vizConfig.barWidth; valWidthDisplay.textContent = vizConfig.barWidth;
             vortexStyleSelect.value = vizConfig.vortexStyle;
-            vortexShakeSlider.value = vizConfig.vortexShakeIntensity ?? 100; valVortexShakeDisplay.textContent = (vizConfig.vortexShakeIntensity ?? 100) + '%';
             rainStyleSelect.value = vizConfig.rainStyle;
             glassFlashToggle.checked = vizConfig.glassFlash;
             

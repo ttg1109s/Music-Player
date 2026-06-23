@@ -31,7 +31,6 @@
         const dynColorContainer = document.getElementById('dynamic-color-container'), dynColorA = document.getElementById('dyn-color-a'), dynColorB = document.getElementById('dyn-color-b');
         const maxHeightSlider = document.getElementById('setting-max-height'), barWidthSlider = document.getElementById('setting-bar-width'), valMaxDisplay = document.getElementById('val-max'), valWidthDisplay = document.getElementById('val-width');
         const blockGeometry = document.getElementById('block-geometry'), blockVortex = document.getElementById('block-vortex'), vortexStyleSelect = document.getElementById('setting-vortex-style');
-        const vortexShakeSlider = document.getElementById('setting-vortex-shake'), valVortexShakeDisplay = document.getElementById('val-vortex-shake');
         const blockRain = document.getElementById('block-rain'), rainStyleSelect = document.getElementById('setting-rain-style'), glassFlashToggle = document.getElementById('setting-glass-flash');
         
         const volumeSlider = document.getElementById('setting-volume'), valVolumeDisplay = document.getElementById('val-volume');
@@ -66,10 +65,10 @@
         let glassStaticDrops = [], glassStreaks = [], cityBuildings = [];
         let activeLightnings = [];
         
-        // Firefly 2.0 (Swarm behavior)
+        // Firefly 3.0 (Swarm hữu cơ, có chiều sâu không gian)
         let fireflies = [], trees = [];
-        const numFireflyBands = 3;
-        let fireflyBands = [];
+        let fireflyMist = []; // các đám sương mù nhẹ phía xa, tăng cảm giác chiều sâu
+        let fireflyClusters = []; // các tâm cụm mà đàn đom đóm tụ quanh, trôi nhẹ theo thời gian
 
         // ==========================================
         // KHỞI TẠO THREE.JS CHO VORTEX ENGINE MỚI

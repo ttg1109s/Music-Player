@@ -22,7 +22,9 @@
             const w = canvas.width; const h = canvas.height;
             for(let layer = 0; layer < 3; layer++) {
                 let numTrees = 10 + layer * 5;
-                let color = `rgba(5, 10, 15, ${0.4 + layer * 0.3})`;
+                // Lớp xa hơn (layer nhỏ) hơi ánh xanh đêm; lớp gần (layer lớn) đậm và rõ viền hơn
+                let tint = 5 + layer * 2;
+                let color = `rgba(${tint}, ${tint + 5}, ${tint + 10}, ${0.4 + layer * 0.3})`;
                 for(let i=0; i<numTrees; i++) {
                     trees.push({
                         x: Math.random() * w, baseW: (30 + Math.random() * 40) * dpr * (3 - layer),
@@ -34,19 +36,12 @@
             trees.sort((a,b) => b.layer - a.layer);
         }
 
-        function resizeCanvas(forceRebuildThree = false) {
+        function resizeCanvas() {
             dpr = window.devicePixelRatio || 1;
             canvas.width = window.innerWidth * dpr; canvas.height = window.innerHeight * dpr;
             if(tRenderer) { tRenderer.setSize(window.innerWidth, window.innerHeight); tCamera.aspect = window.innerWidth/window.innerHeight; tCamera.updateProjectionMatrix(); }
-
-            // Chỉ build lại toàn bộ Three.js scene (particles, bars, rings...) khi thực sự cần
-            // (lần đầu tiên, hoặc đổi Quality). Việc resize cửa sổ thông thường (vd: thanh địa chỉ
-            // trên mobile ẩn/hiện khi cuộn) KHÔNG được phép phá huỷ & tạo lại toàn bộ hệ hạt Vortex,
-            // nếu không hiệu ứng "dust" sẽ bị giật/biến mất giữa lúc đang chạy.
-            if (forceRebuildThree || !tInitialized) initThreeJS();
-            updateThreeJSColors();
-
-            initStars(); initRubik(); raindrops = []; ripples = [];
+            
+            initStars(); initThreeJS(); updateThreeJSColors(); initRubik(); raindrops = []; ripples = [];
             glassStaticDrops = []; glassStreaks = []; activeLightnings = []; starFlashes = [];
             
             const perfProfile = PERFORMANCE_PROFILES[vizConfig.quality];
@@ -64,32 +59,63 @@
                 cityBuildings.push({x: currentX, w: w, h: h, cols: cols, rows: rows, windows: windows}); currentX += w + (Math.random() * 15 * dpr); 
             }
 
-            // Setup Fireflies Bầy đàn
+            // ============ RỪNG ĐOM ĐÓM — Thiết lập không gian & bầy đàn hữu cơ ============
             fireflies = [];
-            fireflyBands = [];
-            for(let i=0; i<numFireflyBands; i++) {
-                fireflyBands.push({ baseY: canvas.height * (0.75 + i*0.1), phase: Math.random() * Math.PI*2 });
+
+            // Vài "cụm" (cluster) trung tâm để đom đóm tụ lại thành đàn tự nhiên,
+            // thay cho các dải ngang cố định cứng nhắc của bản cũ.
+            const numClusters = 4 + Math.floor(Math.random() * 2); // 4-5 cụm
+            fireflyClusters = [];
+            for(let i=0; i<numClusters; i++) {
+                fireflyClusters.push({
+                    x: canvas.width * (0.1 + Math.random() * 0.8),
+                    y: canvas.height * (0.55 + Math.random() * 0.35),
+                    driftPhase: Math.random() * Math.PI * 2,
+                    driftSpeed: 0.05 + Math.random() * 0.08
+                });
             }
 
             for(let i=0; i<perfProfile.fireflies; i++) {
-                const bandIdx = Math.floor(Math.random() * numFireflyBands);
+                // depth: 0 = sát mặt đất/gần camera (to, sáng, nhanh) | 1 = xa/mờ trong sương (nhỏ, dịu, chậm)
+                const depth = Math.random();
+                const cluster = fireflyClusters[Math.floor(Math.random() * fireflyClusters.length)];
+                const homeX = cluster.x + (Math.random() - 0.5) * canvas.width * 0.35;
+                const homeY = cluster.y + (Math.random() - 0.5) * canvas.height * 0.22;
+
                 fireflies.push({
-                    x: Math.random() * canvas.width, 
-                    y: fireflyBands[bandIdx].baseY,
-                    bandId: bandIdx,
+                    x: homeX, y: homeY,
+                    homeX: homeX, homeY: homeY,           // điểm neo của hành trình lượn tự do
+                    clusterRef: cluster,
+                    depth: depth,                           // 0 (gần) .. 1 (xa)
+                    wanderAngle: Math.random() * Math.PI * 2,
+                    wanderSpeed: (0.15 + Math.random() * 0.25) * (1 - depth * 0.5),
+                    wanderRadius: (40 + Math.random() * 70) * dpr * (1 - depth * 0.4),
                     phaseX: Math.random() * Math.PI * 2,
-                    speedX: (Math.random() * 0.015 + 0.005),
-                    radius: (Math.random() * 3 + 1.5) * dpr, 
+                    phaseY: Math.random() * Math.PI * 2,
+                    radius: (1.2 + Math.random() * 2.2) * dpr * (1 - depth * 0.55),
                     bin: Math.floor(Math.random() * 40),
-                    vy: 0 // Vận tốc trục Y để lượn mượt
+                    // Nhịp nhấp nháy tự nhiên riêng của từng con (giống đom đóm thật, không phải nhạc cụ)
+                    blinkPhase: Math.random() * Math.PI * 2,
+                    blinkSpeed: 0.025 + Math.random() * 0.035,
+                    hueJitter: Math.random() * 24 - 12, // lệch màu nhẹ cá thể, tránh đồng phục cứng nhắc
+                    dynPick: Math.random() > 0.5 // chọn cố định giữa 2 màu pha trộn (mode dynamic), không đổi theo frame
+                });
+            }
+            fireflies.sort((a, b) => b.depth - a.depth); // vẽ con xa trước, con gần sau (đúng thứ tự lớp)
+
+            // Sương mù khí quyển mỏng phía xa — tăng cảm giác chiều sâu của khu rừng
+            fireflyMist = [];
+            for(let i=0; i<14; i++) {
+                fireflyMist.push({
+                    x: Math.random() * canvas.width,
+                    y: canvas.height * (0.6 + Math.random() * 0.35),
+                    r: (canvas.width * 0.08) + Math.random() * canvas.width * 0.1,
+                    phase: Math.random() * Math.PI * 2
                 });
             }
             generateTrees();
         }
-        // QUAN TRỌNG: không truyền resizeCanvas trực tiếp làm callback — trình duyệt sẽ gọi nó
-        // với đối tượng Event làm tham số đầu tiên (forceRebuildThree), và Event luôn là truthy,
-        // vô tình bắt buộc build lại toàn bộ Three.js scene mỗi lần resize (đúng cái lỗi cần sửa).
-        window.addEventListener('resize', () => resizeCanvas());
+        window.addEventListener('resize', resizeCanvas);
 
         function initStars() {
             stars = []; const maxDist = Math.max(canvas.width, canvas.height); const count = PERFORMANCE_PROFILES[vizConfig.quality].stars;

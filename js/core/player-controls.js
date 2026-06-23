@@ -118,7 +118,7 @@
                 if (!playlistView.classList.contains('-translate-y-full')) {} else { document.getElementById('webgl-canvas').classList.remove('opacity-0'); }
             } else { document.getElementById('webgl-canvas').classList.add('opacity-0'); }
 
-            if (vizConfig.type === 'vortex') { blockVortex.classList.remove('hidden'); }
+            if (vizConfig.type === 'vortex') { blockVortex.classList.remove('hidden'); blockVortex.classList.add('flex'); }
             else if (vizConfig.type === 'rain') { blockRain.classList.remove('hidden'); blockRain.classList.add('flex'); }
             else if (vizConfig.type !== 'rubik' && vizConfig.type !== 'synthesia' && vizConfig.type !== 'lightning' && vizConfig.type !== 'firefly_forest') { 
                 blockGeometry.classList.remove('hidden'); blockGeometry.classList.add('flex'); 
@@ -140,7 +140,7 @@
             for(let i = 0; i < eqBandNodes.length; i++) { if(eqBandNodes[i]) eqBandNodes[i].gain.value = gains[i] || 0; }
         }
 
-        qualitySelect.addEventListener('change', (e) => { vizConfig.quality = e.target.value; resizeCanvas(true); saveConfig(); });
+        qualitySelect.addEventListener('change', (e) => { vizConfig.quality = e.target.value; resizeCanvas(); saveConfig(); });
         bgUploadInput.addEventListener('change', (e) => {
             const file = e.target.files[0]; if (!file) return;
             const reader = new FileReader();
@@ -162,7 +162,6 @@
         dynColorA.addEventListener('input', (e) => { vizConfig.dynA = e.target.value; saveConfig(); }); 
         dynColorB.addEventListener('input', (e) => { vizConfig.dynB = e.target.value; updateProgressBarCSS(); saveConfig(); });
         vortexStyleSelect.addEventListener('change', (e) => { vizConfig.vortexStyle = e.target.value; updateVortexVisibility(); saveConfig(); });
-        vortexShakeSlider.addEventListener('input', (e) => { vizConfig.vortexShakeIntensity = parseInt(e.target.value); valVortexShakeDisplay.textContent = vizConfig.vortexShakeIntensity + '%'; saveConfig(); });
         rainStyleSelect.addEventListener('change', (e) => { vizConfig.rainStyle = e.target.value; saveConfig(); });
         glassFlashToggle.addEventListener('change', (e) => { vizConfig.glassFlash = e.target.checked; saveConfig(); });
         maxHeightSlider.addEventListener('input', (e) => { vizConfig.maxH = parseInt(e.target.value); valMaxDisplay.textContent = vizConfig.maxH; saveConfig(); });
