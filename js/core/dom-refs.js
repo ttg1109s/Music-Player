@@ -32,6 +32,10 @@
         const maxHeightSlider = document.getElementById('setting-max-height'), barWidthSlider = document.getElementById('setting-bar-width'), valMaxDisplay = document.getElementById('val-max'), valWidthDisplay = document.getElementById('val-width');
         const blockGeometry = document.getElementById('block-geometry'), blockVortex = document.getElementById('block-vortex'), vortexStyleSelect = document.getElementById('setting-vortex-style');
         const blockRain = document.getElementById('block-rain'), rainStyleSelect = document.getElementById('setting-rain-style'), glassFlashToggle = document.getElementById('setting-glass-flash');
+        const rainGlassFlashRow = document.getElementById('rain-glass-flash-row'), rainStreetOptions = document.getElementById('rain-street-options');
+        const rainSitterSelect = document.getElementById('setting-rain-sitter'), rainCoupleTypeRow = document.getElementById('rain-couple-type-row'), rainCoupleTypeSelect = document.getElementById('setting-rain-couple-type');
+        const blockSeasons = document.getElementById('block-seasons'), seasonModeSelect = document.getElementById('setting-season-mode');
+        const seasonFixedRow = document.getElementById('season-fixed-row'), seasonFixedSelect = document.getElementById('setting-season-fixed');
         
         const volumeSlider = document.getElementById('setting-volume'), valVolumeDisplay = document.getElementById('val-volume');
         const eqSelect = document.getElementById('setting-eq'), eqSlidersWrapper = document.getElementById('eq-sliders-wrapper');
@@ -64,9 +68,18 @@
         let raindrops = [], ripples = [], bgRaindrops = [];
         let glassStaticDrops = [], glassStreaks = [], cityBuildings = [];
         let activeLightnings = [];
+
+        // Rain - Street scene (đèn đường, ghế công viên, mưa phố)
+        let streetLamps = [], streetRain = [], streetBench = null;
+        let currentSeasonRuntime = 'spring'; // mùa đang áp dụng thật sự lúc render (tính từ seasonMode)
+        let lastSeasonSongIndex = -1;
+
+        // Seasons scene (hạt rơi theo từng mùa + nền đồi cỏ/mái nhà tuyết)
+        let seasonParticles = []; // hoa đào / lá / tuyết, tuỳ mùa
+        let seasonHills = []; let seasonHouse = null; let sunflowers = [];
         
         // Firefly 3.0 (Swarm hữu cơ, có chiều sâu không gian)
-        let fireflies = [], trees = [];
+        let fireflies = [], hills = [], grassTufts = [], hut = null;
         let fireflyMist = []; // các đám sương mù nhẹ phía xa, tăng cảm giác chiều sâu
         let fireflyClusters = []; // các tâm cụm mà đàn đom đóm tụ quanh, trôi nhẹ theo thời gian
 

@@ -17,31 +17,60 @@
             } catch(e) { return null; }
         }
 
-        function generateTrees() {
-            trees = [];
+        function generateHillScene() {
+            // Bãi đồi cỏ nhiều lớp (đồi xa thấp & mờ, đồi gần cao & rõ) + một túp lều nhỏ nằm trên sườn đồi gần.
             const w = canvas.width; const h = canvas.height;
-            for(let layer = 0; layer < 3; layer++) {
-                let numTrees = 10 + layer * 5;
-                // Lớp xa hơn (layer nhỏ) hơi ánh xanh đêm; lớp gần (layer lớn) đậm và rõ viền hơn
-                let tint = 5 + layer * 2;
-                let color = `rgba(${tint}, ${tint + 5}, ${tint + 10}, ${0.4 + layer * 0.3})`;
-                for(let i=0; i<numTrees; i++) {
-                    const kind = Math.random() > 0.45 ? 'pine' : 'round'; // thông nhiều tầng | tán tròn rậm
-                    const tierCount = 3 + Math.floor(Math.random() * 3); // 3-5 tầng lá cho cây thông
-                    // Lệch ngẫu nhiên nhẹ cho từng tầng/đường viền tán để silhouette không đối xứng hoàn hảo
-                    const jitterSeed = [];
-                    for(let j=0; j<8; j++) jitterSeed.push(0.75 + Math.random() * 0.5);
-
-                    trees.push({
-                        x: Math.random() * w, baseW: (30 + Math.random() * 40) * dpr * (3 - layer),
-                        height: (h * 0.4 + Math.random() * h * 0.5) * (1 - layer*0.1),
-                        color: color, layer: layer, swayPhase: Math.random() * Math.PI * 2,
-                        kind: kind, tierCount: tierCount, jitterSeed: jitterSeed,
-                        trunkW: (4 + Math.random() * 3) * dpr * (3 - layer) / 3
-                    });
+            hills = [];
+            const numLayers = 3;
+            for (let layer = 0; layer < numLayers; layer++) {
+                // Lớp xa (layer nhỏ) nằm cao hơn & nhạt hơn (sương đêm); lớp gần thấp hơn & đậm hơn.
+                const baseY = h * (0.62 + layer * 0.13);
+                const amp = h * (0.05 + layer * 0.035);
+                const tint = 10 + layer * 4;
+                const color = `rgba(${tint}, ${tint + 14}, ${tint + 8}, ${0.55 + layer * 0.18})`;
+                // Tạo đường viền đồi bằng vài "đỉnh" ngẫu nhiên rồi nội suy mượt (giống đường cỏ nhấp nhô)
+                const numPeaks = 4 + Math.floor(Math.random() * 2);
+                const peaks = [];
+                for (let i = 0; i <= numPeaks; i++) {
+                    peaks.push({ x: (w / numPeaks) * i, yOff: (Math.random() - 0.5) * amp * 2 });
                 }
+                hills.push({ layer, baseY, amp, color, peaks });
             }
-            trees.sort((a,b) => b.layer - a.layer);
+
+            // Cụm cỏ lưa thưa rải trên sườn đồi gần nhất, đung đưa theo gió/nhạc
+            grassTufts = [];
+            const frontHill = hills[hills.length - 1];
+            for (let i = 0; i < 70; i++) {
+                const x = Math.random() * w;
+                grassTufts.push({
+                    x, y: getHillYAt(frontHill, x) - Math.random() * 4 * dpr,
+                    h: (8 + Math.random() * 10) * dpr,
+                    swayPhase: Math.random() * Math.PI * 2,
+                    swaySpeed: 0.4 + Math.random() * 0.4
+                });
+            }
+
+            // Túp lều nhỏ nằm trên sườn đồi gần, lệch về một phía để không che mặt trăng
+            const hutX = w * (0.18 + Math.random() * 0.12);
+            const hutHillY = getHillYAt(frontHill, hutX);
+            hut = {
+                x: hutX, groundY: hutHillY,
+                w: w * 0.1, h: h * 0.085,
+                roofH: h * 0.055,
+                windowGlow: 0.5 + Math.random() * 0.3
+            };
+        }
+
+        // Trả về tung độ Y của đường viền đồi tại hoành độ x (nội suy tuyến tính giữa các "đỉnh")
+        function getHillYAt(hillObj, x) {
+            const peaks = hillObj.peaks; const n = peaks.length - 1;
+            let seg = Math.min(n - 1, Math.floor((x / canvas.width) * n));
+            seg = Math.max(0, seg);
+            const p0 = peaks[seg], p1 = peaks[seg + 1] || peaks[seg];
+            const t = p1.x > p0.x ? (x - p0.x) / (p1.x - p0.x) : 0;
+            const smoothT = t * t * (3 - 2 * t); // smoothstep cho đường cong mềm hơn
+            const yOff = p0.yOff + (p1.yOff - p0.yOff) * smoothT;
+            return hillObj.baseY + yOff;
         }
 
         function resizeCanvas() {
@@ -121,9 +150,63 @@
                     phase: Math.random() * Math.PI * 2
                 });
             }
-            generateTrees();
+            generateHillScene();
+            generateStreetScene();
+            generateSeasonScene();
         }
         window.addEventListener('resize', resizeCanvas);
+
+        function generateStreetScene() {
+            // Công viên về đêm dưới mưa: 1 cột đèn đường chính (lệch trái) + ghế công viên cạnh đó,
+            // vài cột đèn phụ mờ phía xa để tạo chiều sâu phố/công viên.
+            const w = canvas.width, h = canvas.height;
+            streetLamps = [];
+            const mainLampX = w * 0.28;
+            streetLamps.push({ x: mainLampX, baseY: h * 0.88, height: h * 0.42, main: true, flicker: 1, depth: 0 });
+            // Đèn phụ phía xa hai bên, nhỏ và mờ hơn
+            streetLamps.push({ x: w * 0.06, baseY: h * 0.8, height: h * 0.26, main: false, flicker: 1, depth: 0.7 });
+            streetLamps.push({ x: w * 0.85, baseY: h * 0.82, height: h * 0.28, main: false, flicker: 1, depth: 0.6 });
+
+            // Ghế công viên đặt cạnh đèn chính
+            streetBench = { x: mainLampX + w * 0.09, y: h * 0.88, w: w * 0.16, h: h * 0.035 };
+
+            // Mưa phố: các hạt mưa rơi xiên nhẹ, mật độ/độ dài sẽ được điều biến theo nhạc lúc vẽ
+            streetRain = [];
+            for (let i = 0; i < 220; i++) {
+                streetRain.push({
+                    x: Math.random() * w, y: Math.random() * h,
+                    len: (14 + Math.random() * 18) * dpr,
+                    speed: (10 + Math.random() * 8) * dpr,
+                    drift: (Math.random() - 0.5) * 0.6
+                });
+            }
+        }
+
+        function generateSeasonScene() {
+            // Khung cảnh nền dùng chung cho 4 mùa: bãi đồi cỏ 2 lớp + một mái nhà nhỏ riêng (không liên quan lều đom đóm)
+            const w = canvas.width, h = canvas.height;
+            seasonHills = [];
+            for (let layer = 0; layer < 2; layer++) {
+                const baseY = h * (0.72 + layer * 0.14);
+                const amp = h * (0.04 + layer * 0.025);
+                const numPeaks = 4;
+                const peaks = [];
+                for (let i = 0; i <= numPeaks; i++) peaks.push({ x: (w / numPeaks) * i, yOff: (Math.random() - 0.5) * amp * 2 });
+                seasonHills.push({ layer, baseY, amp, peaks });
+            }
+            const frontHill = seasonHills[seasonHills.length - 1];
+            const houseX = w * (0.74 + Math.random() * 0.1);
+            seasonHouse = { x: houseX, groundY: getHillYAt(frontHill, houseX), w: w * 0.09, h: h * 0.075, roofH: h * 0.05 };
+
+            // Hoa hướng dương cho mùa hè, rải trên sườn đồi gần
+            sunflowers = [];
+            for (let i = 0; i < 12; i++) {
+                const x = Math.random() * w * 0.65;
+                sunflowers.push({ x, y: getHillYAt(frontHill, x), h: (40 + Math.random() * 30) * dpr, swayPhase: Math.random() * Math.PI * 2, size: (10 + Math.random() * 6) * dpr });
+            }
+
+            seasonParticles = [];
+        }
 
         function initStars() {
             stars = []; const maxDist = Math.max(canvas.width, canvas.height); const count = PERFORMANCE_PROFILES[vizConfig.quality].stars;

@@ -46,6 +46,12 @@
             vortexStyleSelect.value = vizConfig.vortexStyle;
             rainStyleSelect.value = vizConfig.rainStyle;
             glassFlashToggle.checked = vizConfig.glassFlash;
+            if (!vizConfig.rainSitter) vizConfig.rainSitter = 'none';
+            if (!vizConfig.rainCoupleType) vizConfig.rainCoupleType = 'mf';
+            rainSitterSelect.value = vizConfig.rainSitter; rainCoupleTypeSelect.value = vizConfig.rainCoupleType;
+            if (!vizConfig.seasonMode) vizConfig.seasonMode = 'fixed';
+            if (!vizConfig.seasonFixed) vizConfig.seasonFixed = 'spring';
+            seasonModeSelect.value = vizConfig.seasonMode; seasonFixedSelect.value = vizConfig.seasonFixed;
             
             volumeSlider.value = vizConfig.volume; valVolumeDisplay.textContent = vizConfig.volume + '%';
             if(masterGainNode) masterGainNode.gain.value = vizConfig.volume / 100;

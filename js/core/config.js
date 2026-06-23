@@ -17,13 +17,15 @@
             'manual': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         };
 
-        const MODES = ['bar', 'synthesia', 'wave', 'lightning', 'rubik', 'vortex', 'black hole', 'rain', 'firefly_forest'];
+        const MODES = ['bar', 'synthesia', 'wave', 'lightning', 'rubik', 'vortex', 'black hole', 'rain', 'firefly_forest', 'seasons'];
 
         const DEFAULT_VIZ_CONFIG = {
             quality: 'high', type: 'bar', vortexStyle: 'rings', rainStyle: 'glass', glassFlash: true, mode: 'solid', 
             bgColor: '#000000', solidColor: '#ffffff', dynA: '#ec4899', dynB: '#3b82f6', 
             minH: 4, maxH: 400, barWidth: 4, bgImage: '', bgBlur: 0,
             volume: 100, eqMode: 'flat', manualEq: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            videoBgEnabled: false, videoBgUrl: '', videoHideVisual: false
+            videoBgEnabled: false, videoBgUrl: '', videoHideVisual: false,
+            rainSitter: 'none', rainCoupleType: 'mf',
+            seasonMode: 'fixed', seasonFixed: 'spring'
         };
         let vizConfig = { ...DEFAULT_VIZ_CONFIG };
