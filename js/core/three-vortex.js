@@ -6,6 +6,17 @@
         let tPathParams = { freqX: 0.0012, freqY: 0.0009, ampX: 450, ampY: 300, phaseX: 0, phaseY: 0 };
         let tPathTarget = { freqX: 0.0012, freqY: 0.0009, ampX: 450, ampY: 300, phaseX: 0, phaseY: 0 };
         const TUNNEL_DEPTH = 3000;
+
+        // Hướng nhìn (lookAt) đã được làm mượt, lưu liên tục qua từng frame.
+        // Lý do tồn tại biến này: nếu gọi tCamera.lookAt() mỗi frame bằng một điểm
+        // lấy trực tiếp từ getVortexCenterAt() (sin/cos) thì khi tốc độ bay (tWarpSpeed)
+        // tăng cao lúc BPM/energy lớn, camera "ăn" qua đường cong của ống nhanh hơn rất
+        // nhiều, khiến góc nhìn đổi hướng gấp giữa các frame liên tiếp -> lookAt() dựng
+        // lại toàn bộ hướng (kể cả roll) từ đầu mỗi lần -> hiệu ứng giật/xoay lắc rất
+        // nhanh trái-phải-trên-dưới ("rung lắc nhoằng nhoằng") đúng vào lúc nhạc mạnh.
+        // Khắc phục: nội suy (lerp) điểm lookAt thực tế dùng để gọi lookAt(), tách biệt
+        // hoàn toàn khỏi tốc độ bay, để hướng camera luôn xoay mượt dù ống đổi hướng gấp.
+        let tLookTarget = null; // { x, y, z } – khởi tạo lại mỗi khi initThreeJS chạy
         
         // Nhóm cho từng style
         let tGroupDust, tGroupRings, tGroupBars, tGroupWaves;
@@ -15,8 +26,14 @@
         let tBarRingZ = []; // Z thế giới thực hiện tại của từng ring bar (persistent, không tính lại từ đầu mỗi frame)
         let tWaveMeshes = [];
 
-        const BARS_RINGS_COUNT = 40;
+        // BARS_RINGS_COUNT & WAVE_COUNT trước đây là const cố định (40 và 20), không ăn theo
+        // Quality. Giờ chuyển thành "let", được set lại mỗi lần initThreeJS() chạy theo
+        // perf.barRings / perf.waveCount tương ứng — High giữ nguyên 40/20 như cũ (không đổi
+        // hành vi mặc định), Medium/Low giảm xuống để nhẹ GPU hơn, giống cách Dust/Rings vẫn
+        // đang ăn theo Quality từ trước.
+        let BARS_RINGS_COUNT = 40;
         const BARS_PER_RING = 24;
+        let WAVE_COUNT = 20;
 
         // Tính toán tọa độ tâm của ống hầm tại một điểm Z bất kỳ
         function getVortexCenterAt(z) {
@@ -90,6 +107,29 @@
             if(!tRenderer) {
                 tRenderer = new THREE.WebGLRenderer({ canvas: tCanvas, alpha: true, antialias: true });
                 tRenderer.setPixelRatio(window.devicePixelRatio);
+
+                // Lý do thêm 2 listener này: trên di động (đặc biệt iOS Safari), khi hệ điều
+                // hành thấy thiếu RAM/VRAM (do trình duyệt mở lâu, nhiều tab, hoặc nhiệt độ máy
+                // cao), nó có thể "rút" (lose) WebGL context bất kỳ lúc nào — KHÔNG hề ném lỗi
+                // JavaScript nào cả. tRenderer.render() sau đó chỉ âm thầm không vẽ gì, nhưng
+                // toàn bộ phần còn lại của app (canvas 2D, BPM/Pitch/Energy, v.v...) vẫn chạy
+                // bình thường vì chúng không phụ thuộc WebGL. Hậu quả: toàn bộ hiệu ứng Vortex
+                // (bụi, ring, bar, wave) biến mất NGAY LẬP TỨC, đúng 1 frame, không có dấu hiệu
+                // báo trước — chính là hiện tượng "chạy được một tí là mất" người dùng gặp phải.
+                // Khắc phục: lắng nghe sự kiện mất context để biết và tạm ngưng gọi render
+                // (tránh log lỗi vô ích / vẽ vào context chết), rồi khi trình duyệt khôi phục
+                // context (webglcontextrestored), tự động gọi lại initThreeJS() để build lại
+                // toàn bộ scene + buffer GPU, làm hiệu ứng "tự hồi sinh" mà người dùng không cần
+                // phải tải lại trang hay đổi Quality để ép tạo lại.
+                tCanvas.addEventListener('webglcontextlost', (e) => {
+                    e.preventDefault(); // báo cho browser ta sẽ tự khôi phục, không phải tải lại trang
+                    tInitialized = false;
+                    console.warn('[Vortex] Mất WebGL context (thường do thiết bị thiếu VRAM/RAM) — đang chờ khôi phục...');
+                }, false);
+                tCanvas.addEventListener('webglcontextrestored', () => {
+                    console.warn('[Vortex] WebGL context đã khôi phục — dựng lại toàn bộ hiệu ứng Vortex.');
+                    initThreeJS();
+                }, false);
             }
             tRenderer.setSize(window.innerWidth, window.innerHeight);
 
@@ -135,6 +175,9 @@
             tScene.add(tGroupRings);
 
             // Nhóm 3: Đoạn Bar 3D (InstancedMesh)
+            // Số ring (BARS_RINGS_COUNT) giờ lấy từ perf.barRings theo Quality đang chọn,
+            // thay vì hard-code 40 cho mọi trường hợp — xem giải thích ở khai báo let phía trên.
+            BARS_RINGS_COUNT = perf.barRings;
             tGroupBars = new THREE.Group();
             const barGeo = new THREE.BoxGeometry(15, 15, 60);
             // Dời tâm khối hộp lên một chút để scaleY mọc ra ngoài thay vì ra 2 hướng
@@ -166,12 +209,13 @@
             tScene.add(tGroupBars);
 
             // Nhóm 4: Nhiễu động sóng (Wave/Fade)
+            // WAVE_COUNT giờ lấy từ perf.waveCount theo Quality, thay vì hard-code 20.
+            WAVE_COUNT = perf.waveCount;
             tGroupWaves = new THREE.Group();
             tWaveMeshes = [];
             const waveGeo = new THREE.TorusGeometry(300, 40, 12, 48);
-            const waveCount = 20;
-            for(let i=0; i<waveCount; i++) {
-                const z = -(i / waveCount) * TUNNEL_DEPTH;
+            for(let i=0; i<WAVE_COUNT; i++) {
+                const z = -(i / WAVE_COUNT) * TUNNEL_DEPTH;
                 // Wireframe với Additive Blending tạo hiệu ứng mờ ảo
                 const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.15, wireframe: true, blending: THREE.AdditiveBlending });
                 const mesh = new THREE.Mesh(waveGeo, mat);
@@ -183,6 +227,7 @@
             tScene.add(tGroupWaves);
 
             tCurrentWarpZ = 0;
+            tLookTarget = { x: 0, y: 0, z: -800 }; // reset điểm nhìn mượt, đồng bộ lại từ đầu mỗi lần init
             tInitialized = true;
             updateThreeJSColors();
             updateVortexVisibility();
