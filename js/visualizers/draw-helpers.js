@@ -35,3 +35,79 @@
             setTimeout(() => { if (note.parentNode) note.parentNode.removeChild(note); }, 1500);
         }
 
+        // Vẽ silhouette người ngồi đơn giản (tối giản, đồng bộ phong cách vector của visualizer).
+        // baseX/baseY: điểm hông ngồi trên ghế. scaleH: đơn vị chiều cao tham chiếu (= chiều cao ghế).
+        // gender: 'm' (dáng tóc ngắn, vai rộng hơn) | 'f' (tóc dài ngang vai, eo thu hẹp hơn).
+        function drawSitterSilhouette(ctx, baseX, baseY, scaleH, gender) {
+            const s = scaleH * 2.4; // tỉ lệ tổng thể người so với đơn vị ghế
+            const headR = s * 0.16;
+            const shoulderW = gender === 'f' ? s * 0.34 : s * 0.42;
+            const torsoH = s * 0.55;
+            const headCenterY = baseY - torsoH - headR;
+
+            ctx.fillStyle = '#0a0b0e';
+
+            // Thân (hình thang đơn giản: hẹp ở cổ, rộng ở hông)
+            ctx.beginPath();
+            ctx.moveTo(baseX - shoulderW * 0.5, baseY);
+            ctx.lineTo(baseX - shoulderW * 0.42, headCenterY + headR * 1.6);
+            ctx.lineTo(baseX + shoulderW * 0.42, headCenterY + headR * 1.6);
+            ctx.lineTo(baseX + shoulderW * 0.5, baseY);
+            ctx.closePath();
+            ctx.fill();
+
+            // Đầu
+            ctx.beginPath(); ctx.arc(baseX, headCenterY, headR, 0, Math.PI * 2); ctx.fill();
+
+            // Tóc: nam ngắn gọn ôm đầu; nữ dài phủ xuống ngang vai
+            if (gender === 'f') {
+                ctx.beginPath();
+                ctx.moveTo(baseX - headR * 0.95, headCenterY - headR * 0.2);
+                ctx.quadraticCurveTo(baseX - headR * 1.3, headCenterY + headR * 2.2, baseX - headR * 0.5, headCenterY + headR * 2.6);
+                ctx.lineTo(baseX - headR * 0.3, headCenterY + headR * 0.6);
+                ctx.closePath(); ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(baseX + headR * 0.95, headCenterY - headR * 0.2);
+                ctx.quadraticCurveTo(baseX + headR * 1.3, headCenterY + headR * 2.2, baseX + headR * 0.5, headCenterY + headR * 2.6);
+                ctx.lineTo(baseX + headR * 0.3, headCenterY + headR * 0.6);
+                ctx.closePath(); ctx.fill();
+            } else {
+                ctx.beginPath(); ctx.arc(baseX, headCenterY - headR * 0.1, headR * 1.05, Math.PI, Math.PI * 2); ctx.fill();
+            }
+
+            // Cánh tay buông dọc thân, tay đặt lên đùi (gợi ý ngồi tĩnh lặng)
+            const armW = s * 0.07;
+            ctx.fillRect(baseX - shoulderW * 0.46 - armW * 0.5, headCenterY + headR * 1.7, armW, torsoH * 0.55);
+            ctx.fillRect(baseX + shoulderW * 0.46 - armW * 0.5, headCenterY + headR * 1.7, armW, torsoH * 0.55);
+
+            // Chân gập ngồi, đùi hướng ra phía trước ghế
+            const legW = s * 0.16;
+            ctx.fillRect(baseX - shoulderW * 0.32, baseY, legW, s * 0.22);
+            ctx.fillRect(baseX + shoulderW * 0.32 - legW, baseY, legW, s * 0.22);
+        }
+
+        const SEASON_ORDER = ['spring', 'summer', 'autumn', 'winter'];
+
+        // Trả về mùa thực sự sẽ render ở frame hiện tại, tuỳ theo vizConfig.seasonMode:
+        // - 'fixed': luôn dùng đúng mùa người dùng chọn trong settings.
+        // - 'songRandom': bốc ngẫu nhiên 1 mùa mỗi khi chuyển sang bài hát mới (giữ nguyên trong suốt bài).
+        // - 'music': mùa phản ứng theo năng lượng nhạc hiện tại (êm -> Xuân/Đông tĩnh lặng, mạnh -> Hè/Thu sôi động).
+        function getActiveSeason() {
+            if (vizConfig.seasonMode === 'songRandom') {
+                if (currentIndex !== lastSeasonSongIndex) {
+                    lastSeasonSongIndex = currentIndex;
+                    currentSeasonRuntime = SEASON_ORDER[Math.floor(Math.random() * SEASON_ORDER.length)];
+                }
+                return currentSeasonRuntime;
+            }
+            if (vizConfig.seasonMode === 'music') {
+                // Năng lượng thấp + nhịp chậm -> mùa tĩnh (Đông/Xuân); năng lượng cao -> mùa động (Hè/Thu)
+                const e = smoothedEnergy;
+                if (e < 0.18) return 'winter';
+                if (e < 0.4) return 'spring';
+                if (e < 0.7) return 'autumn';
+                return 'summer';
+            }
+            return vizConfig.seasonFixed || 'spring';
+        }
+

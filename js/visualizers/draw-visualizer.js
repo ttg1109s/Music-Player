@@ -155,81 +155,34 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             const centerY = canvas.height / 2, centerX = canvas.width / 2, scaledMinH = vizConfig.minH * dpr;
 
-            // ================== RỪNG ĐOM ĐÓM (FIREFLY FOREST 3.0 - SWARM HỮU CƠ) ==================
+            // ================== RỪNG ĐOM ĐÓM (FIREFLY FOREST 3.0 - BÃI ĐỒI & TÚP LỀU) ==================
             if (vizConfig.type === 'firefly_forest') {
-                // Mặt trăng
-                let moonRadius = (canvas.width * 0.1) + (smoothedEnergy * 10 * dpr);
-                ctx.beginPath(); ctx.arc(canvas.width * 0.8, canvas.height * 0.25, moonRadius, 0, Math.PI * 2);
-                let moonGrad = ctx.createRadialGradient(canvas.width * 0.8, canvas.height * 0.25, moonRadius * 0.2, canvas.width * 0.8, canvas.height * 0.25, moonRadius);
-                moonGrad.addColorStop(0, 'rgba(200, 230, 255, 0.4)'); moonGrad.addColorStop(1, 'transparent');
-                ctx.fillStyle = moonGrad; ctx.fill();
+                // Mặt trăng to, đặt sau bãi đồi — tâm trăng nằm ngay trên đường chân trời của lớp đồi xa nhất
+                // để toàn bộ các lớp đồi phía trước che khuất đúng phần nửa dưới của trăng.
+                const moonX = canvas.width * 0.74;
+                let moonRadius = (canvas.width * 0.16) + (smoothedEnergy * 12 * dpr);
+                const farHillBaseY = hills.length > 0 ? hills[0].baseY : canvas.height * 0.62;
+                const moonY = farHillBaseY;
 
-                // Lớp cây (vẽ trước đom đóm xa, sau đom đóm gần — bố trí lại bên dưới theo layer)
-                trees.forEach(t => {
-                    t.swayPhase += 0.01 + (smoothedEnergy * 0.02);
-                    let swayX = Math.sin(t.swayPhase) * 10 * dpr * (1 - t.layer * 0.2);
-                    const baseX = t.x + swayX;
-                    const groundY = canvas.height;
-                    const topY = canvas.height - t.height;
-                    ctx.fillStyle = t.color;
+                // Quầng sáng quanh trăng (vẽ trước, lan rộng, không bị đồi che để giữ cảm giác ánh sáng phủ trời)
+                let haloGrad = ctx.createRadialGradient(moonX, moonY, moonRadius * 0.3, moonX, moonY, moonRadius * 2.6);
+                haloGrad.addColorStop(0, 'rgba(210, 230, 255, 0.22)'); haloGrad.addColorStop(1, 'transparent');
+                ctx.fillStyle = haloGrad; ctx.beginPath(); ctx.arc(moonX, moonY, moonRadius * 2.6, 0, Math.PI * 2); ctx.fill();
 
-                    // Thân cây nhỏ phía dưới, chung cho cả 2 kiểu
-                    const trunkH = t.height * 0.12;
-                    ctx.fillRect(baseX - t.trunkW/2, groundY - trunkH, t.trunkW, trunkH);
-
-                    if (t.kind === 'pine') {
-                        // Cây thông: nhiều tầng lá hình tam giác xếp chồng từ to (dưới) tới nhỏ (trên)
-                        const foliageH = t.height - trunkH;
-                        const tierH = foliageH / t.tierCount;
-                        for (let tier = 0; tier < t.tierCount; tier++) {
-                            // Tầng dưới rộng nhất, thu nhỏ dần lên đỉnh
-                            const tierWidthFactor = 1 - (tier / t.tierCount) * 0.7;
-                            const jitter = t.jitterSeed[tier % t.jitterSeed.length];
-                            const tw = (t.baseW * tierWidthFactor) * jitter;
-                            const tierTop = groundY - trunkH - tierH * (tier + 1) * 0.92; // các tầng hơi chồng lên nhau
-                            const tierBottom = tierTop + tierH * 1.15;
-                            const tipX = baseX + swayX * (tier / t.tierCount) * 0.3; // ngọn lắc nhẹ hơn gốc tầng
-
-                            ctx.beginPath();
-                            ctx.moveTo(tipX, tierTop);
-                            ctx.lineTo(baseX + tw/2, tierBottom);
-                            // điểm răng cưa nhẹ giữa cạnh tán để không phẳng cứng
-                            ctx.lineTo(baseX + tw*0.18, tierBottom - tierH * 0.15);
-                            ctx.lineTo(baseX - tw*0.18, tierBottom - tierH * 0.15);
-                            ctx.lineTo(baseX - tw/2, tierBottom);
-                            ctx.closePath();
-                            ctx.fill();
-                        }
-                    } else {
-                        // Cây tán tròn rậm: nhiều thùy hình tròn chồng lên nhau tạo silhouette dạng mây
-                        const canopyCenterY = topY + t.height * 0.22;
-                        const canopyR = t.baseW * 0.6;
-                        const lobes = 5;
-                        for (let l = 0; l < lobes; l++) {
-                            const ang = (l / lobes) * Math.PI * 2;
-                            const jitter = t.jitterSeed[l % t.jitterSeed.length];
-                            const lobeR = canopyR * 0.55 * jitter;
-                            const lx = baseX + Math.cos(ang) * canopyR * 0.5;
-                            const ly = canopyCenterY + Math.sin(ang) * canopyR * 0.32;
-                            ctx.beginPath();
-                            ctx.arc(lx, ly, lobeR, 0, Math.PI * 2);
-                            ctx.fill();
-                        }
-                        // Thùy trung tâm để lấp khoảng trống giữa các thùy ngoài
-                        ctx.beginPath();
-                        ctx.arc(baseX, canopyCenterY, canopyR * 0.65, 0, Math.PI * 2);
-                        ctx.fill();
-                        // Vươn ngọn nhỏ phía trên cho cây không bị "cụt đầu"
-                        ctx.beginPath();
-                        ctx.moveTo(baseX - canopyR*0.22, canopyCenterY - canopyR*0.5);
-                        ctx.lineTo(baseX, topY);
-                        ctx.lineTo(baseX + canopyR*0.22, canopyCenterY - canopyR*0.5);
-                        ctx.closePath();
-                        ctx.fill();
-                    }
+                // Đĩa trăng: nền trắng-xanh dịu + vài miệng núi lửa mờ cho có chất liệu
+                ctx.save();
+                ctx.beginPath(); ctx.arc(moonX, moonY, Math.max(0.1, moonRadius), 0, Math.PI * 2); ctx.closePath(); ctx.clip();
+                let moonBodyGrad = ctx.createRadialGradient(moonX - moonRadius * 0.3, moonY - moonRadius * 0.3, moonRadius * 0.1, moonX, moonY, moonRadius);
+                moonBodyGrad.addColorStop(0, '#f5f8ff'); moonBodyGrad.addColorStop(1, '#c9d8ee');
+                ctx.fillStyle = moonBodyGrad; ctx.fillRect(moonX - moonRadius, moonY - moonRadius, moonRadius * 2, moonRadius * 2);
+                ctx.globalAlpha = 0.12; ctx.fillStyle = '#8fa3c2';
+                [[-0.25, -0.1, 0.22], [0.3, 0.15, 0.16], [-0.05, 0.35, 0.12], [0.15, -0.35, 0.1]].forEach(c => {
+                    ctx.beginPath(); ctx.arc(moonX + c[0]*moonRadius, moonY + c[1]*moonRadius, c[2]*moonRadius, 0, Math.PI*2); ctx.fill();
                 });
+                ctx.globalAlpha = 1.0;
+                ctx.restore();
 
-                // Sương mù khí quyển mỏng phía xa — tạo lớp không gian giữa cây và đàn đom đóm
+                // Sương mù khí quyển mỏng phía xa — tăng cảm giác chiều sâu giữa trăng và đàn đom đóm
                 fireflyMist.forEach(m => {
                     m.phase += 0.003 + smoothedEnergy * 0.004;
                     let mx = m.x + Math.sin(m.phase) * 20 * dpr;
@@ -238,6 +191,86 @@
                     mistGrad.addColorStop(1, 'transparent');
                     ctx.fillStyle = mistGrad;
                     ctx.beginPath(); ctx.arc(mx, m.y, m.r, 0, Math.PI * 2); ctx.fill();
+                });
+
+                // Bãi đồi cỏ nhiều lớp (xa -> gần). Lớp gần nhất sẽ che khuất phần dưới của mặt trăng.
+                hills.forEach((hl, hIdx) => {
+                    ctx.beginPath();
+                    ctx.moveTo(0, canvas.height);
+                    ctx.lineTo(0, getHillYAt(hl, 0));
+                    const steps = 40;
+                    for (let s = 0; s <= steps; s++) {
+                        const x = (canvas.width / steps) * s;
+                        ctx.lineTo(x, getHillYAt(hl, x));
+                    }
+                    ctx.lineTo(canvas.width, canvas.height);
+                    ctx.closePath();
+                    ctx.fillStyle = hl.color;
+                    ctx.fill();
+
+                    // Viền cỏ mảnh sáng nhẹ trên đường sống đồi để tách lớp rõ hơn
+                    if (hIdx === hills.length - 1) {
+                        ctx.strokeStyle = 'rgba(160, 200, 170, 0.18)'; ctx.lineWidth = 2 * dpr;
+                        ctx.beginPath();
+                        for (let s = 0; s <= steps; s++) {
+                            const x = (canvas.width / steps) * s; const y = getHillYAt(hl, x);
+                            if (s === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                        }
+                        ctx.stroke();
+                    }
+                });
+
+                // Túp lều nhỏ trên sườn đồi gần nhất
+                if (hut) {
+                    const sway = Math.sin(frameCounter * 0.01) * 1.5 * dpr; // rung khói rất nhẹ
+                    const hx = hut.x, baseY = hut.groundY;
+                    const wallTop = baseY - hut.h, wallLeft = hx - hut.w / 2, wallRight = hx + hut.w / 2;
+
+                    // Thân lều (gỗ mộc)
+                    ctx.fillStyle = '#2a1f18';
+                    ctx.fillRect(wallLeft, wallTop, hut.w, hut.h);
+                    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+                    for (let p = 1; p < 4; p++) ctx.fillRect(wallLeft, wallTop + (hut.h / 4) * p - 1*dpr, hut.w, 1.5*dpr);
+
+                    // Mái lều hình tam giác
+                    ctx.beginPath();
+                    ctx.moveTo(wallLeft - hut.w * 0.08, wallTop);
+                    ctx.lineTo(hx, wallTop - hut.roofH);
+                    ctx.lineTo(wallRight + hut.w * 0.08, wallTop);
+                    ctx.closePath();
+                    ctx.fillStyle = '#1a120c'; ctx.fill();
+
+                    // Cửa lều nhỏ
+                    const doorW = hut.w * 0.22, doorH = hut.h * 0.55;
+                    ctx.fillStyle = '#0c0805';
+                    ctx.fillRect(hx - doorW/2, baseY - doorH, doorW, doorH);
+
+                    // Ánh đèn vàng ấm hắt qua cửa — phản ứng nhẹ theo nhạc
+                    const glowPulse = hut.windowGlow + (isPlaying ? smoothedEnergy * 0.3 : 0);
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'lighter';
+                    let doorGlow = ctx.createRadialGradient(hx, baseY - doorH*0.5, 1, hx, baseY - doorH*0.5, hut.w * 0.6);
+                    doorGlow.addColorStop(0, `rgba(255, 200, 120, ${0.5 * glowPulse})`); doorGlow.addColorStop(1, 'transparent');
+                    ctx.fillStyle = doorGlow; ctx.beginPath(); ctx.arc(hx, baseY - doorH*0.5, hut.w * 0.6, 0, Math.PI*2); ctx.fill();
+                    ctx.restore();
+
+                    // Khói nhẹ bay lên từ nóc lều
+                    ctx.strokeStyle = 'rgba(200, 200, 210, 0.15)'; ctx.lineWidth = 2 * dpr; ctx.lineCap = 'round';
+                    ctx.beginPath();
+                    ctx.moveTo(hx + hut.w * 0.18, wallTop - hut.roofH * 0.7);
+                    ctx.quadraticCurveTo(hx + hut.w * 0.18 + sway, wallTop - hut.roofH * 1.6, hx + hut.w * 0.1 + sway * 1.5, wallTop - hut.roofH * 2.6);
+                    ctx.stroke();
+                }
+
+                // Cụm cỏ lưa thưa trên sườn đồi gần, đung đưa theo gió + nhạc
+                ctx.strokeStyle = 'rgba(120, 160, 120, 0.5)'; ctx.lineWidth = 1.5 * dpr; ctx.lineCap = 'round';
+                grassTufts.forEach(g => {
+                    g.swayPhase += g.swaySpeed * 0.02 + smoothedEnergy * 0.01;
+                    const bend = Math.sin(g.swayPhase) * 6 * dpr * (1 + smoothedEnergy * 0.8);
+                    ctx.beginPath();
+                    ctx.moveTo(g.x, g.y);
+                    ctx.quadraticCurveTo(g.x + bend * 0.5, g.y - g.h * 0.6, g.x + bend, g.y - g.h);
+                    ctx.stroke();
                 });
 
                 // Đom đóm — bầy đàn hữu cơ, lượn tự do quanh các cụm, có chiều sâu thật
@@ -304,6 +337,171 @@
                 ctx.globalAlpha = 1.0;
                 ctx.globalCompositeOperation = 'source-over';
 
+            } else if (vizConfig.type === 'seasons') {
+                const season = getActiveSeason();
+                const w = canvas.width, h = canvas.height;
+
+                // Nền trời theo từng mùa (tông màu đặc trưng)
+                let skyTop, skyBottom;
+                if (season === 'spring') { skyTop = '#fde2e4'; skyBottom = '#fef6e4'; }
+                else if (season === 'summer') { skyTop = '#5ec6ea'; skyBottom = '#bfe9c0'; }
+                else if (season === 'autumn') { skyTop = '#d98a4b'; skyBottom = '#f3c98b'; }
+                else { skyTop = '#1c2530'; skyBottom = '#3a4a5c'; }
+                let skyGrad = ctx.createLinearGradient(0, 0, 0, h);
+                skyGrad.addColorStop(0, skyTop); skyGrad.addColorStop(1, skyBottom);
+                ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, w, h);
+
+                // Mặt trời mùa hè — sáng rực, phản ứng nhẹ theo nhạc
+                if (season === 'summer') {
+                    const sunX = w * 0.78, sunY = h * 0.22, sunR = (w * 0.07) + smoothedEnergy * 8 * dpr;
+                    let sunGlow = ctx.createRadialGradient(sunX, sunY, sunR * 0.3, sunX, sunY, sunR * 2.2);
+                    sunGlow.addColorStop(0, 'rgba(255, 245, 180, 0.55)'); sunGlow.addColorStop(1, 'transparent');
+                    ctx.fillStyle = sunGlow; ctx.beginPath(); ctx.arc(sunX, sunY, sunR * 2.2, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = '#fff3b0'; ctx.beginPath(); ctx.arc(sunX, sunY, sunR, 0, Math.PI*2); ctx.fill();
+                }
+                // Trăng mùa đông — lạnh, dịu
+                if (season === 'winter') {
+                    const moonX = w * 0.78, moonY = h * 0.22, moonR = w * 0.06;
+                    let moonGlow = ctx.createRadialGradient(moonX, moonY, moonR * 0.3, moonX, moonY, moonR * 2);
+                    moonGlow.addColorStop(0, 'rgba(220, 235, 255, 0.35)'); moonGlow.addColorStop(1, 'transparent');
+                    ctx.fillStyle = moonGlow; ctx.beginPath(); ctx.arc(moonX, moonY, moonR * 2, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = '#eef3fb'; ctx.beginPath(); ctx.arc(moonX, moonY, moonR, 0, Math.PI*2); ctx.fill();
+                }
+
+                // Bãi đồi cỏ nền (đổi màu theo mùa: xuân/hạ xanh tươi, thu vàng nâu, đông trắng tuyết)
+                let hillColorFar, hillColorNear;
+                if (season === 'spring') { hillColorFar = 'rgba(140,190,140,0.85)'; hillColorNear = 'rgba(90,160,95,0.95)'; }
+                else if (season === 'summer') { hillColorFar = 'rgba(110,180,110,0.85)'; hillColorNear = 'rgba(70,150,70,0.95)'; }
+                else if (season === 'autumn') { hillColorFar = 'rgba(180,140,80,0.85)'; hillColorNear = 'rgba(150,100,55,0.95)'; }
+                else { hillColorFar = 'rgba(225,235,245,0.9)'; hillColorNear = 'rgba(240,245,250,0.97)'; }
+
+                seasonHills.forEach((hl, idx) => {
+                    ctx.beginPath(); ctx.moveTo(0, h); ctx.lineTo(0, getHillYAt(hl, 0));
+                    const steps = 40;
+                    for (let s = 0; s <= steps; s++) { const x = (w/steps)*s; ctx.lineTo(x, getHillYAt(hl, x)); }
+                    ctx.lineTo(w, h); ctx.closePath();
+                    ctx.fillStyle = idx === seasonHills.length - 1 ? hillColorNear : hillColorFar;
+                    ctx.fill();
+                });
+
+                // Mái nhà nhỏ riêng cho khung cảnh 4 mùa (không liên quan lều đom đóm)
+                if (seasonHouse) {
+                    const hx = seasonHouse.x, baseY = seasonHouse.groundY;
+                    const wallTop = baseY - seasonHouse.h, wallLeft = hx - seasonHouse.w/2, wallRight = hx + seasonHouse.w/2;
+                    ctx.fillStyle = season === 'winter' ? '#5b4636' : '#6b4f3a';
+                    ctx.fillRect(wallLeft, wallTop, seasonHouse.w, seasonHouse.h);
+                    // Mái nhà tam giác
+                    ctx.beginPath();
+                    ctx.moveTo(wallLeft - seasonHouse.w*0.1, wallTop);
+                    ctx.lineTo(hx, wallTop - seasonHouse.roofH);
+                    ctx.lineTo(wallRight + seasonHouse.w*0.1, wallTop);
+                    ctx.closePath();
+                    ctx.fillStyle = season === 'winter' ? '#3a2c22' : '#3f2c1f'; ctx.fill();
+                    // Cửa nhỏ
+                    ctx.fillStyle = '#241813';
+                    ctx.fillRect(hx - seasonHouse.w*0.1, baseY - seasonHouse.h*0.5, seasonHouse.w*0.2, seasonHouse.h*0.5);
+
+                    // MÙA ĐÔNG: tuyết phủ trên mái nhà
+                    if (season === 'winter') {
+                        ctx.fillStyle = '#fbfdff';
+                        ctx.beginPath();
+                        ctx.moveTo(wallLeft - seasonHouse.w*0.13, wallTop);
+                        ctx.lineTo(hx, wallTop - seasonHouse.roofH);
+                        ctx.lineTo(wallRight + seasonHouse.w*0.13, wallTop);
+                        ctx.lineTo(wallRight + seasonHouse.w*0.13, wallTop + seasonHouse.h*0.08);
+                        ctx.lineTo(wallLeft - seasonHouse.w*0.13, wallTop + seasonHouse.h*0.08);
+                        ctx.closePath(); ctx.fill();
+                        // Viền tuyết mềm rủ xuống mép mái
+                        ctx.beginPath();
+                        for (let s = 0; s <= 6; s++) {
+                            const tx = wallLeft - seasonHouse.w*0.13 + (seasonHouse.w*1.26/6)*s;
+                            const ty = wallTop + seasonHouse.h*0.08 + Math.sin(s*1.3)*seasonHouse.h*0.04;
+                            if (s === 0) ctx.moveTo(tx, ty); else ctx.lineTo(tx, ty);
+                        }
+                        ctx.lineTo(wallRight + seasonHouse.w*0.13, wallTop); ctx.lineTo(wallLeft - seasonHouse.w*0.13, wallTop); ctx.closePath();
+                        ctx.fill();
+                    }
+                }
+
+                // MÙA HÈ: hoa hướng dương trên sườn đồi, hướng về mặt trời, đung đưa theo nhạc
+                if (season === 'summer') {
+                    ctx.lineCap = 'round';
+                    sunflowers.forEach(f => {
+                        f.swayPhase += 0.015 + smoothedEnergy * 0.02;
+                        const sway = Math.sin(f.swayPhase) * 5 * dpr * (1 + smoothedEnergy * 0.6);
+                        const topX = f.x + sway, topY = f.y - f.h;
+                        ctx.strokeStyle = '#3d7a2e'; ctx.lineWidth = 2.5 * dpr;
+                        ctx.beginPath(); ctx.moveTo(f.x, f.y); ctx.quadraticCurveTo(f.x + sway*0.5, f.y - f.h*0.6, topX, topY); ctx.stroke();
+                        // Cánh hoa
+                        ctx.fillStyle = '#ffd84d';
+                        for (let p = 0; p < 10; p++) {
+                            const ang = (p / 10) * Math.PI * 2;
+                            ctx.beginPath(); ctx.ellipse(topX + Math.cos(ang)*f.size*0.9, topY + Math.sin(ang)*f.size*0.9, f.size*0.45, f.size*0.22, ang, 0, Math.PI*2); ctx.fill();
+                        }
+                        ctx.fillStyle = '#6b4a1f'; ctx.beginPath(); ctx.arc(topX, topY, f.size*0.5, 0, Math.PI*2); ctx.fill();
+                    });
+                }
+
+                // Hạt rơi theo mùa: hoa đào (xuân) / lá (thu) / tuyết (đông). Mùa hè không có hạt rơi.
+                const perfMult = perf.blurMult > 0 ? 1 : 0.5;
+                let targetParticleCount = 0;
+                if (season === 'spring') targetParticleCount = Math.floor(90 * perfMult);
+                else if (season === 'autumn') targetParticleCount = Math.floor(70 * perfMult);
+                else if (season === 'winter') targetParticleCount = Math.floor(110 * perfMult);
+
+                while (seasonParticles.length < targetParticleCount) {
+                    seasonParticles.push({
+                        x: Math.random() * w, y: Math.random() * h * -1 + Math.random() * h,
+                        size: (3 + Math.random() * 4) * dpr,
+                        fallSpeed: (0.6 + Math.random() * 1) * dpr,
+                        swayPhase: Math.random() * Math.PI * 2,
+                        swaySpeed: 0.5 + Math.random() * 0.8,
+                        rot: Math.random() * Math.PI * 2,
+                        rotSpeed: (Math.random() - 0.5) * 0.04
+                    });
+                }
+                if (seasonParticles.length > targetParticleCount) seasonParticles.length = targetParticleCount;
+
+                if (season === 'autumn') {
+                    // Gió thổi mạnh hơn theo nhạc — đẩy lá bay xiên rõ rệt hơn khi nhạc lên
+                    const windStrength = (0.6 + smoothedEnergy * 2.2) * dpr;
+                    seasonParticles.forEach(p => {
+                        p.swayPhase += p.swaySpeed * 0.03;
+                        p.y += p.fallSpeed * (0.7 + smoothedEnergy * 0.6);
+                        p.x += windStrength + Math.sin(p.swayPhase) * 1.5 * dpr;
+                        p.rot += p.rotSpeed + smoothedEnergy * 0.03;
+                        if (p.y > h + 10*dpr || p.x > w + 20*dpr) { p.y = -10*dpr; p.x = -20*dpr + Math.random()*w*0.3; }
+                        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+                        ctx.fillStyle = p._c || (p._c = ['#c9692f', '#d98a32', '#a8451f', '#e0a83e'][Math.floor(Math.random()*4)]);
+                        ctx.beginPath(); ctx.ellipse(0, 0, p.size, p.size*0.6, 0, 0, Math.PI*2); ctx.fill();
+                        ctx.restore();
+                    });
+                } else if (season === 'spring') {
+                    seasonParticles.forEach(p => {
+                        p.swayPhase += p.swaySpeed * 0.025;
+                        p.y += p.fallSpeed * 0.6;
+                        p.x += Math.sin(p.swayPhase) * 1.2 * dpr;
+                        p.rot += p.rotSpeed;
+                        if (p.y > h + 10*dpr) { p.y = -10*dpr; p.x = Math.random()*w; }
+                        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+                        ctx.fillStyle = 'rgba(255, 200, 215, 0.9)';
+                        ctx.beginPath(); ctx.ellipse(0, 0, p.size*0.8, p.size*0.5, 0, 0, Math.PI*2); ctx.fill();
+                        ctx.fillStyle = 'rgba(255, 170, 195, 0.6)';
+                        ctx.beginPath(); ctx.ellipse(p.size*0.3, 0, p.size*0.5, p.size*0.3, 0.5, 0, Math.PI*2); ctx.fill();
+                        ctx.restore();
+                    });
+                } else if (season === 'winter') {
+                    seasonParticles.forEach(p => {
+                        p.swayPhase += p.swaySpeed * 0.02;
+                        p.y += p.fallSpeed * 0.5;
+                        p.x += Math.sin(p.swayPhase) * 0.8 * dpr;
+                        if (p.y > h + 10*dpr) { p.y = -10*dpr; p.x = Math.random()*w; }
+                        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+                        ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(0.1, p.size*0.5), 0, Math.PI*2); ctx.fill();
+                    });
+                }
+                ctx.globalAlpha = 1.0;
+
             } else if (vizConfig.type === 'rain') {
                 ctx.lineCap = 'round'; 
                 if (vizConfig.rainStyle === 'classic') {
@@ -343,7 +541,7 @@
                             if (perf.blurMult > 0) { ctx.beginPath(); ctx.arc(rip.x, rip.y, Math.max(0.1, rip.radius), 0, Math.PI * 2); ctx.strokeStyle = rip.glow; ctx.globalAlpha = Math.max(0, rip.alpha * 0.3); ctx.lineWidth = 6 * dpr; ctx.stroke(); }
                         }
                     }
-                } else {
+                } else if (vizConfig.rainStyle === 'glass') {
                     if(!vizConfig.videoBgEnabled) { ctx.fillStyle = vizConfig.bgColor; ctx.fillRect(0, 0, canvas.width, canvas.height); }
                     let progress = 0; if (audioPlayer && isFinite(audioPlayer.duration) && audioPlayer.duration > 0) progress = audioPlayer.currentTime / audioPlayer.duration;
                     let moonX = canvas.width * 0.70; let moonY = canvas.height * 0.35; let baseScale = 4 + Math.sin(progress * Math.PI) * 1; let baseMoonRadius = baseScale * 8 * dpr; 
@@ -399,6 +597,106 @@
                     glassGradient.addColorStop(0, 'rgba(255, 255, 255, 0.0)'); glassGradient.addColorStop(0.3, 'rgba(255, 255, 255, 0.02)');
                     glassGradient.addColorStop(0.4, 'rgba(255, 255, 255, 0.08)'); glassGradient.addColorStop(0.41, 'transparent'); glassGradient.addColorStop(1, 'transparent');
                     ctx.fillStyle = glassGradient; ctx.fillRect(0, 0, canvas.width, canvas.height); drawWindowFrame(ctx);
+                } else {
+                    // ============ RAIN STYLE: STREET (Mưa phố & công viên) ============
+                    // Nền trời đêm công viên
+                    let skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                    skyGrad.addColorStop(0, '#05070d'); skyGrad.addColorStop(1, '#0c1018');
+                    ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                    // Mưa rơi TỈ LỆ NGHỊCH với năng lượng nhạc: nhạc nhẹ -> mưa to/dày; nhạc mạnh lên -> mưa nhỏ/thưa lại.
+                    const rainIntensity = isPlaying ? (1 - smoothedEnergy * 0.75) : 1; // 0.25 (nhạc rất mạnh) .. 1 (nhạc nhẹ/im lặng)
+                    const activeRainCount = Math.max(20, Math.floor(streetRain.length * rainIntensity));
+
+                    ctx.strokeStyle = `rgba(200, 215, 230, ${0.35 * rainIntensity + 0.15})`;
+                    ctx.lineWidth = (1 + rainIntensity * 0.8) * dpr; ctx.lineCap = 'round';
+                    ctx.beginPath();
+                    for (let i = 0; i < activeRainCount; i++) {
+                        const drop = streetRain[i];
+                        drop.y += drop.speed * (0.6 + rainIntensity * 0.8); drop.x += drop.drift * dpr;
+                        if (drop.y > canvas.height) { drop.y = -drop.len; drop.x = Math.random() * canvas.width; }
+                        if (drop.x < -20 * dpr) drop.x = canvas.width + 20 * dpr; if (drop.x > canvas.width + 20 * dpr) drop.x = -20 * dpr;
+                        const dropLen = drop.len * (0.6 + rainIntensity * 0.7);
+                        ctx.moveTo(drop.x, drop.y); ctx.lineTo(drop.x + drop.drift * 4 * dpr, drop.y - dropLen);
+                    }
+                    ctx.stroke();
+
+                    // Vũng nước phản chiếu nhẹ trên nền đất công viên
+                    let groundY = canvas.height * 0.88;
+                    let groundGrad = ctx.createLinearGradient(0, groundY, 0, canvas.height);
+                    groundGrad.addColorStop(0, 'rgba(15, 20, 28, 0.9)'); groundGrad.addColorStop(1, 'rgba(8, 10, 15, 0.95)');
+                    ctx.fillStyle = groundGrad; ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+
+                    // Đèn đường — đèn chính nhấp nháy theo beat/bass, đèn phụ mờ phía xa ổn định hơn
+                    streetLamps.forEach(lamp => {
+                        const bassKick = isPlaying ? beatScale : 0;
+                        // Nhấp nháy: nền sáng ổn định + giật theo bass, mạnh hơn ở đèn chính (depth thấp)
+                        const flickerTarget = 0.7 + bassKick * (1 - lamp.depth * 0.6) * 0.9 + (Math.random() < 0.04 ? -0.15 : 0);
+                        lamp.flicker += (flickerTarget - lamp.flicker) * 0.25;
+                        const glow = Math.max(0.15, Math.min(1.3, lamp.flicker));
+
+                        const postTopY = lamp.baseY - lamp.height;
+                        const postW = (lamp.main ? 5 : 3.5) * dpr;
+
+                        // Cột đèn
+                        ctx.fillStyle = lamp.depth > 0 ? `rgba(15,18,24,${0.9 - lamp.depth*0.3})` : '#15181f';
+                        ctx.fillRect(lamp.x - postW/2, postTopY, postW, lamp.height);
+                        // Chụp đèn (hình thang nhỏ)
+                        const capW = postW * 3.2;
+                        ctx.beginPath();
+                        ctx.moveTo(lamp.x - capW/2, postTopY); ctx.lineTo(lamp.x + capW/2, postTopY);
+                        ctx.lineTo(lamp.x + capW*0.32, postTopY - capW*0.5); ctx.lineTo(lamp.x - capW*0.32, postTopY - capW*0.5);
+                        ctx.closePath(); ctx.fillStyle = '#0c0e12'; ctx.fill();
+
+                        // Quầng sáng đèn — cộng dồn (lighter) để ánh sáng vàng ấm nổi trên nền mưa
+                        ctx.save();
+                        ctx.globalCompositeOperation = 'lighter';
+                        const haloR = (lamp.main ? 140 : 90) * dpr * (1 - lamp.depth * 0.3) * (0.7 + glow * 0.5);
+                        let lampGlow = ctx.createRadialGradient(lamp.x, postTopY + 6*dpr, 1, lamp.x, postTopY + 6*dpr, haloR);
+                        lampGlow.addColorStop(0, `rgba(255, 210, 130, ${0.55 * glow * (1 - lamp.depth * 0.4)})`);
+                        lampGlow.addColorStop(1, 'transparent');
+                        ctx.fillStyle = lampGlow; ctx.beginPath(); ctx.arc(lamp.x, postTopY + 6*dpr, haloR, 0, Math.PI*2); ctx.fill();
+                        // Bóng đèn nhỏ sáng rõ ngay tâm chụp
+                        ctx.fillStyle = `rgba(255, 235, 190, ${Math.min(1, glow)})`;
+                        ctx.beginPath(); ctx.arc(lamp.x, postTopY + 6*dpr, (lamp.main ? 5 : 3.5) * dpr, 0, Math.PI*2); ctx.fill();
+                        ctx.restore();
+                    });
+
+                    // Ghế công viên (silhouette gỗ đơn giản) cạnh đèn chính
+                    if (streetBench) {
+                        const bx = streetBench.x, by = streetBench.y, bw = streetBench.w, bh = streetBench.h;
+                        ctx.fillStyle = '#181a20';
+                        // Chân ghế
+                        ctx.fillRect(bx - bw/2 + 4*dpr, by, 4*dpr, bh*2.2);
+                        ctx.fillRect(bx + bw/2 - 8*dpr, by, 4*dpr, bh*2.2);
+                        // Mặt ngồi (vài thanh gỗ ngang)
+                        for (let s = 0; s < 3; s++) ctx.fillRect(bx - bw/2, by - bh*0.5*s, bw, bh*0.35);
+                        // Lưng ghế
+                        for (let s = 0; s < 3; s++) ctx.fillRect(bx - bw/2, by - bh*1.6 - bh*0.45*s, bw, bh*0.3);
+
+                        // Người ngồi trên ghế (silhouette tối giản), tuỳ chọn từ settings
+                        if (vizConfig.rainSitter === 'single') {
+                            drawSitterSilhouette(ctx, bx, by - bh*0.55, bh, 'm');
+                        } else if (vizConfig.rainSitter === 'couple') {
+                            const t = vizConfig.rainCoupleType || 'mf';
+                            const genderA = t === 'ff' ? 'f' : 'm';
+                            const genderB = t === 'mm' ? 'm' : 'f';
+                            drawSitterSilhouette(ctx, bx - bw*0.22, by - bh*0.55, bh, genderA);
+                            drawSitterSilhouette(ctx, bx + bw*0.22, by - bh*0.55, bh, genderB);
+                        }
+                    }
+
+                    // Vũng nước lăn tăn dưới chân đèn chính khi nhạc dồn (gợn sóng nhẹ phản chiếu ánh đèn)
+                    if (isPlaying && beatScale > 0.55 && Math.random() > 0.92) {
+                        const mainLamp = streetLamps.find(l => l.main);
+                        if (mainLamp) ripples.push({ x: mainLamp.x + (Math.random()-0.5)*60*dpr, y: groundY + (canvas.height - groundY) * 0.4, radius: 4*dpr, maxRadius: 50*dpr, speed: 1.5*dpr, alpha: 0.5, color: 'rgba(255,210,140,0.6)', glow: 'rgba(255,210,140,0.3)' });
+                    }
+                    for (let i = ripples.length - 1; i >= 0; i--) {
+                        let rip = ripples[i]; rip.radius += rip.speed; rip.alpha -= (rip.speed / rip.maxRadius) * 1.2;
+                        if (rip.alpha <= 0) ripples.splice(i, 1);
+                        else { ctx.beginPath(); ctx.ellipse(rip.x, rip.y, Math.max(0.1, rip.radius), Math.max(0.1, rip.radius * 0.3), 0, 0, Math.PI*2); ctx.strokeStyle = rip.color; ctx.globalAlpha = Math.max(0, rip.alpha); ctx.lineWidth = 1.5*dpr; ctx.stroke(); }
+                    }
+                    ctx.globalAlpha = 1.0;
                 }
                 ctx.globalAlpha = 1.0;
 
