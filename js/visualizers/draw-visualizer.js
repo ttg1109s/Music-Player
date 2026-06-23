@@ -34,6 +34,9 @@
             if (isPlaying && (vizConfig.quality === 'high' || vizConfig.quality === 'medium') && smoothedEnergy > 0.3 && Math.random() > 0.6) spawnFlyingNote();
 
             // ================== THREEJS VORTEX ENGINE MỚI ==================
+            // tInitialized bị đặt lại thành false khi WebGL context bị mất (xem
+            // webglcontextlost trong three-vortex.js) — khối này tự động bị bỏ qua
+            // cho đến khi context được khôi phục và initThreeJS() build lại xong.
             if (vizConfig.type === 'vortex' && tInitialized) {
                 // 1. Cập nhật đường ống bay (Cinematic Path)
                 const vortexShakeAmt = (vizConfig.vortexShakeIntensity ?? 100) / 100;
@@ -69,9 +72,11 @@
                         pos[i*3+1] = center.y + Math.sin(offsets[i].ang) * offsets[i].r;
                     }
                     tDustParticles.geometry.attributes.position.needsUpdate = true;
+                    // Dùng ĐÚNG cả 3 chế độ màu (solid / gradient / dynamic) qua getComputedColor —
+                    // trước đây code chỉ phân biệt 'gradient' vs "còn lại", nên ở mode 'dynamic'
+                    // hạt bụi bị rơi vào nhánh else và tô nhầm bằng solidColor thay vì dynA/dynB.
                     const color = getComputedColor(Math.floor((frameCounter % 100)/100 * bufferLength), bufferLength, 255);
-                    if(vizConfig.mode === 'gradient') tDustParticles.material.color.setStyle(color.fill);
-                    else tDustParticles.material.color.setStyle(vizConfig.solidColor);
+                    tDustParticles.material.color.setStyle(color.fill);
                 }
 
                 // -> STYLE: RINGS (Vòng ánh sáng)
@@ -88,9 +93,11 @@
                         const s = 1 + (val/255)*0.5 * smoothedEnergy;
                         ring.scale.set(s, s, s);
 
+                        // Dùng ĐÚNG cả 3 chế độ màu qua getComputedColor — trước đây nhánh else
+                        // luôn tô cứng theo dynA/dynB xen kẽ, khiến mode 'solid' không hề ra màu
+                        // solidColor như người dùng chọn, mà vẫn cứ ra 2 màu dynamic xen kẽ.
                         const color = getComputedColor(idx, tRings.length, val);
-                        if(vizConfig.mode === 'gradient') ring.material.color.setStyle(color.fill);
-                        else ring.material.color.setStyle(idx % 2 === 0 ? vizConfig.dynA : vizConfig.dynB);
+                        ring.material.color.setStyle(color.fill);
                     });
                 }
 
@@ -118,6 +125,8 @@
                             dummy.updateMatrix();
                             tBarsMesh.setMatrixAt(r * BARS_PER_RING + b, dummy.matrix);
                             
+                            // getComputedColor() tự xử lý đúng cả 3 chế độ màu (solid/gradient/dynamic)
+                            // dựa vào vizConfig.mode bên trong nó — Bars không cần if/else thủ công.
                             const color = getComputedColor(b, BARS_PER_RING, val);
                             tBarsMesh.setColorAt(r * BARS_PER_RING + b, new THREE.Color(color.fill));
                         }
@@ -140,9 +149,10 @@
                         wave.scale.setScalar(0.8 + smoothedEnergy * 0.4);
 
                         const val = vizDataArray[idx % bufferLength] || 0;
+                        // Dùng ĐÚNG cả 3 chế độ màu qua getComputedColor, giống Rings — tránh tô
+                        // cứng dynA/dynB khi mode đang là 'solid'.
                         const color = getComputedColor(idx, tWaveMeshes.length, val);
-                        if(vizConfig.mode === 'gradient') wave.material.color.setStyle(color.fill);
-                        else wave.material.color.setStyle(idx % 2 === 0 ? vizConfig.dynA : vizConfig.dynB);
+                        wave.material.color.setStyle(color.fill);
                     });
                 }
 
@@ -512,3 +522,4 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => { loadConfig(); updateSubToggleUI(); });
+
