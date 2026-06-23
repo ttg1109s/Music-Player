@@ -26,10 +26,18 @@
                 let tint = 5 + layer * 2;
                 let color = `rgba(${tint}, ${tint + 5}, ${tint + 10}, ${0.4 + layer * 0.3})`;
                 for(let i=0; i<numTrees; i++) {
+                    const kind = Math.random() > 0.45 ? 'pine' : 'round'; // thông nhiều tầng | tán tròn rậm
+                    const tierCount = 3 + Math.floor(Math.random() * 3); // 3-5 tầng lá cho cây thông
+                    // Lệch ngẫu nhiên nhẹ cho từng tầng/đường viền tán để silhouette không đối xứng hoàn hảo
+                    const jitterSeed = [];
+                    for(let j=0; j<8; j++) jitterSeed.push(0.75 + Math.random() * 0.5);
+
                     trees.push({
                         x: Math.random() * w, baseW: (30 + Math.random() * 40) * dpr * (3 - layer),
                         height: (h * 0.4 + Math.random() * h * 0.5) * (1 - layer*0.1),
-                        color: color, layer: layer, swayPhase: Math.random() * Math.PI * 2
+                        color: color, layer: layer, swayPhase: Math.random() * Math.PI * 2,
+                        kind: kind, tierCount: tierCount, jitterSeed: jitterSeed,
+                        trunkW: (4 + Math.random() * 3) * dpr * (3 - layer) / 3
                     });
                 }
             }
