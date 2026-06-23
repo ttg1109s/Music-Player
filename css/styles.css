@@ -20,18 +20,19 @@
         input[type=color].color-picker::-webkit-color-swatch-wrapper { padding: 0; }
         input[type=color].color-picker::-webkit-color-swatch { border: none; border-radius: 6px; }
 
-        /* Bọc ngoài thanh tiến trình: cắt (clip) phần đầu kéo (thumb) nhô ra ngoài 2 đầu mép,
-           đảm bảo nút kéo luôn nằm gọn trong giới hạn thanh tiến trình, không vượt quá.
-           Chiều cao wrapper = đúng kích thước lớn nhất của thumb (24px, phóng to 1.1x khi
-           hover/active = 26.4px) để không bao giờ cắt mất chiều cao của thumb, chỉ cắt phần
-           lồi ra theo chiều ngang ở 2 đầu mép. */
-        #progress-bar-track { overflow: hidden; border-radius: 8px; height: 27px; display: flex; align-items: center; }
-        input[type=range].music-slider { -webkit-appearance: none; width: 100%; height: 12px; background: rgba(255, 255, 255, 0.2); outline: none; margin: 0; cursor: pointer; transition: height 0.1s ease; }
-        input[type=range].music-slider:hover, input[type=range].music-slider:active { height: 16px; }
-        input[type=range].music-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 8px; height: 24px; border-radius: 4px; background: #fff; cursor: pointer; box-shadow: 0 0 10px rgba(0,0,0,0.8); transition: transform 0.1s ease, background-color 0.2s; }
-        input[type=range].music-slider:hover::-webkit-slider-thumb, input[type=range].music-slider:active::-webkit-slider-thumb { transform: scale(1.1); background: #38bdf8; }
-        input[type=range].music-slider::-moz-range-thumb { width: 8px; height: 24px; border: none; border-radius: 4px; background: #fff; cursor: pointer; box-shadow: 0 0 10px rgba(0,0,0,0.8); transition: transform 0.1s ease, background-color 0.2s; }
-        input[type=range].music-slider:hover::-moz-range-thumb, input[type=range].music-slider:active::-moz-range-thumb { transform: scale(1.1); background: #38bdf8; }
+        /* Thanh tiến trình: nút kéo (thumb) phải nằm GỌN HẲN trong track, không nhô cao
+           hơn rìa trên/dưới của track ở bất kỳ trạng thái nào (bình thường, hover, active).
+           Cách cũ: track cao 12-16px nhưng thumb cao tới 24px (26.4px khi hover/active) rồi
+           dùng một div bọc ngoài cao 27px + overflow:hidden để "cắt" phần nhô ra — vừa tạo
+           ra một lớp nền đen thừa (container) quanh track, vừa không thật sự đẹp vì thumb
+           vẫn áp sát mép trên/dưới của lớp bọc đó. Cách mới: bỏ hẳn lớp bọc ngoài cao 27px,
+           cho thumb cao NHỎ HƠN HOẶC BẰNG track ở mọi trạng thái — không cần overflow/clip. */
+        input[type=range].music-slider { -webkit-appearance: none; width: 100%; height: 12px; background: rgba(255, 255, 255, 0.2); border-radius: 6px; outline: none; margin: 0; cursor: pointer; transition: height 0.1s ease; }
+        input[type=range].music-slider:hover, input[type=range].music-slider:active { height: 14px; }
+        input[type=range].music-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 8px; height: 12px; border-radius: 4px; background: #fff; cursor: pointer; box-shadow: 0 0 10px rgba(0,0,0,0.8); transition: height 0.1s ease, background-color 0.2s; }
+        input[type=range].music-slider:hover::-webkit-slider-thumb, input[type=range].music-slider:active::-webkit-slider-thumb { height: 14px; background: #38bdf8; }
+        input[type=range].music-slider::-moz-range-thumb { width: 8px; height: 12px; border: none; border-radius: 4px; background: #fff; cursor: pointer; box-shadow: 0 0 10px rgba(0,0,0,0.8); transition: height 0.1s ease, background-color 0.2s; }
+        input[type=range].music-slider:hover::-moz-range-thumb, input[type=range].music-slider:active::-moz-range-thumb { height: 14px; background: #38bdf8; }
 
         .glass-panel { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(255, 255, 255, 0.05); }
         .drawer-glass { background: rgba(10, 10, 15, 0.95); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); }
