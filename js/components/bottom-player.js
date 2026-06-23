@@ -4,7 +4,7 @@
  */
 const TPL_BOTTOM_PLAYER = `
     <div id="player-container" class="bg-gradient-to-t from-black via-black/70 to-transparent absolute bottom-0 left-0 w-full z-[70] pointer-events-auto flex flex-col hidden">
-        <div class="w-full"><input type="range" id="progress-bar" value="0" step="0.1" min="0" class="music-slider block"></div>
+        <div class="w-full p-2"><input type="range" id="progress-bar" value="0" step="0.1" min="0" class="music-slider block"></div>
 
         <div class="w-full  pt-3 pb-3 px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-6">
             
