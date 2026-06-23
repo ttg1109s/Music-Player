@@ -35,13 +35,13 @@
 
             // ================== THREEJS VORTEX ENGINE MỚI ==================
             if (vizConfig.type === 'vortex' && tInitialized) {
-                // 1. Cập nhật đường ống bay (Cinematic Path)
-                if(isPlaying && smoothedEnergy > 0.6 && Math.random() > 0.9) rollNewVortexCurve();
+                // 1. Cập nhật đường ống bay (Cinematic Path) — đổi hướng thưa hơn và nhẹ nhàng hơn để tránh giật
+                if(isPlaying && smoothedEnergy > 0.65 && Math.random() > 0.985) rollNewVortexCurve();
                 updateVortexCurveLerp();
 
-                // 2. Cập nhật tốc độ bay (Gia tốc mượt theo nhạc)
+                // 2. Cập nhật tốc độ bay (Gia tốc rất mượt theo nhạc, tránh tăng/giảm tốc đột ngột)
                 const targetWarpSpeed = 10 + smoothedEnergy * 40;
-                tWarpSpeed += (targetWarpSpeed - tWarpSpeed) * 0.05;
+                tWarpSpeed += (targetWarpSpeed - tWarpSpeed) * 0.025;
                 tCurrentWarpZ -= tWarpSpeed; // Bay sâu vào âm Z
 
                 // 3. Xử lý logic trượt (Sliding Window / Wrap Z) cho TẤT CẢ các vật thể
@@ -69,33 +69,46 @@
                         ring.scale.set(s, s, s);
 
                         const color = getComputedColor(idx, tRings.length, val);
-                        if(vizConfig.mode === 'gradient') ring.material.color.setStyle(color.fill);
-                        else ring.material.color.setStyle(idx % 2 === 0 ? vizConfig.dynA : vizConfig.dynB);
+                        if (vizConfig.mode === 'gradient') ring.material.color.setStyle(color.fill);
+                        else if (vizConfig.mode === 'dynamic') ring.material.color.setStyle(idx % 2 === 0 ? vizConfig.dynA : vizConfig.dynB);
+                        else ring.material.color.setStyle(vizConfig.solidColor);
                     });
                 }
 
-                // -> STYLE: BARS 3D
+                // -> STYLE: BARS 3D (kiểu xoắn chuỗi / lò xo DNA)
                 else if (vizConfig.vortexStyle === 'bars') {
                     const dummy = new THREE.Object3D();
+                    // Mỗi vòng lệch thêm một góc cố định so với vòng trước -> tạo hình xoắn lò xo dọc ống.
+                    // Toàn bộ "lò xo" còn tự xoay chậm theo thời gian để luôn có cảm giác sống động.
+                    const twistPerRing = (Math.PI * 2 / BARS_RINGS_COUNT) * 2.4; // số vòng xoắn trọn ống
+                    const globalTwist = frameCounter * 0.004;
+
                     for(let r=0; r<BARS_RINGS_COUNT; r++) {
-                        // Tính toán Z "ảo" cho ring này
-                        let z = -(r / BARS_RINGS_COUNT) * TUNNEL_DEPTH + (tCurrentWarpZ % (TUNNEL_DEPTH / BARS_RINGS_COUNT));
-                        if(z > tCurrentWarpZ + 200) z -= TUNNEL_DEPTH;
-                        
+                        // Sliding window đúng cách: tích lũy vị trí mỗi frame (giống tRings), không tính lại từ modulo
+                        tBarRingZs[r] += tWarpSpeed * 0.8;
+                        if (tBarRingZs[r] > tCurrentWarpZ + 200) tBarRingZs[r] -= TUNNEL_DEPTH;
+                        const z = tBarRingZs[r];
+
                         const center = getVortexCenterAt(z);
                         const val = vizDataArray[r % 40] || 0;
                         const barScaleY = 1 + (val/255) * 8 * smoothedEnergy;
+                        const ringTwist = r * twistPerRing + globalTwist;
+
+                        const color = getComputedColor(r, BARS_RINGS_COUNT, val);
+                        let ringColor;
+                        if (vizConfig.mode === 'gradient') ringColor = color.fill;
+                        else if (vizConfig.mode === 'dynamic') ringColor = (r % 2 === 0) ? vizConfig.dynA : vizConfig.dynB;
+                        else ringColor = vizConfig.solidColor;
+                        const threeColor = new THREE.Color(ringColor);
 
                         for(let b=0; b<BARS_PER_RING; b++) {
-                            const ang = (b / BARS_PER_RING) * Math.PI * 2;
+                            const ang = (b / BARS_PER_RING) * Math.PI * 2 + ringTwist;
                             dummy.position.set(center.x + Math.cos(ang)*350, center.y + Math.sin(ang)*350, z);
                             dummy.rotation.set(0, 0, ang - Math.PI/2);
                             dummy.scale.set(1, barScaleY, 1);
                             dummy.updateMatrix();
                             tBarsMesh.setMatrixAt(r * BARS_PER_RING + b, dummy.matrix);
-                            
-                            const color = getComputedColor(b, BARS_PER_RING, val);
-                            tBarsMesh.setColorAt(r * BARS_PER_RING + b, new THREE.Color(color.fill));
+                            tBarsMesh.setColorAt(r * BARS_PER_RING + b, threeColor);
                         }
                     }
                     tBarsMesh.instanceMatrix.needsUpdate = true;
@@ -117,28 +130,24 @@
 
                         const val = vizDataArray[idx % bufferLength] || 0;
                         const color = getComputedColor(idx, tWaveMeshes.length, val);
-                        if(vizConfig.mode === 'gradient') wave.material.color.setStyle(color.fill);
-                        else wave.material.color.setStyle(idx % 2 === 0 ? vizConfig.dynA : vizConfig.dynB);
+                        if (vizConfig.mode === 'gradient') wave.material.color.setStyle(color.fill);
+                        else if (vizConfig.mode === 'dynamic') wave.material.color.setStyle(idx % 2 === 0 ? vizConfig.dynA : vizConfig.dynB);
+                        else wave.material.color.setStyle(vizConfig.solidColor);
                     });
                 }
 
-                // 4. Cinematic Camera — bám theo độ cong của ống (trái/phải/trên/dưới), không rung giật theo beat
+                // 4. Cinematic Camera — chỉ bám theo độ cong của ống (trái/phải/trên/dưới), hoàn toàn
+                // không có dao động/rung lắc nào khác (không sway, không FOV breathing).
                 const camTargetPos = getVortexCenterAt(tCurrentWarpZ);
-                // Camera bắt kịp chậm rãi (Smooth damping)
-                tCamera.position.x += (camTargetPos.x - tCamera.position.x) * 0.08;
-                tCamera.position.y += (camTargetPos.y - tCamera.position.y) * 0.08;
+                // Camera bắt kịp rất chậm rãi (Smooth damping nhẹ hơn để tránh giật khi đường ống đổi hướng)
+                tCamera.position.x += (camTargetPos.x - tCamera.position.x) * 0.045;
+                tCamera.position.y += (camTargetPos.y - tCamera.position.y) * 0.045;
                 tCamera.position.z = tCurrentWarpZ;
 
-                // LookAt điểm phía trước một đoạn, theo đúng đường cong của ống (không lắc ngẫu nhiên)
+                // LookAt điểm phía trước một đoạn, theo đúng đường cong của ống — cố định, không lắc
                 const lookAheadZ = tCurrentWarpZ - 800;
                 const lookPos = getVortexCenterAt(lookAheadZ);
                 tCamera.lookAt(lookPos.x, lookPos.y, lookAheadZ);
-
-                // "Hít thở" tiêu cự (FOV) rất nhẹ theo năng lượng nhạc — tạo cảm giác camera đi sâu vào/lùi ra
-                // khỏi đường hầm theo tiếng nhạc, mượt mà, không giật cục như sway cũ
-                const targetFov = 75 - smoothedEnergy * 6;
-                tCamera.fov += (targetFov - tCamera.fov) * 0.04;
-                tCamera.updateProjectionMatrix();
 
                 tRenderer.render(tScene, tCamera);
             }
@@ -159,11 +168,65 @@
                 trees.forEach(t => {
                     t.swayPhase += 0.01 + (smoothedEnergy * 0.02);
                     let swayX = Math.sin(t.swayPhase) * 10 * dpr * (1 - t.layer * 0.2);
-                    ctx.fillStyle = t.color; ctx.beginPath();
-                    ctx.moveTo(t.x + swayX, canvas.height - t.height); 
-                    ctx.lineTo(t.x + t.baseW/2, canvas.height); 
-                    ctx.lineTo(t.x - t.baseW/2, canvas.height); 
-                    ctx.closePath(); ctx.fill();
+                    const baseX = t.x + swayX;
+                    const groundY = canvas.height;
+                    const topY = canvas.height - t.height;
+                    ctx.fillStyle = t.color;
+
+                    // Thân cây nhỏ phía dưới, chung cho cả 2 kiểu
+                    const trunkH = t.height * 0.12;
+                    ctx.fillRect(baseX - t.trunkW/2, groundY - trunkH, t.trunkW, trunkH);
+
+                    if (t.kind === 'pine') {
+                        // Cây thông: nhiều tầng lá hình tam giác xếp chồng từ to (dưới) tới nhỏ (trên)
+                        const foliageH = t.height - trunkH;
+                        const tierH = foliageH / t.tierCount;
+                        for (let tier = 0; tier < t.tierCount; tier++) {
+                            // Tầng dưới rộng nhất, thu nhỏ dần lên đỉnh
+                            const tierWidthFactor = 1 - (tier / t.tierCount) * 0.7;
+                            const jitter = t.jitterSeed[tier % t.jitterSeed.length];
+                            const tw = (t.baseW * tierWidthFactor) * jitter;
+                            const tierTop = groundY - trunkH - tierH * (tier + 1) * 0.92; // các tầng hơi chồng lên nhau
+                            const tierBottom = tierTop + tierH * 1.15;
+                            const tipX = baseX + swayX * (tier / t.tierCount) * 0.3; // ngọn lắc nhẹ hơn gốc tầng
+
+                            ctx.beginPath();
+                            ctx.moveTo(tipX, tierTop);
+                            ctx.lineTo(baseX + tw/2, tierBottom);
+                            // điểm răng cưa nhẹ giữa cạnh tán để không phẳng cứng
+                            ctx.lineTo(baseX + tw*0.18, tierBottom - tierH * 0.15);
+                            ctx.lineTo(baseX - tw*0.18, tierBottom - tierH * 0.15);
+                            ctx.lineTo(baseX - tw/2, tierBottom);
+                            ctx.closePath();
+                            ctx.fill();
+                        }
+                    } else {
+                        // Cây tán tròn rậm: nhiều thùy hình tròn chồng lên nhau tạo silhouette dạng mây
+                        const canopyCenterY = topY + t.height * 0.22;
+                        const canopyR = t.baseW * 0.6;
+                        const lobes = 5;
+                        for (let l = 0; l < lobes; l++) {
+                            const ang = (l / lobes) * Math.PI * 2;
+                            const jitter = t.jitterSeed[l % t.jitterSeed.length];
+                            const lobeR = canopyR * 0.55 * jitter;
+                            const lx = baseX + Math.cos(ang) * canopyR * 0.5;
+                            const ly = canopyCenterY + Math.sin(ang) * canopyR * 0.32;
+                            ctx.beginPath();
+                            ctx.arc(lx, ly, lobeR, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                        // Thùy trung tâm để lấp khoảng trống giữa các thùy ngoài
+                        ctx.beginPath();
+                        ctx.arc(baseX, canopyCenterY, canopyR * 0.65, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Vươn ngọn nhỏ phía trên cho cây không bị "cụt đầu"
+                        ctx.beginPath();
+                        ctx.moveTo(baseX - canopyR*0.22, canopyCenterY - canopyR*0.5);
+                        ctx.lineTo(baseX, topY);
+                        ctx.lineTo(baseX + canopyR*0.22, canopyCenterY - canopyR*0.5);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
                 });
 
                 // Sương mù khí quyển mỏng phía xa — tạo lớp không gian giữa cây và đàn đom đóm
