@@ -4,9 +4,7 @@
  */
 const TPL_BOTTOM_PLAYER = `
     <div id="player-container" class="absolute bottom-0 left-0 w-full z-[70] pointer-events-auto flex flex-col hidden">
-        <div class="w-full"><input type="range" id="progress-bar" value="0" step="0.1" min="0" class="music-slider block"></div>
-
-        <div class="w-full bg-gradient-to-t from-black via-black/90 to-transparent pt-3 pb-3 px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-6">
+        <div class="w-full bg-gradient-to-t from-black via-black/90 to-transparent pt-12 pb-3 px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-6">
             <div class="flex items-center gap-3 w-1/3 min-w-[120px]">
                 <div class="relative shrink-0 w-12 h-12 sm:w-14 sm:h-14" id="record-container">
                     <img id="record-art" src="" class="w-full h-full rounded-full object-cover shadow-lg relative z-20" alt="Record">
@@ -31,6 +29,8 @@ const TPL_BOTTOM_PLAYER = `
                 <span id="current-time" class="text-white font-semibold">0:00</span>&nbsp;/&nbsp;<span id="duration-time">0:00</span>
             </div>
         </div>
+
+        <div class="w-full bg-black pb-2 sm:pb-0"><input type="range" id="progress-bar" value="0" step="0.1" min="0" class="music-slider block"></div>
         <audio id="audio-player" style="display: none;" playsinline></audio>
     </div>
 `;
