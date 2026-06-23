@@ -102,7 +102,16 @@
             tScene.fog = new THREE.FogExp2(0x000000, 0.0006); // Sương mù tạo chiều sâu fade
 
             tCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, TUNNEL_DEPTH);
-            tCamera.position.set(0, 0, 0);
+            // QUAN TRỌNG: trước đây camera luôn spawn cứng tại (0,0,0), nhưng tâm ống thực tế
+            // tại Z=0 lại là getVortexCenterAt(0) = (0, ampY) = (0, 300) theo tham số mặc định —
+            // lệch ngay 300 đơn vị so với bán kính ring (350) ngay khung hình đầu tiên. Vì
+            // camera đuổi theo tâm ống bằng lerp chậm (*0.08/frame), nó phải "bơi" qua hàng
+            // chục frame mới bắt kịp, đúng lúc tWarpSpeed cũng đang tăng tốc từ 0 — kết quả là
+            // hiệu ứng giật/xoay/nhoè rất mạnh ngay vài giây đầu mỗi khi bài hát bắt đầu (hoặc
+            // sau khi initThreeJS chạy lại). Khắc phục: spawn camera NGAY tại tâm ống thật ở
+            // Z=0, để không còn độ trễ lớn cần bắt kịp lúc khởi động.
+            const initialCenter = getVortexCenterAt(0);
+            tCamera.position.set(initialCenter.x, initialCenter.y, 0);
 
             if(!tRenderer) {
                 tRenderer = new THREE.WebGLRenderer({ canvas: tCanvas, alpha: true, antialias: true });
@@ -227,7 +236,12 @@
             tScene.add(tGroupWaves);
 
             tCurrentWarpZ = 0;
-            tLookTarget = { x: 0, y: 0, z: -800 }; // reset điểm nhìn mượt, đồng bộ lại từ đầu mỗi lần init
+            // Đồng bộ với fix spawn camera ở trên: điểm nhìn ban đầu cũng phải là tâm ống thật
+            // tại Z = -800 (lookAheadZ ban đầu), không phải (0,0) cố định — nếu không, ngay cả
+            // khi camera.position đã spawn đúng chỗ, hướng NHÌN ban đầu vẫn lệch và vẫn phải
+            // "bơi" qua vài chục frame mới chỉnh đúng, làm giảm một phần hiệu quả của fix trên.
+            const initialLookPos = getVortexCenterAt(-800);
+            tLookTarget = { x: initialLookPos.x, y: initialLookPos.y, z: -800 };
             tInitialized = true;
             updateThreeJSColors();
             updateVortexVisibility();
