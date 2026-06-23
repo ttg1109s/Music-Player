@@ -158,9 +158,15 @@
 
                 // 4. Cinematic Camera
                 const camTargetPos = getVortexCenterAt(tCurrentWarpZ);
-                // Camera bắt kịp chậm rãi (Smooth damping)
-                tCamera.position.x += (camTargetPos.x - tCamera.position.x) * 0.08;
-                tCamera.position.y += (camTargetPos.y - tCamera.position.y) * 0.08;
+                // Camera bắt kịp tâm ống (Smooth damping). Tốc độ tăng từ 0.08 lên 0.15:
+                // ở 0.08, ngay khi tWarpSpeed tăng tốc từ 0 lên ~25-50 (đầu bài hát, hoặc khi
+                // năng lượng nhạc tăng), khoảng lệch giữa vị trí camera và tâm ống thực tế có
+                // thể lên tới hơn 200 đơn vị — gần bằng/vượt bán kính ring (350) — khiến camera
+                // "bơi" xuyên qua ring ở khoảng cách rất gần, tạo cảm giác giật/xoay/nhoè rất
+                // mạnh. 0.15 giúp camera bắt kịp nhanh hơn đáng kể (giảm ~40-50% độ lệch tối đa
+                // trong mô phỏng) mà vẫn còn đủ "mượt" để không bị cứng/giật theo từng frame.
+                tCamera.position.x += (camTargetPos.x - tCamera.position.x) * 0.15;
+                tCamera.position.y += (camTargetPos.y - tCamera.position.y) * 0.15;
                 tCamera.position.z = tCurrentWarpZ;
 
                 // Hệ số rung lắc do người dùng điều chỉnh (0 = đứng yên hoàn toàn, 1 = mặc định gốc)
@@ -180,8 +186,11 @@
                 const swayY = Math.cos(frameCounter * 0.015) * 30 * smoothedEnergy * shakeAmt;
                 if (!tLookTarget) tLookTarget = { x: lookPosRaw.x + swayX, y: lookPosRaw.y + swayY, z: lookAheadZ };
                 // Tốc độ nội suy góc nhìn cố định (không tăng theo BPM/energy) -> camera xoay
-                // êm dù ống đổi hướng nhanh. shakeAmt vẫn cho phép người dùng giảm sâu hơn nữa.
-                const lookLerpK = 0.06 * Math.max(0.15, shakeAmt);
+                // êm dù ống đổi hướng nhanh. Tăng nhẹ từ 0.06 lên 0.1 để đồng bộ tỉ lệ với việc
+                // tăng tốc độ bắt kịp vị trí camera ở trên (0.08->0.15), tránh trường hợp vị trí
+                // bắt kịp nhanh nhưng hướng nhìn vẫn lag, gây lệch hướng giữa "đứng ở đâu" và
+                // "nhìn về đâu". shakeAmt vẫn cho phép người dùng giảm sâu hơn nữa.
+                const lookLerpK = 0.1 * Math.max(0.15, shakeAmt);
                 tLookTarget.x += ((lookPosRaw.x + swayX) - tLookTarget.x) * lookLerpK;
                 tLookTarget.y += ((lookPosRaw.y + swayY) - tLookTarget.y) * lookLerpK;
                 tLookTarget.z = lookAheadZ; // Z luôn đồng bộ tuyệt đối với quãng đường đã bay, không lerp
