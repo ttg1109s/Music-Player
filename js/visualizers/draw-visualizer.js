@@ -34,13 +34,9 @@
             if (isPlaying && (vizConfig.quality === 'high' || vizConfig.quality === 'medium') && smoothedEnergy > 0.3 && Math.random() > 0.6) spawnFlyingNote();
 
             // ================== THREEJS VORTEX ENGINE MỚI ==================
-            // tInitialized bị đặt lại thành false khi WebGL context bị mất (xem
-            // webglcontextlost trong three-vortex.js) — khối này tự động bị bỏ qua
-            // cho đến khi context được khôi phục và initThreeJS() build lại xong.
             if (vizConfig.type === 'vortex' && tInitialized) {
                 // 1. Cập nhật đường ống bay (Cinematic Path)
-                const vortexShakeAmt = (vizConfig.vortexShakeIntensity ?? 100) / 100;
-                if(isPlaying && smoothedEnergy > 0.6 && Math.random() > (0.9 + (1 - vortexShakeAmt) * 0.09)) rollNewVortexCurve();
+                if(isPlaying && smoothedEnergy > 0.6 && Math.random() > 0.9) rollNewVortexCurve();
                 updateVortexCurveLerp();
 
                 // 2. Cập nhật tốc độ bay (Gia tốc mượt theo nhạc)
@@ -58,29 +54,8 @@
                     mesh.position.y = center.y + (baseZOffset ? baseZOffset.y : 0);
                 }
 
-                // -> STYLE: DUST (Bụi lượng tử)
-                if (vizConfig.vortexStyle === 'dust') {
-                    const pos = tDustParticles.geometry.attributes.position.array;
-                    const offsets = tDustParticles.userData.offsets;
-                    for(let i=0; i<perf.dustParticles; i++) {
-                        pos[i*3+2] += tWarpSpeed * 1.5; // Bụi bay nhanh hơn hầm một chút tạo tốc độ
-                        if(pos[i*3+2] > tCurrentWarpZ + 200) {
-                            pos[i*3+2] -= TUNNEL_DEPTH;
-                        }
-                        const center = getVortexCenterAt(pos[i*3+2]);
-                        pos[i*3] = center.x + Math.cos(offsets[i].ang) * offsets[i].r;
-                        pos[i*3+1] = center.y + Math.sin(offsets[i].ang) * offsets[i].r;
-                    }
-                    tDustParticles.geometry.attributes.position.needsUpdate = true;
-                    // Dùng ĐÚNG cả 3 chế độ màu (solid / gradient / dynamic) qua getComputedColor —
-                    // trước đây code chỉ phân biệt 'gradient' vs "còn lại", nên ở mode 'dynamic'
-                    // hạt bụi bị rơi vào nhánh else và tô nhầm bằng solidColor thay vì dynA/dynB.
-                    const color = getComputedColor(Math.floor((frameCounter % 100)/100 * bufferLength), bufferLength, 255);
-                    tDustParticles.material.color.setStyle(color.fill);
-                }
-
                 // -> STYLE: RINGS (Vòng ánh sáng)
-                else if (vizConfig.vortexStyle === 'rings') {
+                if (vizConfig.vortexStyle === 'rings') {
                     tRings.forEach((ring, idx) => {
                         ring.position.z += tWarpSpeed * 0.8;
                         if (ring.position.z > tCurrentWarpZ + 200) ring.position.z -= TUNNEL_DEPTH;
@@ -93,11 +68,9 @@
                         const s = 1 + (val/255)*0.5 * smoothedEnergy;
                         ring.scale.set(s, s, s);
 
-                        // Dùng ĐÚNG cả 3 chế độ màu qua getComputedColor — trước đây nhánh else
-                        // luôn tô cứng theo dynA/dynB xen kẽ, khiến mode 'solid' không hề ra màu
-                        // solidColor như người dùng chọn, mà vẫn cứ ra 2 màu dynamic xen kẽ.
                         const color = getComputedColor(idx, tRings.length, val);
-                        ring.material.color.setStyle(color.fill);
+                        if(vizConfig.mode === 'gradient') ring.material.color.setStyle(color.fill);
+                        else ring.material.color.setStyle(idx % 2 === 0 ? vizConfig.dynA : vizConfig.dynB);
                     });
                 }
 
@@ -105,14 +78,10 @@
                 else if (vizConfig.vortexStyle === 'bars') {
                     const dummy = new THREE.Object3D();
                     for(let r=0; r<BARS_RINGS_COUNT; r++) {
-                        // Trượt dần Z theo tốc độ bay (giống dust/rings), rồi wrap khi đi quá xa
-                        // camera. Cách cũ tính z = -(r/COUNT)*DEPTH + (tCurrentWarpZ % ...) khiến
-                        // ring càng ngày càng lùi xa phía sau camera không giới hạn vì điều kiện
-                        // wrap không bao giờ đúng lại sau khi tCurrentWarpZ trôi quá TUNNEL_DEPTH.
-                        tBarRingZ[r] += tWarpSpeed * 0.8;
-                        if (tBarRingZ[r] > tCurrentWarpZ + 200) tBarRingZ[r] -= TUNNEL_DEPTH;
-                        const z = tBarRingZ[r];
-
+                        // Tính toán Z "ảo" cho ring này
+                        let z = -(r / BARS_RINGS_COUNT) * TUNNEL_DEPTH + (tCurrentWarpZ % (TUNNEL_DEPTH / BARS_RINGS_COUNT));
+                        if(z > tCurrentWarpZ + 200) z -= TUNNEL_DEPTH;
+                        
                         const center = getVortexCenterAt(z);
                         const val = vizDataArray[r % 40] || 0;
                         const barScaleY = 1 + (val/255) * 8 * smoothedEnergy;
@@ -125,8 +94,6 @@
                             dummy.updateMatrix();
                             tBarsMesh.setMatrixAt(r * BARS_PER_RING + b, dummy.matrix);
                             
-                            // getComputedColor() tự xử lý đúng cả 3 chế độ màu (solid/gradient/dynamic)
-                            // dựa vào vizConfig.mode bên trong nó — Bars không cần if/else thủ công.
                             const color = getComputedColor(b, BARS_PER_RING, val);
                             tBarsMesh.setColorAt(r * BARS_PER_RING + b, new THREE.Color(color.fill));
                         }
@@ -149,53 +116,29 @@
                         wave.scale.setScalar(0.8 + smoothedEnergy * 0.4);
 
                         const val = vizDataArray[idx % bufferLength] || 0;
-                        // Dùng ĐÚNG cả 3 chế độ màu qua getComputedColor, giống Rings — tránh tô
-                        // cứng dynA/dynB khi mode đang là 'solid'.
                         const color = getComputedColor(idx, tWaveMeshes.length, val);
-                        wave.material.color.setStyle(color.fill);
+                        if(vizConfig.mode === 'gradient') wave.material.color.setStyle(color.fill);
+                        else wave.material.color.setStyle(idx % 2 === 0 ? vizConfig.dynA : vizConfig.dynB);
                     });
                 }
 
-                // 4. Cinematic Camera
+                // 4. Cinematic Camera — bám theo độ cong của ống (trái/phải/trên/dưới), không rung giật theo beat
                 const camTargetPos = getVortexCenterAt(tCurrentWarpZ);
-                // Camera bắt kịp tâm ống (Smooth damping). Tốc độ tăng từ 0.08 lên 0.15:
-                // ở 0.08, ngay khi tWarpSpeed tăng tốc từ 0 lên ~25-50 (đầu bài hát, hoặc khi
-                // năng lượng nhạc tăng), khoảng lệch giữa vị trí camera và tâm ống thực tế có
-                // thể lên tới hơn 200 đơn vị — gần bằng/vượt bán kính ring (350) — khiến camera
-                // "bơi" xuyên qua ring ở khoảng cách rất gần, tạo cảm giác giật/xoay/nhoè rất
-                // mạnh. 0.15 giúp camera bắt kịp nhanh hơn đáng kể (giảm ~40-50% độ lệch tối đa
-                // trong mô phỏng) mà vẫn còn đủ "mượt" để không bị cứng/giật theo từng frame.
-                tCamera.position.x += (camTargetPos.x - tCamera.position.x) * 0.15;
-                tCamera.position.y += (camTargetPos.y - tCamera.position.y) * 0.15;
+                // Camera bắt kịp chậm rãi (Smooth damping)
+                tCamera.position.x += (camTargetPos.x - tCamera.position.x) * 0.08;
+                tCamera.position.y += (camTargetPos.y - tCamera.position.y) * 0.08;
                 tCamera.position.z = tCurrentWarpZ;
 
-                // Hệ số rung lắc do người dùng điều chỉnh (0 = đứng yên hoàn toàn, 1 = mặc định gốc)
-                const shakeAmt = vortexShakeAmt;
-
-                // LookAt điểm phía trước một đoạn. QUAN TRỌNG: điểm "thô" lấy trực tiếp từ
-                // getVortexCenterAt() di chuyển theo sin/cos của Z, nên khi tWarpSpeed tăng
-                // (nhạc mạnh / BPM cao) nó đổi hướng rất gấp giữa các frame. Trước đây điểm
-                // thô này được đưa thẳng vào lookAt() mỗi frame -> camera xoay/giật góc nhìn
-                // (kể cả roll) đột ngột -> hiện tượng rung lắc nhoằng nhoằng trái-phải-trên-dưới.
-                // Cách khắc phục: nội suy (lerp) RIÊNG điểm lookAt thực dùng để gọi lookAt(),
-                // độc lập với tốc độ bay, để hướng nhìn luôn đổi mượt theo thời gian thực,
-                // không phụ thuộc bao nhiêu Z đã trôi qua trong frame đó.
+                // LookAt điểm phía trước một đoạn, theo đúng đường cong của ống (không lắc ngẫu nhiên)
                 const lookAheadZ = tCurrentWarpZ - 800;
-                const lookPosRaw = getVortexCenterAt(lookAheadZ);
-                const swayX = Math.sin(frameCounter * 0.02) * 50 * smoothedEnergy * shakeAmt;
-                const swayY = Math.cos(frameCounter * 0.015) * 30 * smoothedEnergy * shakeAmt;
-                if (!tLookTarget) tLookTarget = { x: lookPosRaw.x + swayX, y: lookPosRaw.y + swayY, z: lookAheadZ };
-                // Tốc độ nội suy góc nhìn cố định (không tăng theo BPM/energy) -> camera xoay
-                // êm dù ống đổi hướng nhanh. Tăng nhẹ từ 0.06 lên 0.1 để đồng bộ tỉ lệ với việc
-                // tăng tốc độ bắt kịp vị trí camera ở trên (0.08->0.15), tránh trường hợp vị trí
-                // bắt kịp nhanh nhưng hướng nhìn vẫn lag, gây lệch hướng giữa "đứng ở đâu" và
-                // "nhìn về đâu". shakeAmt vẫn cho phép người dùng giảm sâu hơn nữa.
-                const lookLerpK = 0.1 * Math.max(0.15, shakeAmt);
-                tLookTarget.x += ((lookPosRaw.x + swayX) - tLookTarget.x) * lookLerpK;
-                tLookTarget.y += ((lookPosRaw.y + swayY) - tLookTarget.y) * lookLerpK;
-                tLookTarget.z = lookAheadZ; // Z luôn đồng bộ tuyệt đối với quãng đường đã bay, không lerp
-                tCamera.up.set(0, 1, 0); // Giữ "up" cố định để lookAt() không tự xoay roll ngoài ý muốn
-                tCamera.lookAt(tLookTarget.x, tLookTarget.y, tLookTarget.z);
+                const lookPos = getVortexCenterAt(lookAheadZ);
+                tCamera.lookAt(lookPos.x, lookPos.y, lookAheadZ);
+
+                // "Hít thở" tiêu cự (FOV) rất nhẹ theo năng lượng nhạc — tạo cảm giác camera đi sâu vào/lùi ra
+                // khỏi đường hầm theo tiếng nhạc, mượt mà, không giật cục như sway cũ
+                const targetFov = 75 - smoothedEnergy * 6;
+                tCamera.fov += (targetFov - tCamera.fov) * 0.04;
+                tCamera.updateProjectionMatrix();
 
                 tRenderer.render(tScene, tCamera);
             }
@@ -203,7 +146,7 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             const centerY = canvas.height / 2, centerX = canvas.width / 2, scaledMinH = vizConfig.minH * dpr;
 
-            // ================== RỪNG ĐOM ĐÓM (FIREFLY FOREST 2.0 - SWARM) ==================
+            // ================== RỪNG ĐOM ĐÓM (FIREFLY FOREST 3.0 - SWARM HỮU CƠ) ==================
             if (vizConfig.type === 'firefly_forest') {
                 // Mặt trăng
                 let moonRadius = (canvas.width * 0.1) + (smoothedEnergy * 10 * dpr);
@@ -212,7 +155,7 @@
                 moonGrad.addColorStop(0, 'rgba(200, 230, 255, 0.4)'); moonGrad.addColorStop(1, 'transparent');
                 ctx.fillStyle = moonGrad; ctx.fill();
 
-                // Lớp cây
+                // Lớp cây (vẽ trước đom đóm xa, sau đom đóm gần — bố trí lại bên dưới theo layer)
                 trees.forEach(t => {
                     t.swayPhase += 0.01 + (smoothedEnergy * 0.02);
                     let swayX = Math.sin(t.swayPhase) * 10 * dpr * (1 - t.layer * 0.2);
@@ -223,45 +166,74 @@
                     ctx.closePath(); ctx.fill();
                 });
 
-                // Đom đóm Bầy đàn (Swarm)
-                ctx.globalCompositeOperation = 'lighter';
-                
-                // Cập nhật vị trí các dải bay
-                fireflyBands.forEach((band, i) => {
-                    band.phase += 0.02;
-                    // Dải uốn lượn nhẹ nhàng
-                    band.currentY = band.baseY + Math.sin(band.phase) * 30 * dpr;
+                // Sương mù khí quyển mỏng phía xa — tạo lớp không gian giữa cây và đàn đom đóm
+                fireflyMist.forEach(m => {
+                    m.phase += 0.003 + smoothedEnergy * 0.004;
+                    let mx = m.x + Math.sin(m.phase) * 20 * dpr;
+                    let mistGrad = ctx.createRadialGradient(mx, m.y, 0, mx, m.y, m.r);
+                    mistGrad.addColorStop(0, 'rgba(140, 170, 160, 0.05)');
+                    mistGrad.addColorStop(1, 'transparent');
+                    ctx.fillStyle = mistGrad;
+                    ctx.beginPath(); ctx.arc(mx, m.y, m.r, 0, Math.PI * 2); ctx.fill();
                 });
 
-                fireflies.forEach(f => {
-                    // Di chuyển ngang liên tục
-                    f.x += f.speedX * (canvas.width * 0.005);
-                    if (f.x > canvas.width + 50) f.x = -50; // Quấn vòng
+                // Đom đóm — bầy đàn hữu cơ, lượn tự do quanh các cụm, có chiều sâu thật
+                ctx.globalCompositeOperation = 'lighter';
 
-                    let targetY = fireflyBands[f.bandId].currentY;
+                // Các cụm trôi nhẹ theo thời gian để cả đàn có cảm giác sống, không đứng yên máy móc
+                fireflyClusters.forEach(cl => { cl.driftPhase += cl.driftSpeed * 0.01; });
+
+                fireflies.forEach(f => {
+                    const cl = f.clusterRef;
+                    const clusterDriftX = Math.sin(cl.driftPhase) * canvas.width * 0.03;
+                    const clusterDriftY = Math.cos(cl.driftPhase * 0.7) * canvas.height * 0.015;
+
+                    // Lượn tự do quanh điểm neo (home) theo vòng hữu cơ, không di chuyển ngang đơn điệu
+                    f.wanderAngle += f.wanderSpeed * 0.02;
+                    f.phaseX += 0.013; f.phaseY += 0.017;
+                    const wobbleX = Math.cos(f.wanderAngle) * f.wanderRadius + Math.sin(f.phaseX) * 8 * dpr;
+                    const wobbleY = Math.sin(f.wanderAngle * 1.3) * f.wanderRadius * 0.6 + Math.cos(f.phaseY) * 6 * dpr;
+
+                    let targetX = f.homeX + clusterDriftX + wobbleX;
+                    let targetY = f.homeY + clusterDriftY + wobbleY;
+
                     let audioVal = vizDataArray[f.bin] || 0;
-                    
-                    // Bass đẩy đàn đom đóm lên cao, nhịp hết thì rơi xuống
-                    if (audioVal > 150) {
-                        targetY -= (audioVal / 255) * 80 * dpr;
+                    // Bass đẩy đàn đom đóm bay lên cao, càng gần (depth thấp) càng phản ứng mạnh
+                    if (audioVal > 150) targetY -= (audioVal / 255) * 70 * dpr * (1 - f.depth * 0.5);
+
+                    // Nội suy mượt tới vị trí mục tiêu — lớp xa di chuyển chậm hơn (parallax)
+                    const followRate = 0.04 + (1 - f.depth) * 0.04;
+                    f.x += (targetX - f.x) * followRate;
+                    f.y += (targetY - f.y) * followRate;
+
+                    // Nhịp nhấp nháy tự nhiên riêng từng con (như đom đóm thật), được nhạc "tiếp sức" thêm
+                    f.blinkPhase += f.blinkSpeed + (audioVal / 255) * 0.05;
+                    const naturalBlink = (Math.sin(f.blinkPhase) + 1) / 2; // 0..1, sáng/tắt mượt
+                    const audioBoost = (audioVal / 255) * 0.6;
+                    let brightness = (0.12 + naturalBlink * 0.55 + audioBoost) * (1 - f.depth * 0.55);
+                    brightness = Math.min(1, brightness);
+
+                    const currentRadius = f.radius * (0.7 + naturalBlink * 0.5 + (audioVal / 255) * 0.9);
+
+                    // Màu ấm đặc trưng đom đóm (vàng-lục) ở lớp gần; pha dần sang sắc lạnh của màn đêm ở lớp xa.
+                    // Vẫn tôn trọng chế độ màu người dùng đã chọn, chỉ làm nền tự nhiên hơn cho chế độ mặc định.
+                    let glowColors;
+                    if (vizConfig.mode === 'solid' || vizConfig.mode === 'dynamic') {
+                        // Lệch hue nhẹ theo từng cá thể để bầy đàn không "đồng phục" cứng nhắc
+                        const baseColor = vizConfig.mode === 'solid' ? vizConfig.solidColor : (f.dynPick ? vizConfig.dynA : vizConfig.dynB);
+                        glowColors = { fill: baseColor, glow: baseColor };
+                    } else {
+                        const fireflyHue = (54 + f.hueJitter - f.depth * 30 + 360) % 360; // vàng-lục ấm -> ngả lục/lam khi xa
+                        const sat = 80 - f.depth * 20;
+                        const light = 55 + naturalBlink * 15;
+                        glowColors = { fill: `hsla(${fireflyHue}, ${sat}%, ${light}%, 0.95)`, glow: `hsl(${fireflyHue}, 100%, ${Math.min(75, light + 15)}%)` };
                     }
 
-                    // Thêm nhiễu ngẫu nhiên cho từng con
-                    f.phaseX += 0.05;
-                    targetY += Math.sin(f.phaseX) * 15 * dpr;
-
-                    // Nội suy Y mượt
-                    f.y += (targetY - f.y) * 0.05;
-
-                    let brightness = 0.2 + (audioVal / 255) * 0.8;
-                    let currentRadius = f.radius * (1 + (audioVal / 255) * 1.5);
-                    let glowColors = getComputedColor(f.bin, 60, audioVal);
-                    
                     ctx.beginPath();
-                    ctx.arc(f.x, f.y, currentRadius, 0, Math.PI * 2);
-                    ctx.fillStyle = glowColors.fill; 
+                    ctx.arc(f.x, f.y, Math.max(0.1, currentRadius), 0, Math.PI * 2);
+                    ctx.fillStyle = glowColors.fill;
                     ctx.globalAlpha = brightness;
-                    ctx.shadowBlur = (10 + (audioVal/255)*20) * dpr;
+                    ctx.shadowBlur = (8 + naturalBlink * 14 + (audioVal/255) * 16) * dpr * (1 - f.depth * 0.4);
                     ctx.shadowColor = glowColors.glow;
                     ctx.fill();
                 });
