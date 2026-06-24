@@ -47,7 +47,14 @@
             qualitySelect.value = vizConfig.quality; bgColorPicker.value = vizConfig.bgColor;
             bgBlurSlider.value = vizConfig.bgBlur; valBgBlurDisplay.textContent = vizConfig.bgBlur + 'px';
             
-            videoEnableToggle.checked = vizConfig.videoBgEnabled; vizConfig.videoBgUrl = ''; handleVideoBackground();
+            // videoBgUrl là blob: URL (từ file đã chọn) — KHÔNG sống sót qua reload, nên luôn reset
+            // về rỗng ở đây. Nếu vizConfig.videoBgEnabled vẫn còn true từ config đã lưu trước đó,
+            // mà giờ không còn URL video nào cả, thì đó là trạng thái "on" ảo (mất data video sau
+            // refresh) — phải tự tắt cả videoBgEnabled lẫn videoHideVisual (phụ thuộc vào nó) và
+            // lưu lại ngay, để lần load sau không bị treo "on" mãi.
+            vizConfig.videoBgUrl = '';
+            if (vizConfig.videoBgEnabled) { vizConfig.videoBgEnabled = false; vizConfig.videoHideVisual = false; saveConfig(); }
+            videoEnableToggle.checked = vizConfig.videoBgEnabled; handleVideoBackground();
             videoHideVisualToggle.checked = vizConfig.videoHideVisual || false;
             
             colorModeSelect.value = vizConfig.mode;

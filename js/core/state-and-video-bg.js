@@ -24,14 +24,31 @@
 
         btnReturnVisual.addEventListener('click', () => { if(currentIndex > -1) switchToVisualizer(); });
 
+        // Khi đóng drawer Cài đặt: nếu người dùng đã bật "Sử dụng Video Background" nhưng CHƯA
+        // chọn video nào (vizConfig.videoBgUrl rỗng) thì tự tắt lại — tránh trạng thái "on" ảo
+        // không có video thật phía sau. "Video phủ kín, tạm dừng Visual" phụ thuộc vào video bg
+        // đang bật nên cũng phải tắt theo.
+        function validateVideoBgOnClose() {
+            if (vizConfig.videoBgEnabled && !vizConfig.videoBgUrl) {
+                vizConfig.videoBgEnabled = false; vizConfig.videoHideVisual = false;
+                videoEnableToggle.checked = false; videoHideVisualToggle.checked = false;
+                handleVideoBackground(); saveConfig();
+            }
+        }
+
         function handleVideoBackground() {
-            if (vizConfig.videoBgEnabled && vizConfig.videoBgUrl) {
+            // Video nền chỉ được hiện khi đang ở màn Visualizer — Playlist có nền/ảnh nền riêng
+            // của nó (#playlist-bg), Video nền KHÔNG được làm nền cho Playlist. Kiểm tra ngay tại
+            // đây (không chỉ ở nơi gọi) để dù toggle/upload video được bấm lúc đang mở Cài đặt từ
+            // màn Playlist, video cũng không bị hiện ra phía sau Playlist.
+            const isOnPlaylistScreen = !playlistView.classList.contains('-translate-y-full');
+            if (vizConfig.videoBgEnabled && vizConfig.videoBgUrl && !isOnPlaylistScreen) {
                 bgVideoElement.src = vizConfig.videoBgUrl; bgVideoElement.classList.remove('hidden'); bgVideoElement.style.opacity = '1'; document.body.style.backgroundColor = 'transparent'; 
                 if (!audioPlayer.paused) { bgVideoElement.play().catch(() => {}); } else { bgVideoElement.pause(); }
             } else {
                 bgVideoElement.style.opacity = '0';
                 setTimeout(() => { bgVideoElement.classList.add('hidden'); bgVideoElement.src = ""; }, 500);
-                updateDOMBackground();
+                if (!isOnPlaylistScreen) updateDOMBackground();
             }
         }
 

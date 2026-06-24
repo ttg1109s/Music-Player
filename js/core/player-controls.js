@@ -29,6 +29,7 @@
 
         function switchToVisualizer() {
             playlistView.classList.add('-translate-y-full'); visualizerUI.classList.remove('hidden'); playerContainer.classList.remove('hidden');
+            handleVideoBackground(); // rời Playlist -> cho video nền hiện lại nếu đang bật
             setTimeout(() => { 
                 visualizerUI.classList.add('fade-enter-active'); canvas.classList.remove('opacity-0'); 
                 if (vizConfig.type === 'vortex') document.getElementById('webgl-canvas').classList.remove('opacity-0');
@@ -37,7 +38,9 @@
 
         btnBackPlaylist.addEventListener('click', () => {
             visualizerUI.classList.remove('fade-enter-active'); canvas.classList.add('opacity-0'); document.getElementById('webgl-canvas').classList.add('opacity-0');
-            setTimeout(() => { visualizerUI.classList.add('hidden'); playerContainer.classList.add('hidden'); playlistView.classList.remove('-translate-y-full'); renderPlaylist(); }, 300);
+            playlistView.classList.remove('-translate-y-full'); // bỏ translate TRƯỚC để handleVideoBackground() nhận đúng màn hình hiện tại là Playlist
+            handleVideoBackground(); // sang Playlist -> ẩn & dừng video nền (Playlist không dùng nó làm nền)
+            setTimeout(() => { visualizerUI.classList.add('hidden'); playerContainer.classList.add('hidden'); renderPlaylist(); }, 300);
         });
 
         playPauseBtn.addEventListener('click', () => {
@@ -104,7 +107,7 @@
 
         btnSettings.addEventListener('click', () => drawerSettings.classList.remove('-translate-y-full'));
         btnSettingsPlaylist.addEventListener('click', () => drawerSettings.classList.remove('-translate-y-full'));
-        closeDrawer.addEventListener('click', () => drawerSettings.classList.add('-translate-y-full'));
+        closeDrawer.addEventListener('click', () => { validateVideoBgOnClose(); drawerSettings.classList.add('-translate-y-full'); });
         
         btnCycleMode.addEventListener('click', () => { currentModeIndex = (currentModeIndex + 1) % MODES.length; updateTypeUI(); saveConfig(); });
 
