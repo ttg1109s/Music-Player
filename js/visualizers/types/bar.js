@@ -6,13 +6,16 @@
  *     (vizConfig.mirrorCircleSize, % so với kích thước màn hình). Bố cục dải bar LUÔN dựa trên
  *     một bán kính tâm cơ sở cố định nhỏ — dải KHÔNG co giãn theo độ to vòng tròn người dùng
  *     chọn; nếu chọn vòng tròn to, nó có thể chồng lấn lên các thanh gần tâm (đánh đổi được người
- *     dùng chấp nhận khi bật setting này). Hai bên KHÔNG đối xứng gương về xu hướng độ cao — đây
- *     là chủ đích thiết kế:
- *       + Bên TRÁI : xa tâm cao -> gần tâm thấp (giảm dần khi tới gần vòng tròn).
- *       + Bên PHẢI : gần tâm thấp -> xa tâm cao (tăng dần khi ra xa vòng tròn).
- *     Cả hai vẫn nhảy động theo nhạc thật (độ cao mỗi bar = biên độ bin tần số tương ứng); xu
- *     hướng trên chỉ là cách map vị trí slot -> bin tần số (xem binRight/binLeft trong
- *     drawBarMirror), không phải giá trị cố định.
+ *     dùng chấp nhận khi bật setting này).
+ *     Hai bên LUÔN ĐỐI LẬP NHAU 1-1 tại mọi vị trí, mọi thời điểm — không chỉ là map bin tần số
+ *     khác nhau (cách đó vẫn dễ "trông giống nhau" về hình dáng tổng thể vì bass luôn có biên độ
+ *     trung bình lớn hơn treble bất kể đặt gần hay xa tâm). Thay vào đó, mỗi slot i lấy CHUNG một
+ *     bin tần số cho cả 2 bên, bên trái vẽ thuận theo biên độ bin đó, bên phải vẽ NGHỊCH ĐẢO trực
+ *     tiếp (lenRight = maxBarLen - lenLeft):
+ *       + Bên TRÁI : gần tâm cao -> xa tâm thấp (thuận theo bin: gần tâm = bin thấp/bass).
+ *       + Bên PHẢI : xa tâm cao -> gần tâm thấp (nghịch đảo trực tiếp độ cao bên trái).
+ *     Cả hai vẫn nhảy động theo nhạc thật (vẫn dựa trên biên độ bin tần số thực), chỉ khác công
+ *     thức vẽ độ cao theo bin đó.
  *     KHÔNG dùng setting "Độ dày thanh" (vizConfig.barWidth) — setting đó giờ CHỈ áp dụng cho
  *     visual Black Hole.
  *   - barStyle 'cascade' : Thác đổ — giữ nguyên cách vẽ của visual "synthesia" cũ (các "phím" rơi
@@ -43,30 +46,34 @@
                 const distFromCenter = centerCircleBaseR + i * barSlotWidth;
                 const slotW = barSlotWidth * 0.6;
 
-                // BÊN PHẢI: gần tâm THẤP -> xa tâm CAO. Bin tần số thấp (bass) ở slot gần tâm,
-                // bin cao (treble) ở slot ngoài rìa — độ cao bar tăng dần ra ngoài theo cùng chiều.
-                const binRight = Math.floor((i / barCount) * maxBin);
-                const valRight = vizDataArray[binRight] || 0;
-                let lenRight = valRight ? (valRight / 255) * maxBarLen : 0;
+                // Cả hai bên dùng CHUNG một bin tần số tại mỗi vị trí slot i (bin tăng dần từ
+                // tâm ra mép, giống hệt nhau) — nhưng vẽ độ cao NGƯỢC NHAU để hai dải luôn đối lập
+                // thật sự, không phụ thuộc bài nhạc (không chỉ là map bin khác nhau, vì bass luôn
+                // có biên độ trung bình lớn hơn treble nên map bin khác nhau vẫn dễ "trông giống
+                // nhau" về hình dáng tổng thể).
+                const bin = Math.floor((i / barCount) * maxBin);
+                const val = vizDataArray[bin] || 0;
 
-                // BÊN TRÁI: xa tâm CAO -> gần tâm THẤP (ngược lại bên phải). Đảo chỉ số slot khi
-                // tra bin, để slot ngoài rìa (i nhỏ về phía mép) nhận bin ứng với biên độ lớn hơn
-                // ở vị trí xa, và giảm dần khi tới gần tâm.
-                const binLeft = Math.floor(((barCount - 1 - i) / barCount) * maxBin);
-                const valLeft = vizDataArray[binLeft] || 0;
-                let lenLeft = valLeft ? (valLeft / 255) * maxBarLen : 0;
+                // BÊN TRÁI: gần tâm CAO -> xa tâm THẤP. Vẽ thuận theo bin (bin nhỏ/gần tâm có xu
+                // hướng biên độ lớn hơn -> cao hơn; bin lớn/xa tâm -> thấp hơn).
+                let lenLeft = val ? (val / 255) * maxBarLen : 0;
+
+                // BÊN PHẢI: xa tâm CAO -> gần tâm THẤP — NGHỊCH ĐẢO trực tiếp độ cao của bên trái
+                // tại CÙNG slot i (lenRight = maxBarLen - lenLeft), đảm bảo hai dải luôn đối lập
+                // 1-1 ở mọi vị trí, mọi thời điểm.
+                let lenRight = Math.max(0, maxBarLen - lenLeft);
 
                 const rx = centerX + distFromCenter;
                 const lx = centerX - distFromCenter - slotW;
 
-                const colorsRight = getComputedColor(i, barCount, valRight);
+                const colorsRight = getComputedColor(i, barCount, val);
                 ctx.shadowBlur = 15 * dpr * perf.blurMult;
                 ctx.shadowColor = perf.blurMult > 0 ? colorsRight.glow : 'transparent';
                 ctx.fillStyle = colorsRight.fill;
                 ctx.beginPath(); ctx.roundRect(rx, centerY - lenRight, slotW, lenRight, 3 * dpr); ctx.fill();
                 ctx.beginPath(); ctx.roundRect(rx, centerY, slotW, lenRight, 3 * dpr); ctx.fill();
 
-                const colorsLeft = getComputedColor(barCount - 1 - i, barCount, valLeft);
+                const colorsLeft = getComputedColor(i, barCount, val);
                 ctx.shadowColor = perf.blurMult > 0 ? colorsLeft.glow : 'transparent';
                 ctx.fillStyle = colorsLeft.fill;
                 ctx.beginPath(); ctx.roundRect(lx, centerY - lenLeft, slotW, lenLeft, 3 * dpr); ctx.fill();
