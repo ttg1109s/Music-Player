@@ -38,6 +38,8 @@
             if (vizConfig.type === 'firefly_forest' || vizConfig.type === 'seasons' || vizConfig.type === 'wave') vizConfig.type = 'bar';
             if (!vizConfig.barStyle) vizConfig.barStyle = 'mirror';
             if (vizConfig.mirrorBarCount == null) vizConfig.mirrorBarCount = 32;
+            if (!vizConfig.subtitleStyle) vizConfig.subtitleStyle = { ...DEFAULT_VIZ_CONFIG.subtitleStyle };
+            else vizConfig.subtitleStyle = { ...DEFAULT_VIZ_CONFIG.subtitleStyle, ...vizConfig.subtitleStyle };
 
             qualitySelect.value = vizConfig.quality; bgColorPicker.value = vizConfig.bgColor;
             bgBlurSlider.value = vizConfig.bgBlur; valBgBlurDisplay.textContent = vizConfig.bgBlur + 'px';
@@ -63,8 +65,26 @@
 
             currentModeIndex = MODES.indexOf(vizConfig.type); if(currentModeIndex === -1) currentModeIndex = 0;
             updateDOMBackground(); updatePlaylistBg(); updateColorMenuUI(); updateTypeUI();
+
+            const ss = vizConfig.subtitleStyle;
+            settingSubBgColor.value = ss.bgColor; settingSubBgOpacity.value = Math.round(ss.bgOpacity * 100); valSubBgOpacity.textContent = Math.round(ss.bgOpacity * 100) + '%';
+            settingSubBorderColor.value = ss.borderColor; settingSubBorderOpacity.value = Math.round(ss.borderOpacity * 100); valSubBorderOpacity.textContent = Math.round(ss.borderOpacity * 100) + '%';
+            settingSubBorderWidth.value = ss.borderWidth; valSubBorderWidth.textContent = ss.borderWidth;
+            settingSubBorderRadius.value = ss.borderRadius; valSubBorderRadius.textContent = ss.borderRadius;
+            settingSubTextColor.value = ss.textColor;
+            settingSubFontSize.value = ss.fontSize; valSubFontSize.textContent = ss.fontSize;
+            applySubtitleStyle();
         }
 
         btnSubtitle.addEventListener('click', () => { subtitleModal.classList.remove('translate-y-full'); renderSubList(); });
         btnCloseSubModal.addEventListener('click', () => { resetAutoSub(); subtitleModal.classList.add('translate-y-full'); });
         btnToggleSub.addEventListener('click', () => { isSubtitlesEnabled = !isSubtitlesEnabled; updateSubToggleUI(); });
+
+        settingSubBgColor.addEventListener('input', (e) => { vizConfig.subtitleStyle.bgColor = e.target.value; applySubtitleStyle(); saveConfig(); });
+        settingSubBgOpacity.addEventListener('input', (e) => { const v = parseInt(e.target.value); vizConfig.subtitleStyle.bgOpacity = v / 100; valSubBgOpacity.textContent = v + '%'; applySubtitleStyle(); saveConfig(); });
+        settingSubBorderColor.addEventListener('input', (e) => { vizConfig.subtitleStyle.borderColor = e.target.value; applySubtitleStyle(); saveConfig(); });
+        settingSubBorderOpacity.addEventListener('input', (e) => { const v = parseInt(e.target.value); vizConfig.subtitleStyle.borderOpacity = v / 100; valSubBorderOpacity.textContent = v + '%'; applySubtitleStyle(); saveConfig(); });
+        settingSubBorderWidth.addEventListener('input', (e) => { const v = parseInt(e.target.value); vizConfig.subtitleStyle.borderWidth = v; valSubBorderWidth.textContent = v; applySubtitleStyle(); saveConfig(); });
+        settingSubBorderRadius.addEventListener('input', (e) => { const v = parseInt(e.target.value); vizConfig.subtitleStyle.borderRadius = v; valSubBorderRadius.textContent = v; applySubtitleStyle(); saveConfig(); });
+        settingSubTextColor.addEventListener('input', (e) => { vizConfig.subtitleStyle.textColor = e.target.value; applySubtitleStyle(); saveConfig(); });
+        settingSubFontSize.addEventListener('input', (e) => { const v = parseInt(e.target.value); vizConfig.subtitleStyle.fontSize = v; valSubFontSize.textContent = v; applySubtitleStyle(); saveConfig(); });

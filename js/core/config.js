@@ -25,6 +25,11 @@
             minH: 4, maxH: 400, barWidth: 4, bgImage: '', bgBlur: 0,
             mirrorBarCount: 32,
             volume: 100, eqMode: 'flat', manualEq: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            videoBgEnabled: false, videoBgUrl: '', videoHideVisual: false
+            videoBgEnabled: false, videoBgUrl: '', videoHideVisual: false,
+            subtitleStyle: {
+                bgColor: '#000000', bgOpacity: 0.4,
+                borderColor: '#ffffff', borderOpacity: 0.1, borderWidth: 1, borderRadius: 16,
+                textColor: '#ffffff', fontSize: 24
+            }
         };
         let vizConfig = { ...DEFAULT_VIZ_CONFIG };

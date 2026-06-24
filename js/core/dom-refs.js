@@ -47,11 +47,18 @@
         const subtitleModal = document.getElementById('subtitle-modal'), btnCloseSubModal = document.getElementById('btn-close-sub-modal');
         const srtUpload = document.getElementById('srt-upload'), btnApplySub = document.getElementById('btn-apply-sub');
         const btnToggleSub = document.getElementById('btn-toggle-sub'), btnAddSub = document.getElementById('btn-add-sub'), btnExportSrt = document.getElementById('btn-export-srt');
-        const subtitleDisplay = document.getElementById('subtitle-display'), subActiveLines = document.getElementById('sub-active-lines');
+        const subtitleDisplay = document.getElementById('subtitle-display'), subtitleFrame = document.getElementById('subtitle-frame'), subActiveLines = document.getElementById('sub-active-lines');
         const subListContainer = document.getElementById('sub-list-container'), subEmptyState = document.getElementById('sub-empty-state');
         const btnAutoTiming = document.getElementById('btn-auto-timing');
         const iconAutoTimingIdle = document.getElementById('icon-auto-timing-idle'), iconAutoTimingRecording = document.getElementById('icon-auto-timing-recording');
         let autoSubStartTime = null;
+
+        const settingSubBgColor = document.getElementById('setting-sub-bg-color'), settingSubBgOpacity = document.getElementById('setting-sub-bg-opacity'), valSubBgOpacity = document.getElementById('val-sub-bg-opacity');
+        const settingSubBorderColor = document.getElementById('setting-sub-border-color'), settingSubBorderOpacity = document.getElementById('setting-sub-border-opacity'), valSubBorderOpacity = document.getElementById('val-sub-border-opacity');
+        const settingSubBorderWidth = document.getElementById('setting-sub-border-width'), valSubBorderWidth = document.getElementById('val-sub-border-width');
+        const settingSubBorderRadius = document.getElementById('setting-sub-border-radius'), valSubBorderRadius = document.getElementById('val-sub-border-radius');
+        const settingSubTextColor = document.getElementById('setting-sub-text-color');
+        const settingSubFontSize = document.getElementById('setting-sub-font-size'), valSubFontSize = document.getElementById('val-sub-font-size');
 
         let audioContext, analyser, analyserPitch, source, animationId;
         let masterGainNode; let eqBandNodes = []; 
