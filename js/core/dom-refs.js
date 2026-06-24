@@ -36,7 +36,6 @@
         const blockBarStyle = document.getElementById('block-bar-style'), barStyleSelect = document.getElementById('setting-bar-style');
         const barMirrorOptions = document.getElementById('bar-mirror-options');
         const mirrorCountSlider = document.getElementById('setting-mirror-count'), valMirrorCountDisplay = document.getElementById('val-mirror-count');
-        const mirrorCircleSlider = document.getElementById('setting-mirror-circle'), valMirrorCircleDisplay = document.getElementById('val-mirror-circle');
         
         const volumeSlider = document.getElementById('setting-volume'), valVolumeDisplay = document.getElementById('val-volume');
         const eqSelect = document.getElementById('setting-eq'), eqSlidersWrapper = document.getElementById('eq-sliders-wrapper');
