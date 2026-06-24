@@ -2,12 +2,15 @@
  * Visual BAR — gộp 2 kiểu (trước đây là 2 visual riêng: "bar" và "synthesia"):
  *   - barStyle 'mirror'  : Phản chiếu — dải cánh bướm, số lượng thanh mỗi bên TÙY CHỈNH 10-32
  *     qua setting (vizConfig.mirrorBarCount, mặc định 32), mỗi bar đối xứng trên/dưới quanh
- *     centerY. KHÔNG còn vòng tròn ở tâm và KHÔNG còn khoảng hở ở giữa — hai bên (trái/phải)
- *     dính sát nhau ngay tại trục centerX. Hai bên ĐỐI XỨNG GƯƠNG thật qua tâm: tại cùng một
- *     khoảng cách từ tâm, bên trái và bên phải dùng CÙNG một bin tần số (binLeft === binRight)
- *     nên độ cao bar luôn bằng nhau hai bên — đúng nghĩa "phản chiếu". Slot GẦN tâm lấy bin
- *     CAO (treble), slot XA tâm (gần mép màn hình) lấy bin THẤP (bass, biên độ thường lớn hơn)
- *     -> bar có xu hướng cao dần khi ra xa tâm, giống nhau ở cả hai cánh.
+ *     centerY. KHÔNG còn vòng tròn ở tâm (đã bỏ). Có một BAR TRUNG TÂM nhỏ ngay tại centerX, đập
+ *     theo beat nhạc (không tĩnh) — bar này cách bar gần nhất của mỗi dải đúng bằng khoảng hở TỰ
+ *     THÂN giữa các bar trong dải (cùng "nhịp" khoảng cách như mọi cặp bar liền kề khác, không
+ *     phải số px cố định tùy ý), nên trông liền mạch tự nhiên thay vì để hai dải dính thẳng vào
+ *     nhau qua tâm hoặc cách nhau một khoảng tùy hứng. Hai bên (trái/phải) ĐỐI XỨNG GƯƠNG thật
+ *     qua tâm: tại cùng một khoảng cách từ tâm, bên trái và bên phải dùng CÙNG một bin tần số
+ *     (binLeft === binRight) nên độ cao bar luôn bằng nhau hai bên — đúng nghĩa "phản chiếu".
+ *     Slot GẦN tâm lấy bin CAO (treble), slot XA tâm (gần mép màn hình) lấy bin THẤP (bass, biên
+ *     độ thường lớn hơn) -> bar có xu hướng cao dần khi ra xa tâm, giống nhau ở cả hai cánh.
  *   - barStyle 'cascade' : Thác đổ — giữ nguyên cách vẽ của visual "synthesia" cũ (các "phím" rơi
  *     xuống đáy màn hình theo tần số). Độ dày mỗi phím tự tính theo độ rộng slot của bố cục 64
  *     phím, KHÔNG còn phụ thuộc setting "Độ dày thanh" (cùng lý do với 'mirror' ở trên).
@@ -23,16 +26,22 @@
             // (hành vi gốc) nếu chưa từng đặt.
             const barCount = Math.max(10, Math.min(32, vizConfig.mirrorBarCount || BAR_MIRROR_COUNT_PER_SIDE));
 
-            // KHÔNG còn khoảng hở/vòng tròn ở tâm — slot 0 (i=0) bắt đầu NGAY TẠI centerX, hai bên
-            // dính sát nhau. Bề rộng mỗi slot chia đều toàn bộ nửa màn hình cho barCount thanh.
+            // Bề rộng mỗi slot chia đều toàn bộ nửa màn hình cho barCount thanh. Độ rộng thật của
+            // mỗi bar là slotW = barSlotWidth * 0.6 -> khoảng hở TỰ THÂN giữa 2 bar liền kề trong
+            // cùng một dải là gapW = barSlotWidth * 0.4 (phần còn lại của slot).
             const barSlotWidth = halfWidth / barCount;
+            const slotW = barSlotWidth * 0.6;
+            const gapW = barSlotWidth - slotW;
             const maxBin = analyser.frequencyBinCount * 0.5;
+
+            // BAR TRUNG TÂM chiếm phần giữa rộng slotW; lấy đúng gapW làm khoảng cách với bar gần
+            // nhất của mỗi dải (cùng "nhịp" khoảng hở tự thân như các bar khác) -> toàn bộ dải
+            // trái/phải dịch ra xa tâm thêm (slotW/2 + gapW) so với khi không có bar trung tâm.
+            const centerOffset = slotW / 2 + gapW;
 
             for (let i = 0; i < barCount; i++) {
                 // Khoảng cách từ tâm tới vị trí slot hiện tại (cùng khoảng cho cả trái và phải).
-                // Slot 0 (i=0) dính sát centerX; slot cuối ở ngoài cùng (mép màn hình).
-                const distFromCenter = i * barSlotWidth;
-                const slotW = barSlotWidth * 0.6;
+                const distFromCenter = centerOffset + i * barSlotWidth;
 
                 // ĐỐI XỨNG GƯƠNG THẬT: cùng khoảng cách từ tâm (cùng chỉ số slot i) -> cùng một
                 // bin tần số cho cả hai bên (binLeft === binRight luôn). Slot GẦN tâm (i nhỏ) lấy
@@ -57,6 +66,19 @@
                 ctx.beginPath(); ctx.roundRect(lx, centerY - len, slotW, len, 3 * dpr); ctx.fill();
                 ctx.beginPath(); ctx.roundRect(lx, centerY, slotW, len, 3 * dpr); ctx.fill();
             }
+            ctx.shadowBlur = 0;
+
+            // BAR TRUNG TÂM — nhỏ mặc định, đập theo beat nhạc thật (beatScale, không tĩnh). Cộng
+            // một sàn nhỏ (minH) để luôn hiện hình ngay cả khi không có nhạc/biên độ = 0, cộng
+            // thêm theo beatScale + smoothedEnergy để nhảy động giống cách vòng tròn cũ từng đập.
+            const centerScaledMinH = vizConfig.minH * dpr;
+            const centerLen = centerScaledMinH + beatScale * maxBarLen * 0.7 + smoothedEnergy * maxBarLen * 0.3;
+            const centerColors = getComputedColor(0, barCount, Math.round(beatScale * 255));
+            ctx.shadowBlur = 15 * dpr * perf.blurMult;
+            ctx.shadowColor = perf.blurMult > 0 ? centerColors.glow : 'transparent';
+            ctx.fillStyle = centerColors.fill;
+            ctx.beginPath(); ctx.roundRect(centerX - slotW / 2, centerY - centerLen, slotW, centerLen, 3 * dpr); ctx.fill();
+            ctx.beginPath(); ctx.roundRect(centerX - slotW / 2, centerY, slotW, centerLen, 3 * dpr); ctx.fill();
             ctx.shadowBlur = 0;
         }
 
