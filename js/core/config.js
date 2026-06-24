@@ -4,9 +4,9 @@
  */
         const APP_CONFIG = { fftSizeStandard: 256, fftSizeHighRes: 2048, fftSizePitch: 2048, bpmMinWaitTime: 250 };
         const PERFORMANCE_PROFILES = {
-            high: { stars: 200, tunnelRings: 60, glassDrops: 250, bldMult: 1.0, streakProb: 0.8, blurMult: 1.0, streetRain: 220, streetStandees: 3 },
-            medium: { stars: 100, tunnelRings: 35, glassDrops: 100, bldMult: 1.5, streakProb: 0.9, blurMult: 0.5, streetRain: 130, streetStandees: 2 },
-            low: { stars: 40, tunnelRings: 15, glassDrops: 40, bldMult: 2.5, streakProb: 0.95, blurMult: 0, streetRain: 70, streetStandees: 1 } 
+            high: { stars: 200, tunnelRings: 60, glassDrops: 250, bldMult: 1.0, streakProb: 0.8, blurMult: 1.0, streetRain: 220 },
+            medium: { stars: 100, tunnelRings: 35, glassDrops: 100, bldMult: 1.5, streakProb: 0.9, blurMult: 0.5, streetRain: 130 },
+            low: { stars: 40, tunnelRings: 15, glassDrops: 40, bldMult: 2.5, streakProb: 0.95, blurMult: 0, streetRain: 70 } 
         };
         const DEFAULT_VINYL = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0OCIgZmlsbD0iIzFlMjkzYiIvPjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjE2IiBmaWxsPSIjMGYxNzJhIi8+PGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iMTUiIGZpbGw9IiNjYmQ1ZTEiLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0IiBmaWxsPSIjMGYxNzJhIi8+PC9zdmc+';
         const EQ_FREQS = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
@@ -17,14 +17,13 @@
             'manual': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         };
 
-        const MODES = ['bar', 'wave', 'lightning', 'rubik', 'vortex', 'black hole', 'rain'];
+        const MODES = ['bar', 'lightning', 'rubik', 'vortex', 'black hole', 'rain'];
 
         const DEFAULT_VIZ_CONFIG = {
             quality: 'high', type: 'bar', barStyle: 'mirror', vortexStyle: 'rings', rainStyle: 'glass', glassFlash: true, mode: 'solid', 
             bgColor: '#000000', solidColor: '#ffffff', dynA: '#ec4899', dynB: '#3b82f6', 
             minH: 4, maxH: 400, barWidth: 4, bgImage: '', bgBlur: 0,
             volume: 100, eqMode: 'flat', manualEq: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            videoBgEnabled: false, videoBgUrl: '', videoHideVisual: false,
-            streetStanding: 1
+            videoBgEnabled: false, videoBgUrl: '', videoHideVisual: false
         };
         let vizConfig = { ...DEFAULT_VIZ_CONFIG };

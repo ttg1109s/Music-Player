@@ -32,8 +32,6 @@
         const maxHeightSlider = document.getElementById('setting-max-height'), barWidthSlider = document.getElementById('setting-bar-width'), valMaxDisplay = document.getElementById('val-max'), valWidthDisplay = document.getElementById('val-width');
         const blockGeometry = document.getElementById('block-geometry'), blockVortex = document.getElementById('block-vortex'), vortexStyleSelect = document.getElementById('setting-vortex-style');
         const blockRain = document.getElementById('block-rain'), rainStyleSelect = document.getElementById('setting-rain-style'), glassFlashToggle = document.getElementById('setting-glass-flash');
-        const rainStreetOptions = document.getElementById('rain-street-options');
-        const streetStandingSelect = document.getElementById('setting-street-standing');
         const blockBarStyle = document.getElementById('block-bar-style'), barStyleSelect = document.getElementById('setting-bar-style');
         
         const volumeSlider = document.getElementById('setting-volume'), valVolumeDisplay = document.getElementById('val-volume');
@@ -55,7 +53,7 @@
         let masterGainNode; let eqBandNodes = []; 
         let isSeeking = false, dpr = 1, currentObjectURL = null, frameCounter = 0; 
         let smoothedBeatRadius = 0, smoothedEnergy = 0, globalHueOffset = 0, smoothedPitchY = 0, beatScale = 0;
-        let vizDataArray, pitchTimeDomainArray, waveTimeDomainArray, previousSpectrumArray;
+        let vizDataArray, pitchTimeDomainArray, previousSpectrumArray;
         let beatTimes = [], lastBeatTime = 0, fluxHistory = [], runningFluxMean = 0;
 
         let currentModeIndex = 0; 
@@ -69,7 +67,7 @@
         let activeLightnings = [];
 
         // Rain - Street scene (đèn đường, người đứng dưới đèn, mưa phố)
-        let streetLamps = [], streetRain = [], streetStandees = [];
+        let streetLamps = [], streetRain = [];
         let streetGroundY = 0; // mặt đất Street, luôn cao hơn vùng thanh điều khiển dưới cùng
 
         // ==========================================

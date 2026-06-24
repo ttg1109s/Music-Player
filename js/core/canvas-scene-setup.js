@@ -5,7 +5,7 @@
         function allocateBuffers() {
             if(!analyser || !analyserPitch) return;
             vizDataArray = new Uint8Array(analyser.frequencyBinCount); previousSpectrumArray = new Uint8Array(analyser.frequencyBinCount);
-            waveTimeDomainArray = new Uint8Array(analyser.frequencyBinCount); pitchTimeDomainArray = new Float32Array(analyserPitch.fftSize);
+            pitchTimeDomainArray = new Float32Array(analyserPitch.fftSize);
         }
 
         function dataURItoBlobUrl(dataURI) {
@@ -50,8 +50,8 @@
         }
 
         function generateStreetScene() {
-            // Công viên về đêm dưới mưa: 1 cột đèn đường chính (lệch trái) + người đứng dưới đèn,
-            // vài cột đèn phụ mờ phía xa để tạo chiều sâu phố/công viên.
+            // Công viên về đêm dưới mưa: 1 cột đèn đường chính (lệch trái) + vài cột đèn phụ mờ
+            // phía xa để tạo chiều sâu phố/công viên.
             // Mặt đất (groundY) luôn được đặt cao hơn vùng thanh điều khiển dưới cùng (tên bài,
             // nút play/pause, thanh tiến trình) để không bao giờ bị che mất bởi visual.
             const w = canvas.width, h = canvas.height;
@@ -61,27 +61,14 @@
             streetLamps = [];
             const mainLampX = w * 0.28;
             streetLamps.push({ x: mainLampX, baseY: safeGroundY, height: h * 0.42, main: true, flicker: 1, depth: 0 });
-            // Đèn phụ phía xa hai bên, nhỏ và mờ hơn
-            streetLamps.push({ x: w * 0.06, baseY: safeGroundY - h * 0.08, height: h * 0.26, main: false, flicker: 1, depth: 0.7 });
-            streetLamps.push({ x: w * 0.85, baseY: safeGroundY - h * 0.06, height: h * 0.28, main: false, flicker: 1, depth: 0.6 });
-
-            // Người đứng dưới đèn chính, số lượng tuỳ theo cấu hình + giới hạn theo hiệu năng
-            const perfProfile = PERFORMANCE_PROFILES[vizConfig.quality];
-            const wantedStandees = Math.min(vizConfig.streetStanding || 0, perfProfile.streetStandees);
-            streetStandees = [];
-            for (let i = 0; i < wantedStandees; i++) {
-                const spread = (i - (wantedStandees - 1) / 2) * w * 0.045;
-                streetStandees.push({
-                    x: mainLampX + spread + (Math.random() - 0.5) * w * 0.01,
-                    groundY: safeGroundY,
-                    h: h * (0.16 + Math.random() * 0.02),
-                    gender: Math.random() > 0.5 ? 'm' : 'f',
-                    swayPhase: Math.random() * Math.PI * 2
-                });
-            }
+            // Đèn phụ phía xa hai bên, nhỏ và mờ hơn — chân cột vẫn chạm cùng mặt đất (safeGroundY)
+            // như đèn chính, chỉ thân đèn thấp hơn để gợi cảm giác xa/nhỏ hơn theo chiều sâu.
+            streetLamps.push({ x: w * 0.06, baseY: safeGroundY, height: h * 0.26, main: false, flicker: 1, depth: 0.7 });
+            streetLamps.push({ x: w * 0.85, baseY: safeGroundY, height: h * 0.28, main: false, flicker: 1, depth: 0.6 });
 
             // Mưa phố: các hạt mưa rơi xiên nhẹ, mật độ/độ dài sẽ được điều biến theo nhạc lúc vẽ.
             // Số lượng hạt khởi tạo theo PERFORMANCE_PROFILES để giảm tải ở chế độ hiệu năng thấp.
+            const perfProfile = PERFORMANCE_PROFILES[vizConfig.quality];
             streetRain = [];
             for (let i = 0; i < perfProfile.streetRain; i++) {
                 streetRain.push({

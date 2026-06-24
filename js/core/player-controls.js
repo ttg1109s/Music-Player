@@ -119,7 +119,7 @@
             } else { document.getElementById('webgl-canvas').classList.add('opacity-0'); }
 
             if (vizConfig.type === 'vortex') { blockVortex.classList.remove('hidden'); blockVortex.classList.add('flex'); }
-            else if (vizConfig.type === 'rain') { blockRain.classList.remove('hidden'); blockRain.classList.add('flex'); updateRainStyleUI(); }
+            else if (vizConfig.type === 'rain') { blockRain.classList.remove('hidden'); blockRain.classList.add('flex'); }
             else if (vizConfig.type === 'bar') {
                 blockGeometry.classList.remove('hidden'); blockGeometry.classList.add('flex');
                 blockBarStyle.classList.remove('hidden'); blockBarStyle.classList.add('flex');
@@ -128,13 +128,7 @@
                 blockGeometry.classList.remove('hidden'); blockGeometry.classList.add('flex'); 
             }
 
-            if(analyser) { analyser.fftSize = (vizConfig.type === 'wave' || vizConfig.type === 'vortex' || vizConfig.type === 'lightning') ? APP_CONFIG.fftSizeHighRes : APP_CONFIG.fftSizeStandard; allocateBuffers(); }
-        }
-
-        function updateRainStyleUI() {
-            const isStreet = vizConfig.rainStyle === 'street';
-            rainStreetOptions.classList.toggle('hidden', !isStreet);
-            rainStreetOptions.classList.toggle('flex', isStreet);
+            if(analyser) { analyser.fftSize = (vizConfig.type === 'vortex' || vizConfig.type === 'lightning') ? APP_CONFIG.fftSizeHighRes : APP_CONFIG.fftSizeStandard; allocateBuffers(); }
         }
 
         function updateColorMenuUI() {
@@ -173,9 +167,8 @@
         dynColorB.addEventListener('input', (e) => { vizConfig.dynB = e.target.value; updateProgressBarCSS(); saveConfig(); });
         vortexStyleSelect.addEventListener('change', (e) => { vizConfig.vortexStyle = e.target.value; updateVortexVisibility(); saveConfig(); });
         barStyleSelect.addEventListener('change', (e) => { vizConfig.barStyle = e.target.value; saveConfig(); });
-        rainStyleSelect.addEventListener('change', (e) => { vizConfig.rainStyle = e.target.value; updateRainStyleUI(); resizeCanvas(); saveConfig(); });
+        rainStyleSelect.addEventListener('change', (e) => { vizConfig.rainStyle = e.target.value; resizeCanvas(); saveConfig(); });
         glassFlashToggle.addEventListener('change', (e) => { vizConfig.glassFlash = e.target.checked; saveConfig(); });
-        streetStandingSelect.addEventListener('change', (e) => { vizConfig.streetStanding = parseInt(e.target.value); generateStreetScene(); saveConfig(); });
         maxHeightSlider.addEventListener('input', (e) => { vizConfig.maxH = parseInt(e.target.value); valMaxDisplay.textContent = vizConfig.maxH; saveConfig(); });
         barWidthSlider.addEventListener('input', (e) => { vizConfig.barWidth = parseInt(e.target.value); valWidthDisplay.textContent = vizConfig.barWidth; saveConfig(); });
 
