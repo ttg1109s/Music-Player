@@ -1,4 +1,4 @@
-# Audio Visualizer - Master Edition (ver 4 - Bar Cánh Bướm & Mưa Phố)
+# Audio Visualizer - Master Edition
 
 Bản chia nhỏ của file `VM_4.html` gốc (2032 dòng, 1 file duy nhất) thành các
 file CSS / JS / "component" HTML riêng biệt, **không dùng ES6 module**
@@ -6,19 +6,17 @@ file CSS / JS / "component" HTML riêng biệt, **không dùng ES6 module**
 chạy được trực tiếp khi mở `index.html` bằng cách double-click (file://),
 không cần server, không cần build step.
 
-Ngoài việc chia module, project đã qua 4 lượt cải tiến tính năng/visual.
-Chi tiết từng lượt nằm ở file changelog riêng:
+Ngoài việc chia module, project đã qua nhiều lượt cải tiến tính năng/visual.
+Lịch sử chi tiết từng lượt cũ nằm ở các file changelog riêng (CHANGELOG_v1
+đến v4) — bản hiện tại đã cập nhật thêm so với CHANGELOG_v4: bỏ hẳn visual
+"Wave", bỏ người đứng dưới đèn ở Mưa Phố (đèn đường giờ chỉ còn 3 cột, đều
+chạm mặt đất), và visual "Bar" kiểu Phản chiếu cánh bướm giờ bắt đầu dải bar
+sát rìa vòng tròn ở tâm (không còn khoảng hở).
 
-- [CHANGELOG_v4.md](./CHANGELOG_v4.md) — mới nhất: loại bỏ Rừng Đom Đóm, mưa
-  kiểu sấm sét cổ điển, "4 Mùa"; thiết kế lại Mưa Phố (bỏ ghế, người đứng dưới
-  đèn, màu theo setting); gộp Bar + Synthesia thành 1 visual "Bar" với 2 kiểu
-  (Phản chiếu cánh bướm / Thác đổ); chia nhỏ file vẽ visual theo từng loại.
-- [CHANGELOG_v3.md](./CHANGELOG_v3.md) — Bãi Đồi & Túp Lều (thay
-  Rừng Đom Đóm cũ), kiểu mưa "Mưa phố & công viên", chế độ visualizer "4 Mùa".
-- [CHANGELOG_v2.md](./CHANGELOG_v2.md) — làm mượt camera Vortex, sửa lỗi Bar
-  3D biến mất, sửa lỗi màu bị "cài cứng", thiết kế lại hình cây (Rừng Đom Đóm).
-- [CHANGELOG_v1.md](./CHANGELOG_v1.md) — bỏ kiểu Vortex "Bụi Lượng Tử", bỏ
-  camera lắc theo beat, thiết kế lại toàn diện Rừng Đom Đóm (bản đầu).
+- [CHANGELOG_v4.md](./CHANGELOG_v4.md)
+- [CHANGELOG_v3.md](./CHANGELOG_v3.md)
+- [CHANGELOG_v2.md](./CHANGELOG_v2.md)
+- [CHANGELOG_v1.md](./CHANGELOG_v1.md)
 
 ## Vì sao không dùng ES6 module ở đây?
 
@@ -70,8 +68,7 @@ visual-master/
         ├── draw-visualizer.js   (★ ver 1, ★★ ver 2, ★★★ ver 3, ★★★★ ver 4 — viết lại
         │                          hoàn toàn thành vòng lặp điều phối, logic vẽ chuyển ra types/)
         └── types/               (★★★★ mới ở ver 4 — mỗi visual một file riêng)
-            ├── bar.js              (visual "Bar": kiểu Phản chiếu + kiểu Thác đổ)
-            ├── wave.js
+            ├── bar.js              (visual "Bar": kiểu Phản chiếu cánh bướm + kiểu Thác đổ)
             ├── lightning.js
             ├── rubik.js
             ├── vortex.js           (phần update mỗi khung hình; khởi tạo vẫn ở three-vortex.js)
@@ -114,18 +111,18 @@ do việc chia file hay các thay đổi visual.
 | Muốn sửa... | Vào file... |
 |---|---|
 | Giao diện danh sách bài hát | `js/components/playlist-view.js` |
-| Giao diện ngăn cài đặt (kiểu Bar, kiểu mưa, người đứng dưới đèn...) | `js/components/settings-drawer.js` |
+| Giao diện ngăn cài đặt (kiểu Bar, kiểu mưa...) | `js/components/settings-drawer.js` |
 | Visual "Bar" (kiểu Phản chiếu cánh bướm / kiểu Thác đổ) | `js/visualizers/types/bar.js` |
-| Visual "Rain" (kiểu Trôi cửa kính / kiểu Mưa phố, đèn đường, người đứng dưới đèn) | `js/visualizers/types/rain.js` |
-| Visual Wave / Lightning / Rubik / Black Hole | `js/visualizers/types/wave.js`, `lightning.js`, `rubik.js`, `black-hole.js` (tương ứng) |
+| Visual "Rain" (kiểu Trôi cửa kính / kiểu Mưa phố, đèn đường) | `js/visualizers/types/rain.js` |
+| Visual Lightning / Rubik / Black Hole | `js/visualizers/types/lightning.js`, `rubik.js`, `black-hole.js` (tương ứng) |
 | Vòng lặp render chính, thêm visual mới vào bảng dispatch | `js/visualizers/draw-visualizer.js` (object `VISUALIZER_DRAWERS`) |
-| Hàm vẽ dùng chung (giọt nước, khung kính, người đứng/standee) | `js/visualizers/draw-helpers.js` |
+| Hàm vẽ dùng chung (giọt nước, khung kính, nốt nhạc bay lên) | `js/visualizers/draw-helpers.js` |
 | Logic phát nhạc, next/prev, shuffle | `js/core/playlist.js`, `js/core/player-controls.js` |
-| Hiện/ẩn các khối setting theo kiểu visualizer đang chọn | `js/core/player-controls.js` (hàm `updateTypeUI`, `updateRainStyleUI`) |
+| Hiện/ẩn các khối setting theo kiểu visualizer đang chọn | `js/core/player-controls.js` (hàm `updateTypeUI`) |
 | Equalizer, cấu hình lưu localStorage | `js/core/equalizer-settings.js` |
 | Phụ đề (.srt) | `js/core/subtitles.js`, `js/core/subtitle-display.js` |
 | Hiệu ứng Vortex (Three.js) — khởi tạo rings/bars/wave, camera | `js/core/three-vortex.js` (khởi tạo) + `js/visualizers/types/vortex.js` (cập nhật mỗi khung hình) |
-| Khởi tạo đèn đường/người đứng dưới đèn/mưa phố, mặt đất an toàn dưới control bar | `js/core/canvas-scene-setup.js` (hàm `generateStreetScene`, `getPlayerBarSafeHeight`) |
+| Khởi tạo đèn đường/mưa phố, mặt đất an toàn dưới control bar | `js/core/canvas-scene-setup.js` (hàm `generateStreetScene`, `getPlayerBarSafeHeight`) |
 | Thêm trường cấu hình mới (lưu vào `vizConfig`) | `js/core/config.js` (giá trị mặc định) + `js/core/equalizer-settings.js` (nạp lúc `loadConfig`) |
 | Màu sắc, nền | `js/core/color-utils.js` |
 | Toàn bộ màu sắc/giao diện CSS | `css/styles.css` |
