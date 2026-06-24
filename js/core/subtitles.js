@@ -30,7 +30,7 @@
             subtitles.sort((a,b) => a.start - b.start); 
             
             subtitles.forEach((sub, index) => {
-                const isEditing = editingSubId === sub.id; const isActive = (index === currentActiveSubIndex);
+                const isEditing = editingSubId === sub.id; const isActive = activeSubIds.has(sub.id);
                 const card = document.createElement('div');
                 card.className = `sub-item-block group transition-all border-b border-white/5 ${isActive ? 'bg-emerald-900/30' : 'hover:bg-white/5'}`;
                 card.id = `sub-card-${index}`;
@@ -122,7 +122,7 @@
         btnApplySub.addEventListener('click', () => {
             editingSubId = null; resetAutoSub(); renderSubList();
             if (!isSubtitlesEnabled) { isSubtitlesEnabled = true; updateSubToggleUI(); }
-            subtitleModal.classList.add('translate-y-full'); currentActiveSubIndex = -1; subLine1.textContent = ''; subLine2.textContent = '';
+            subtitleModal.classList.add('translate-y-full'); clearAllActiveSubBlocks();
             if (!audioPlayer.paused || audioPlayer.currentTime > 0) { audioPlayer.currentTime = 0; audioPlayer.play(); }
         });
 

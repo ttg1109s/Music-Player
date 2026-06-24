@@ -129,6 +129,6 @@
             setupAudioContext(); updateTypeUI(); 
 
             subtitles = subtitlesBySongId[song.id] ? subtitlesBySongId[song.id].slice() : [];
-            currentActiveSubIndex = -1; resetAutoSub(); renderSubList(); subtitleDisplay.classList.add('opacity-0');
+            clearAllActiveSubBlocks(); resetAutoSub(); renderSubList();
         }
 

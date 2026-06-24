@@ -13,32 +13,73 @@
         }
 
         function processSubtitles(currentTime) {
-            if (!isSubtitlesEnabled || subtitles.length === 0) return;
-            // Khi có nhiều dòng chồng lấn thời gian (overlap), ưu tiên hiển thị dòng có
-            // thời điểm BẮT ĐẦU gần nhất với hiện tại (dòng "mới" nhất đang hiệu lực).
-            // Điều này đảm bảo: dòng nào bắt đầu sau sẽ thay thế dòng đang hiện, và khi nó
-            // kết thúc, nếu vẫn còn dòng khác đang hiệu lực thì dòng đó được hiện tiếp ngay
-            // theo đúng thứ tự — không bị "kẹt" ở dòng bắt đầu sớm nhất như trước.
-            let foundIndex = -1;
+            if (!isSubtitlesEnabled) { clearAllActiveSubBlocks(); return; }
+
+            // Tập các phụ đề đang trong khoảng hiệu lực [start, end] tại thời điểm hiện tại.
+            // Khác với trước (chỉ giữ 1 dòng active), giờ TẤT CẢ phụ đề chồng lấn nhau đều
+            // được tính là active cùng lúc — mỗi dòng có 1 khối DOM riêng (append khi bắt đầu,
+            // remove khi kết thúc), nên N dòng overlap có thể hiển thị đồng thời.
+            const nowActive = new Map(); // id -> sub object
             for (let i = 0; i < subtitles.length; i++) {
-                let s = subtitles[i];
-                if (currentTime >= s.start && currentTime <= s.end) {
-                    if (foundIndex === -1 || s.start > subtitles[foundIndex].start) { foundIndex = i; }
-                }
+                const s = subtitles[i];
+                if (currentTime >= s.start && currentTime <= s.end) nowActive.set(s.id, s);
             }
 
-            if (foundIndex !== currentActiveSubIndex) {
-                let oldIndex = currentActiveSubIndex; currentActiveSubIndex = foundIndex;
-                if(!subtitleModal.classList.contains('translate-y-full')) {
-                    if (oldIndex !== -1) { let oldCard = document.getElementById(`sub-card-${oldIndex}`); if(oldCard && editingSubId !== subtitles[oldIndex].id) renderSubList(); }
-                    if (foundIndex !== -1) { let newCard = document.getElementById(`sub-card-${foundIndex}`); if(newCard && editingSubId !== subtitles[foundIndex].id) renderSubList(); }
+            let changed = false;
+
+            // Dòng vừa hết hiệu lực: fade-out rồi xoá khối DOM tương ứng.
+            activeSubIds.forEach(id => {
+                if (!nowActive.has(id)) {
+                    changed = true;
+                    removeActiveSubBlock(id);
                 }
-                if (foundIndex !== -1) {
-                    let lines = subtitles[foundIndex].text.split('\n'); subLine1.innerHTML = lines[0] || ''; subLine2.innerHTML = lines[1] || ''; subtitleDisplay.classList.remove('opacity-0');
-                } else {
-                    subtitleDisplay.classList.add('opacity-0'); setTimeout(() => { if (currentActiveSubIndex === -1) { subLine1.innerHTML = ''; subLine2.innerHTML = ''; } }, 300);
+            });
+
+            // Dòng vừa bắt đầu hiệu lực: thêm khối DOM mới, chèn đúng vị trí theo thời gian
+            // bắt đầu tăng dần (dòng bắt đầu trước nằm trên, dòng mới hơn thêm vào dưới).
+            nowActive.forEach((sub, id) => {
+                if (!activeSubIds.has(id)) {
+                    changed = true;
+                    addActiveSubBlock(sub);
                 }
+            });
+
+            activeSubIds = new Set(nowActive.keys());
+
+            if (changed && !subtitleModal.classList.contains('translate-y-full') && editingSubId === null) {
+                renderSubList();
             }
+        }
+
+        function addActiveSubBlock(sub) {
+            const block = document.createElement('p');
+            block.id = `sub-active-${sub.id}`;
+            block.dataset.subId = sub.id;
+            block.dataset.start = sub.start;
+            block.className = 'text-xl sm:text-3xl font-bold text-white sub-text-glow leading-snug transition-opacity duration-300 opacity-0';
+            block.innerHTML = sub.text.replace(/\n/g, '<br>');
+
+            // Chèn đúng vị trí theo start tăng dần trong số các khối đang hiển thị.
+            let inserted = false;
+            for (const child of subActiveLines.children) {
+                if (parseFloat(child.dataset.start) > sub.start) { subActiveLines.insertBefore(block, child); inserted = true; break; }
+            }
+            if (!inserted) subActiveLines.appendChild(block);
+
+            requestAnimationFrame(() => block.classList.remove('opacity-0'));
+        }
+
+        function removeActiveSubBlock(id) {
+            const block = document.getElementById(`sub-active-${id}`);
+            if (!block) return;
+            block.classList.add('opacity-0');
+            setTimeout(() => { block.remove(); }, 300);
+        }
+
+        function clearAllActiveSubBlocks() {
+            if (activeSubIds.size === 0) return;
+            activeSubIds.forEach(id => removeActiveSubBlock(id));
+            activeSubIds = new Set();
         }
 
         const noSleep = new NoSleep(); let nativeWakeLock = null;

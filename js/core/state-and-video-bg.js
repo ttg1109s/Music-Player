@@ -3,7 +3,7 @@
  * (Trích từ file gốc, dòng 273-314 trong khối <script>)
  */
 
-        let subtitles = []; let isSubtitlesEnabled = true; let currentActiveSubIndex = -1; let editingSubId = null;
+        let subtitles = []; let isSubtitlesEnabled = true; let activeSubIds = new Set(); let editingSubId = null;
         let subtitlesBySongId = {}; 
         let currentCalculatedBpm = "---";
 

@@ -47,9 +47,10 @@
         const subtitleModal = document.getElementById('subtitle-modal'), btnCloseSubModal = document.getElementById('btn-close-sub-modal');
         const srtUpload = document.getElementById('srt-upload'), btnApplySub = document.getElementById('btn-apply-sub');
         const btnToggleSub = document.getElementById('btn-toggle-sub'), btnAddSub = document.getElementById('btn-add-sub'), btnExportSrt = document.getElementById('btn-export-srt');
-        const subtitleDisplay = document.getElementById('subtitle-display'), subLine1 = document.getElementById('sub-line-1'), subLine2 = document.getElementById('sub-line-2');
+        const subtitleDisplay = document.getElementById('subtitle-display'), subActiveLines = document.getElementById('sub-active-lines');
         const subListContainer = document.getElementById('sub-list-container'), subEmptyState = document.getElementById('sub-empty-state');
         const btnAutoTiming = document.getElementById('btn-auto-timing');
+        const iconAutoTimingIdle = document.getElementById('icon-auto-timing-idle'), iconAutoTimingRecording = document.getElementById('icon-auto-timing-recording');
         let autoSubStartTime = null;
 
         let audioContext, analyser, analyserPitch, source, animationId;
