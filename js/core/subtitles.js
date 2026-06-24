@@ -32,13 +32,13 @@
             subtitles.forEach((sub, index) => {
                 const isEditing = editingSubId === sub.id; const isActive = (index === currentActiveSubIndex);
                 const card = document.createElement('div');
-                card.className = `sub-item-block group p-4 rounded-xl border transition-all ${isActive ? 'bg-emerald-900/30 border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)] ring-1 ring-emerald-500' : 'bg-slate-800/50 border-white/10 hover:border-sky-500/50 hover:bg-slate-800'}`;
+                card.className = `sub-item-block group transition-all border-b border-white/5 ${isActive ? 'bg-emerald-900/30' : 'hover:bg-white/5'}`;
                 card.id = `sub-card-${index}`;
 
                 if (isEditing) {
                     card.classList.add('sub-edit-mode');
                     card.innerHTML = `
-                        <div class="flex flex-col sm:flex-row gap-3">
+                        <div class="flex flex-col sm:flex-row gap-3 px-5 py-3">
                             <div class="flex-grow flex flex-col gap-2">
                                 <div class="flex items-center gap-2">
                                     <input type="text" id="edit-start-${sub.id}" value="${sub.startStr}" class="w-32 text-center text-sky-300 bg-black/60 border border-slate-600 rounded" placeholder="00:00:00,000">
@@ -55,7 +55,7 @@
                 } else {
                     let formattedText = sub.text.replace(/\n/g, '<br>');
                     card.innerHTML = `
-                        <div class="flex justify-between items-start gap-4 cursor-pointer" onclick="editSubItem('${sub.id}')">
+                        <div class="flex justify-between items-center gap-4 px-5 py-3 cursor-pointer" onclick="editSubItem('${sub.id}')">
                             <div class="flex-grow">
                                 <div class="text-xs font-mono text-sky-400 mb-1 flex items-center gap-2">
                                     ${isActive ? '<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>' : ''}
@@ -81,16 +81,21 @@
         };
         window.deleteSubItem = function(id) { subtitles = subtitles.filter(s => s.id !== id); editingSubId = null; renderSubList(); };
         
-        function resetAutoSub() { autoSubStartTime = null; btnAutoTiming.classList.remove('bg-red-500', 'animate-pulse'); btnAutoTiming.classList.add('bg-rose-600'); }
+        function resetAutoSub() {
+            autoSubStartTime = null;
+            btnAutoTiming.classList.remove('bg-red-500', 'animate-pulse'); btnAutoTiming.classList.add('bg-rose-600');
+            iconAutoTimingRecording.classList.add('hidden'); iconAutoTimingIdle.classList.remove('hidden');
+        }
 
         btnAutoTiming.addEventListener('click', () => {
             if (autoSubStartTime === null) {
                 autoSubStartTime = audioPlayer.currentTime; btnAutoTiming.classList.remove('bg-rose-600'); btnAutoTiming.classList.add('bg-red-500', 'animate-pulse');
+                iconAutoTimingIdle.classList.add('hidden'); iconAutoTimingRecording.classList.remove('hidden');
             } else {
                 let endTime = audioPlayer.currentTime;
                 if (endTime < autoSubStartTime) { let temp = autoSubStartTime; autoSubStartTime = endTime; endTime = temp; }
-                let newSub = { id: Date.now().toString(), start: autoSubStartTime, end: endTime, startStr: secToStr(autoSubStartTime), endStr: secToStr(endTime), text: "" };
-                subtitles.push(newSub); editingSubId = newSub.id; resetAutoSub(); renderSubList();
+                let newSub = { id: Date.now().toString(), start: autoSubStartTime, end: endTime, startStr: secToStr(autoSubStartTime), endStr: secToStr(endTime), text: "(Nhập nội dung...)" };
+                subtitles.push(newSub); resetAutoSub(); renderSubList();
                 setTimeout(() => { document.getElementById('sub-list-container').scrollTop = document.getElementById('sub-list-container').scrollHeight; }, 100);
             }
         });
