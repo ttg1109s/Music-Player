@@ -69,11 +69,13 @@ const TPL_SETTINGS_DRAWER = `
                                 <option value="low">Thấp (Nhẹ máy)</option>
                             </select>
                         </div>
-                        <div id="block-geometry" class="flex flex-col w-full">
+                        <div id="block-max-height" class="flex flex-col w-full">
                             <div class="flex flex-col p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
                                 <div class="flex justify-between items-center mb-2"><span class="text-sm font-medium">Độ cao tối đa</span><span id="val-max" class="text-xs text-emerald-400 font-mono">400</span></div>
                                 <input type="range" id="setting-max-height" min="50" max="1000" step="10" class="setting-slider">
                             </div>
+                        </div>
+                        <div id="block-bar-width" class="hidden flex-col w-full">
                             <div class="flex flex-col p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
                                 <div class="flex justify-between items-center mb-2"><span class="text-sm font-medium">Độ dày thanh (px)</span><span id="val-width" class="text-xs text-emerald-400 font-mono">4</span></div>
                                 <input type="range" id="setting-bar-width" min="1" max="15" step="1" class="setting-slider">
@@ -87,12 +89,25 @@ const TPL_SETTINGS_DRAWER = `
                                 <option value="wave">Nhiễu Động Sóng (Fade)</option>
                             </select>
                         </div>
-                        <div id="block-bar-style" class="hidden flex justify-between items-center p-4 hover:bg-white/5 transition-colors bg-emerald-900/10 border-b border-emerald-500/20">
-                            <div><div class="text-sm font-medium text-emerald-300">Kiểu Bar</div></div>
-                            <select id="setting-bar-style" class="bg-black/60 border border-emerald-500/30 rounded-lg px-2 py-1.5 text-xs text-white outline-none w-40 text-right">
-                                <option value="mirror">Phản chiếu (Cánh bướm)</option>
-                                <option value="cascade">Thác đổ</option>
-                            </select>
+                        <div id="block-bar-style" class="hidden flex-col bg-emerald-900/10 border-b border-emerald-500/20">
+                            <div class="flex justify-between items-center p-4 hover:bg-white/5 transition-colors border-b border-emerald-500/10">
+                                <div><div class="text-sm font-medium text-emerald-300">Kiểu Bar</div></div>
+                                <select id="setting-bar-style" class="bg-black/60 border border-emerald-500/30 rounded-lg px-2 py-1.5 text-xs text-white outline-none w-40 text-right">
+                                    <option value="mirror">Phản chiếu (Cánh bướm)</option>
+                                    <option value="cascade">Thác đổ</option>
+                                </select>
+                            </div>
+                            <div id="bar-mirror-options" class="hidden flex-col">
+                                <div class="flex flex-col p-4 border-b border-emerald-500/10 hover:bg-white/5 transition-colors">
+                                    <div class="flex justify-between items-center mb-2"><span class="text-sm font-medium text-emerald-300">Số lượng thanh (mỗi bên)</span><span id="val-mirror-count" class="text-xs text-emerald-400 font-mono">32</span></div>
+                                    <input type="range" id="setting-mirror-count" min="10" max="32" step="1" class="setting-slider">
+                                </div>
+                                <div class="flex flex-col p-4 border-b border-emerald-500/10 hover:bg-white/5 transition-colors">
+                                    <div class="flex justify-between items-center mb-2"><span class="text-sm font-medium text-emerald-300">Độ to vòng tròn tâm</span><span id="val-mirror-circle" class="text-xs text-emerald-400 font-mono">1.8%</span></div>
+                                    <input type="range" id="setting-mirror-circle" min="1" max="25" step="0.5" class="setting-slider">
+                                    <div class="text-[11px] text-slate-400 mt-1">Vòng tròn to có thể chồng lấn lên các thanh gần tâm — các dải không co giãn theo.</div>
+                                </div>
+                            </div>
                         </div>
                         <div id="block-rain" class="hidden flex-col bg-blue-900/10 border-b border-blue-500/20">
                             <div class="flex justify-between items-center p-4 hover:bg-white/5 transition-colors border-b border-blue-500/10">
