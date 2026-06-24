@@ -32,11 +32,11 @@ const TPL_PLAYLIST_VIEW = `
             </div>
             
             <div class="flex gap-4">
-                <button onclick="if(playlist.length > 0) playSong(currentIndex > -1 ? currentIndex : 0);" class="flex-1 bg-white/10 hover:bg-white/20 backdrop-blur-md active:scale-95 transition-all py-3.5 rounded-2xl flex items-center justify-center gap-2 font-semibold text-[15px] text-white">
+                <button onclick="if(playlistOrder.length > 0) playSong(currentKey || playlistOrder[0]);" class="flex-1 bg-white/10 hover:bg-white/20 backdrop-blur-md active:scale-95 transition-all py-3.5 rounded-2xl flex items-center justify-center gap-2 font-semibold text-[15px] text-white">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>
                     Phát
                 </button>
-                <button onclick="if(!isShuffle) btnShuffle.click(); if(playlist.length > 0) playSong(shuffleIndices[0]);" class="flex-1 bg-white/10 hover:bg-white/20 backdrop-blur-md active:scale-95 transition-all py-3.5 rounded-2xl flex items-center justify-center gap-2 font-semibold text-[15px] text-white">
+                <button onclick="if(!isShuffle) btnShuffle.click(); if(playlistOrder.length > 0) playSong(shuffleIndices[0]);" class="flex-1 bg-white/10 hover:bg-white/20 backdrop-blur-md active:scale-95 transition-all py-3.5 rounded-2xl flex items-center justify-center gap-2 font-semibold text-[15px] text-white">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
                     Trộn bài
                 </button>
@@ -49,6 +49,43 @@ const TPL_PLAYLIST_VIEW = `
                 <p class="text-sm">Chưa có bài hát nào. Hãy thêm nhạc để bắt đầu.</p>
             </div>
             <div id="playlist-container" class="flex flex-col pb-32"></div>
+        </div>
+    </div>
+
+    <!-- Modal: Sửa thông tin bài hát (title/artist/album) -->
+    <div id="song-edit-modal" class="fixed inset-0 z-[120] bg-black/70 backdrop-blur-sm hidden flex items-center justify-center px-5">
+        <div class="bg-[#0f172a] border border-white/10 rounded-2xl w-full max-w-sm p-5 shadow-2xl flex flex-col gap-4">
+            <h3 class="text-base font-bold text-sky-400">Sửa thông tin bài hát</h3>
+            <div class="flex flex-col gap-3">
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs text-slate-400">Tên bài hát</label>
+                    <input type="text" id="song-edit-title" class="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-sky-500">
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs text-slate-400">Nghệ sĩ</label>
+                    <input type="text" id="song-edit-artist" class="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-sky-500">
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs text-slate-400">Album</label>
+                    <input type="text" id="song-edit-album" class="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-sky-500">
+                </div>
+            </div>
+            <div class="flex gap-3 mt-1">
+                <button id="song-edit-cancel" class="flex-1 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-sm font-semibold transition-colors">Hủy</button>
+                <button id="song-edit-save" class="flex-1 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-sm font-semibold transition-colors">Lưu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Thông tin chi tiết bài hát -->
+    <div id="song-info-modal" class="fixed inset-0 z-[120] bg-black/70 backdrop-blur-sm hidden flex items-center justify-center px-5">
+        <div class="bg-[#0f172a] border border-white/10 rounded-2xl w-full max-w-sm p-5 shadow-2xl flex flex-col gap-4">
+            <h3 class="text-base font-bold text-sky-400">Thông tin bài hát</h3>
+            <div id="song-info-body" class="flex flex-col gap-2 text-sm text-slate-300"></div>
+            <div class="flex gap-3 mt-1">
+                <button id="song-info-export" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold transition-colors">Xuất file (gắn tag mới)</button>
+                <button id="song-info-close" class="flex-1 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-sm font-semibold transition-colors">Đóng</button>
+            </div>
         </div>
     </div>
 `;

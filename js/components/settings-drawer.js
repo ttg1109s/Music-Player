@@ -47,6 +47,13 @@ const TPL_SETTINGS_DRAWER = `
                                 <input type="file" id="setting-bg-upload" accept="image/*" class="hidden">
                             </label>
                         </div>
+                        <div class="flex justify-between items-center p-4 border-b border-white/5">
+                            <span class="text-sm font-medium">Sử dụng Ảnh nền Playlist</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="setting-bg-image-enable" class="sr-only peer">
+                                <div class="w-9 h-5 bg-slate-600 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-500 shadow-inner"></div>
+                            </label>
+                        </div>
                         <div class="flex flex-col p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
                             <div class="flex justify-between items-center mb-2">
                                 <span class="text-sm font-medium">Độ mờ nhòe nền (Blur)</span>
@@ -228,6 +235,17 @@ const TPL_SETTINGS_DRAWER = `
                             <div class="flex justify-between items-center mb-2"><span class="text-sm font-medium">Giãn chữ (Letter spacing, px)</span><span id="val-sub-letter-spacing" class="text-xs text-yellow-400 font-mono">0</span></div>
                             <input type="range" id="setting-sub-letter-spacing" min="-1" max="5" step="0.5" class="setting-slider">
                         </div>
+                    </div>
+                </div>
+
+                <!-- SECTION: VỀ TRÌNH PHÁT -->
+                <div>
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-2">Khác</h3>
+                    <div class="bg-white/5 rounded-2xl border border-white/10 flex flex-col overflow-hidden">
+                        <button id="setting-open-about" class="flex justify-between items-center p-4 hover:bg-white/5 transition-colors w-full text-left">
+                            <span class="text-sm font-medium">Về trình phát</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                        </button>
                     </div>
                 </div>
 
