@@ -32,6 +32,5 @@ const TPL_BOTTOM_PLAYER = `
                 <span id="current-time" class="text-white font-semibold">0:00</span>&nbsp;/&nbsp;<span id="duration-time">0:00</span>
             </div>
         </div>
-        <audio id="audio-player" style="display: none;" playsinline></audio>
     </div>
 `;

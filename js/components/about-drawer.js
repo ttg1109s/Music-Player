@@ -30,14 +30,24 @@ const TPL_ABOUT_DRAWER = `
                             <span class="text-sm font-medium text-slate-300">Tổng thời lượng các bài</span>
                             <span id="stat-about-total-duration" class="text-sm font-mono text-sky-300">—</span>
                         </div>
-                        <div class="flex justify-between items-center p-4 border-b border-white/5">
+                        <div class="flex justify-between items-center p-4">
                             <span class="text-sm font-medium text-slate-300">Thời lượng đã nghe</span>
                             <span id="stat-about-listen-seconds" class="text-sm font-mono text-sky-300">—</span>
                         </div>
-                        <div class="flex justify-between items-center p-4">
-                            <span class="text-sm font-medium text-slate-300">Dung lượng đang dùng</span>
-                            <span id="stat-about-storage" class="text-sm font-mono text-sky-300">—</span>
-                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION: QUẢN LÝ DUNG LƯỢNG (mục mới — tách khỏi Thống kê, sang ngăn riêng) -->
+                <div>
+                    <h3 class="text-xs font-bold text-rose-400 uppercase tracking-widest mb-2 ml-2">Lưu trữ</h3>
+                    <div class="bg-white/5 rounded-2xl border border-white/10 flex flex-col overflow-hidden">
+                        <button id="setting-open-storage" class="flex justify-between items-center p-4 hover:bg-white/5 transition-colors w-full text-left">
+                            <div>
+                                <div class="text-sm font-medium">Quản lý dung lượng</div>
+                                <div class="text-xs text-slate-400 mt-0.5">Dung lượng đang dùng, giải phóng bộ nhớ, dọn file lỗi</div>
+                            </div>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                        </button>
                     </div>
                 </div>
 
