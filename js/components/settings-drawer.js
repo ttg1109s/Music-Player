@@ -87,15 +87,22 @@ const TPL_SETTINGS_DRAWER = `
                                 <option value="wave">Nhiễu Động Sóng (Fade)</option>
                             </select>
                         </div>
+                        <div id="block-bar-style" class="hidden flex justify-between items-center p-4 hover:bg-white/5 transition-colors bg-emerald-900/10 border-b border-emerald-500/20">
+                            <div><div class="text-sm font-medium text-emerald-300">Kiểu Bar</div></div>
+                            <select id="setting-bar-style" class="bg-black/60 border border-emerald-500/30 rounded-lg px-2 py-1.5 text-xs text-white outline-none w-40 text-right">
+                                <option value="mirror">Phản chiếu (Cánh bướm)</option>
+                                <option value="cascade">Thác đổ</option>
+                            </select>
+                        </div>
                         <div id="block-rain" class="hidden flex-col bg-blue-900/10 border-b border-blue-500/20">
                             <div class="flex justify-between items-center p-4 hover:bg-white/5 transition-colors border-b border-blue-500/10">
                                 <div><div class="text-sm font-medium text-blue-300">Kiểu hiệu ứng mưa</div></div>
                                 <select id="setting-rain-style" class="bg-black/60 border border-blue-500/30 rounded-lg px-2 py-1.5 text-xs text-white outline-none w-36 text-right">
-                                    <option value="classic">Mưa rơi sấm sét</option><option value="glass">Trôi trên cửa kính</option><option value="street">Mưa phố &amp; công viên</option>
+                                    <option value="glass">Trôi trên cửa kính</option><option value="street">Mưa phố &amp; công viên</option>
                                 </select>
                             </div>
-                            <div id="rain-glass-flash-row" class="flex justify-between items-center p-4 hover:bg-white/5 transition-colors">
-                                <div class="text-sm font-medium text-blue-300">Chớp sáng ngoài ô kính</div>
+                            <div class="flex justify-between items-center p-4 hover:bg-white/5 transition-colors border-b border-blue-500/10">
+                                <div><div class="text-sm font-medium text-blue-300">Chớp sáng (kính &amp; đèn đường)</div></div>
                                 <label class="relative inline-flex items-center cursor-pointer">
                                     <input type="checkbox" id="setting-glass-flash" class="sr-only peer">
                                     <div class="w-9 h-5 bg-slate-600 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-500 shadow-inner"></div>
@@ -103,41 +110,14 @@ const TPL_SETTINGS_DRAWER = `
                             </div>
                             <div id="rain-street-options" class="hidden flex-col">
                                 <div class="flex justify-between items-center p-4 hover:bg-white/5 transition-colors border-t border-blue-500/10">
-                                    <div><div class="text-sm font-medium text-blue-300">Người ngồi ghế công viên</div></div>
-                                    <select id="setting-rain-sitter" class="bg-black/60 border border-blue-500/30 rounded-lg px-2 py-1.5 text-xs text-white outline-none w-36 text-right">
-                                        <option value="none">Không có ai</option>
-                                        <option value="single">Ngồi một mình</option>
-                                        <option value="couple">Ngồi đôi</option>
+                                    <div><div class="text-sm font-medium text-blue-300">Người đứng dưới đèn</div></div>
+                                    <select id="setting-street-standing" class="bg-black/60 border border-blue-500/30 rounded-lg px-2 py-1.5 text-xs text-white outline-none w-36 text-right">
+                                        <option value="0">Không có ai</option>
+                                        <option value="1">1 người</option>
+                                        <option value="2">2 người</option>
+                                        <option value="3">3 người</option>
                                     </select>
                                 </div>
-                                <div id="rain-couple-type-row" class="hidden flex justify-between items-center p-4 hover:bg-white/5 transition-colors">
-                                    <div><div class="text-sm font-medium text-blue-300">Kiểu cặp đôi</div></div>
-                                    <select id="setting-rain-couple-type" class="bg-black/60 border border-blue-500/30 rounded-lg px-2 py-1.5 text-xs text-white outline-none w-36 text-right">
-                                        <option value="mf">Nam &amp; Nữ</option>
-                                        <option value="mm">Nam &amp; Nam</option>
-                                        <option value="ff">Nữ &amp; Nữ</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div id="block-seasons" class="hidden flex-col bg-amber-900/10 border-b border-amber-500/20">
-                            <div class="flex justify-between items-center p-4 hover:bg-white/5 transition-colors border-b border-amber-500/10">
-                                <div><div class="text-sm font-medium text-amber-300">Chế độ chọn mùa</div></div>
-                                <select id="setting-season-mode" class="bg-black/60 border border-amber-500/30 rounded-lg px-2 py-1.5 text-xs text-white outline-none w-40 text-right">
-                                    <option value="fixed">Cố định 1 mùa</option>
-                                    <option value="songRandom">Ngẫu nhiên theo bài hát</option>
-                                    <option value="music">Theo nhạc hiện tại</option>
-                                </select>
-                            </div>
-                            <div id="season-fixed-row" class="flex justify-between items-center p-4 hover:bg-white/5 transition-colors">
-                                <div><div class="text-sm font-medium text-amber-300">Chọn mùa</div></div>
-                                <select id="setting-season-fixed" class="bg-black/60 border border-amber-500/30 rounded-lg px-2 py-1.5 text-xs text-white outline-none w-36 text-right">
-                                    <option value="spring">Xuân (Hoa đào)</option>
-                                    <option value="summer">Hạ (Hướng dương)</option>
-                                    <option value="autumn">Thu (Lá rụng)</option>
-                                    <option value="winter">Đông (Tuyết)</option>
-                                </select>
                             </div>
                         </div>
 
