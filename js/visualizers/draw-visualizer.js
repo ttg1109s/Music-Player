@@ -78,5 +78,6 @@
         document.addEventListener('DOMContentLoaded', async () => {
             await loadConfig();
             updateSubToggleUI();
+            if (typeof loadSongStats === 'function') await loadSongStats();
             await initPlaylistFromDB();
         });
