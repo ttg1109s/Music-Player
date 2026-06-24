@@ -14,12 +14,18 @@
 
         function processSubtitles(currentTime) {
             if (!isSubtitlesEnabled || subtitles.length === 0) return;
+            // Khi có nhiều dòng chồng lấn thời gian (overlap), ưu tiên hiển thị dòng có
+            // thời điểm BẮT ĐẦU gần nhất với hiện tại (dòng "mới" nhất đang hiệu lực).
+            // Điều này đảm bảo: dòng nào bắt đầu sau sẽ thay thế dòng đang hiện, và khi nó
+            // kết thúc, nếu vẫn còn dòng khác đang hiệu lực thì dòng đó được hiện tiếp ngay
+            // theo đúng thứ tự — không bị "kẹt" ở dòng bắt đầu sớm nhất như trước.
             let foundIndex = -1;
-            if (currentActiveSubIndex !== -1 && currentActiveSubIndex < subtitles.length) {
-                let activeSub = subtitles[currentActiveSubIndex];
-                if (currentTime >= activeSub.start && currentTime <= activeSub.end) { foundIndex = currentActiveSubIndex; }
+            for (let i = 0; i < subtitles.length; i++) {
+                let s = subtitles[i];
+                if (currentTime >= s.start && currentTime <= s.end) {
+                    if (foundIndex === -1 || s.start > subtitles[foundIndex].start) { foundIndex = i; }
+                }
             }
-            if (foundIndex === -1) { for (let i = 0; i < subtitles.length; i++) { if (currentTime >= subtitles[i].start && currentTime <= subtitles[i].end) { foundIndex = i; break; } } }
 
             if (foundIndex !== currentActiveSubIndex) {
                 let oldIndex = currentActiveSubIndex; currentActiveSubIndex = foundIndex;
