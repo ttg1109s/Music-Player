@@ -10,6 +10,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/nosleep/0.12.0/NoSleep.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Lưu trữ IndexedDB cho nhạc/tag/cover/sub/ảnh-video nền (xem PLAN_INDEXEDDB.md) -->
+    <script src="https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/umd.js"></script>
+    <!-- Ghi ID3 tag mới vào blob lúc Export/Restore (jsmediatags chỉ đọc, không viết) -->
+    <script src="https://cdn.jsdelivr.net/npm/browser-id3-writer@4/dist/browser-id3-writer.js"></script>
 
     <!-- CSS tách riêng -->
     <link rel="stylesheet" href="css/styles.css">
@@ -39,6 +43,7 @@
     <script src="js/components/subtitle-modal.js"></script>
     <script src="js/components/bottom-player.js"></script>
     <script src="js/components/settings-drawer.js"></script>
+    <script src="js/components/about-drawer.js"></script>
 
     <!-- =====================================================================
          2) MAIN (bootstrap): lắp toàn bộ component vào #app-root.
@@ -50,9 +55,16 @@
     <!-- =====================================================================
          3) CORE: logic nghiệp vụ. PHẢI nạp sau bước (2).
             Thứ tự dưới đây giữ đúng thứ tự phụ thuộc / thứ tự xuất hiện gốc.
+            db.js và loading-shield-util.js nạp NGAY SAU dom-refs.js: cần
+            #loading-shield/#loading-text đã có trong DOM (loading-shield-util.js),
+            và phải có mặt TRƯỚC playlist.js/equalizer-settings.js/subtitles.js/
+            state-and-video-bg.js/about-stats.js/id3-export.js vì các file đó gọi
+            hàm helper định nghĩa trong 2 file này.
          ===================================================================== -->
     <script src="js/core/config.js"></script>
     <script src="js/core/dom-refs.js"></script>
+    <script src="js/core/db.js"></script>
+    <script src="js/core/loading-shield-util.js"></script>
     <script src="js/core/three-vortex.js"></script>
     <script src="js/core/state-and-video-bg.js"></script>
     <script src="js/core/subtitles.js"></script>
@@ -66,6 +78,8 @@
     <script src="js/core/audio-engine.js"></script>
     <script src="js/core/audio-analysis.js"></script>
     <script src="js/core/rubik-math.js"></script>
+    <script src="js/core/about-stats.js"></script>
+    <script src="js/core/id3-export.js"></script>
 
     <!-- =====================================================================
          4) VISUALIZERS: hàm vẽ canvas dùng chung (draw-helpers.js), từng visual riêng theo
@@ -79,6 +93,8 @@
     <script src="js/visualizers/types/vortex.js"></script>
     <script src="js/visualizers/types/black-hole.js"></script>
     <script src="js/visualizers/types/rain.js"></script>
+    <!-- draw-visualizer.js chứa điểm khởi động thực sự của app (DOMContentLoaded ->
+         loadConfig() + initPlaylistFromDB()), giữ nguyên vị trí như các bản trước. -->
     <script src="js/visualizers/draw-visualizer.js"></script>
 
 </body>
