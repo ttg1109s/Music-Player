@@ -68,6 +68,7 @@
             if (!vizConfig.barStyle) vizConfig.barStyle = 'mirror';
             if (vizConfig.mirrorBarCount == null) vizConfig.mirrorBarCount = 32;
             if (vizConfig.bgImageEnabled == null) vizConfig.bgImageEnabled = false;
+            if (vizConfig.keepScreenOn == null) vizConfig.keepScreenOn = true;
             if (!vizConfig.subtitleStyle) vizConfig.subtitleStyle = { ...DEFAULT_VIZ_CONFIG.subtitleStyle };
             else vizConfig.subtitleStyle = { ...DEFAULT_VIZ_CONFIG.subtitleStyle, ...vizConfig.subtitleStyle };
             // Cấu hình cũ (trước khi thang cỡ chữ đổi thành 8-16px) có thể đã lưu giá trị lớn hơn —
@@ -93,6 +94,7 @@
             barStyleSelect.value = vizConfig.barStyle;
             rainStyleSelect.value = vizConfig.rainStyle;
             glassFlashToggle.checked = vizConfig.glassFlash;
+            if (typeof keepScreenOnToggle !== 'undefined' && keepScreenOnToggle) keepScreenOnToggle.checked = vizConfig.keepScreenOn !== false;
             
             volumeSlider.value = vizConfig.volume; valVolumeDisplay.textContent = vizConfig.volume + '%';
             if(masterGainNode) masterGainNode.gain.value = vizConfig.volume / 100;
@@ -128,3 +130,14 @@
         settingSubFontSize.addEventListener('input', (e) => { const v = parseInt(e.target.value); vizConfig.subtitleStyle.fontSize = v; valSubFontSize.textContent = v; applySubtitleStyle(); saveConfig(); });
         settingSubLineHeight.addEventListener('input', (e) => { const v = parseFloat(e.target.value); vizConfig.subtitleStyle.lineHeight = v; valSubLineHeight.textContent = v; applySubtitleStyle(); saveConfig(); });
         settingSubLetterSpacing.addEventListener('input', (e) => { const v = parseFloat(e.target.value); vizConfig.subtitleStyle.letterSpacing = v; valSubLetterSpacing.textContent = v; applySubtitleStyle(); saveConfig(); });
+
+        // Tuỳ chọn "Giữ màn hình sáng" (mục 2.10). Bật -> xin wake lock khi đang phát; tắt -> nhả
+        // wake lock để máy tự tắt màn theo hệ điều hành (nhạc vẫn cố gắng phát ở chế độ nền).
+        if (typeof keepScreenOnToggle !== 'undefined' && keepScreenOnToggle) {
+            keepScreenOnToggle.addEventListener('change', (e) => {
+                vizConfig.keepScreenOn = e.target.checked;
+                saveConfig();
+                if (vizConfig.keepScreenOn) { if (typeof audioPlayer !== 'undefined' && !audioPlayer.paused) requestWakeLock(); }
+                else { releaseWakeLock(); }
+            });
+        }

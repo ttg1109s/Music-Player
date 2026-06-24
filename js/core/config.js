@@ -26,6 +26,7 @@
             mirrorBarCount: 32,
             volume: 100, eqMode: 'flat', manualEq: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             videoBgEnabled: false, videoBgUrl: '', videoHideVisual: false,
+            keepScreenOn: true,
             subtitleStyle: {
                 bgColor: '#000000', bgOpacity: 0.4,
                 borderColor: '#ffffff', borderOpacity: 0.1, borderWidth: 1, borderRadius: 16,

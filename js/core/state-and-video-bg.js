@@ -36,18 +36,37 @@
         }
 
         function handleVideoBackground() {
-            // Video nền chỉ được hiện khi đang ở màn Visualizer — Playlist có nền/ảnh nền riêng
-            // của nó (#playlist-bg), Video nền KHÔNG được làm nền cho Playlist. Kiểm tra ngay tại
-            // đây (không chỉ ở nơi gọi) để dù toggle/upload video được bấm lúc đang mở Cài đặt từ
-            // màn Playlist, video cũng không bị hiện ra phía sau Playlist.
-            const isOnPlaylistScreen = !playlistView.classList.contains('-translate-y-full');
-            if (vizConfig.videoBgEnabled && vizConfig.videoBgUrl && !isOnPlaylistScreen) {
-                bgVideoElement.src = vizConfig.videoBgUrl; bgVideoElement.classList.remove('hidden'); bgVideoElement.style.opacity = '1'; document.body.style.backgroundColor = 'transparent'; 
+            // QUY TẮC v6:
+            //  - Video nền BẬT/TẮT chỉ phụ thuộc cấu hình + trạng thái NHẠC, KHÔNG phụ thuộc đang ở
+            //    màn Playlist hay Visualizer. Mở Playlist KHÔNG còn làm dừng video nữa (Playlist nằm
+            //    đè z-[60] lên trên nên tự che video, không cần dừng — trước đây dừng video là can
+            //    thiệp phi chức năng).
+            //  - src của video chỉ gán 1 LẦN (hoặc khi URL đổi) -> Next/Prev KHÔNG nạp lại video.
+            //  - Nền đen cưỡng chế phía sau + fade video lên khi đã có khung hình thật -> bỏ hẳn cú
+            //    "lóe trắng" lúc video đang nạp.
+            if (vizConfig.videoBgEnabled && vizConfig.videoBgUrl) {
+                document.body.style.backgroundColor = '#000000'; // nền đen cưỡng chế sau video
+                bgVideoElement.classList.remove('hidden');
+
+                if (bgVideoElement.getAttribute('src') !== vizConfig.videoBgUrl) {
+                    bgVideoElement.style.opacity = '0'; // giữ ẩn cho tới khi có hình -> không chớp trắng
+                    bgVideoElement.src = vizConfig.videoBgUrl;
+                    const fadeVideoIn = () => { bgVideoElement.style.opacity = '1'; };
+                    bgVideoElement.addEventListener('loadeddata', fadeVideoIn, { once: true });
+                    bgVideoElement.addEventListener('playing', fadeVideoIn, { once: true });
+                } else {
+                    bgVideoElement.style.opacity = '1';
+                }
+
+                // Phát/dừng video CHỈ bám theo nhạc: nhạc đang phát -> video chạy; nhạc dừng -> video dừng.
                 if (!audioPlayer.paused) { bgVideoElement.play().catch(() => {}); } else { bgVideoElement.pause(); }
             } else {
                 bgVideoElement.style.opacity = '0';
-                setTimeout(() => { bgVideoElement.classList.add('hidden'); bgVideoElement.src = ""; }, 500);
-                if (!isOnPlaylistScreen) updateDOMBackground();
+                bgVideoElement.pause();
+                setTimeout(() => {
+                    if (!vizConfig.videoBgEnabled) { bgVideoElement.classList.add('hidden'); bgVideoElement.removeAttribute('src'); bgVideoElement.src = ''; }
+                }, 500);
+                updateDOMBackground();
             }
         }
 

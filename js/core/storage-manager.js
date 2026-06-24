@@ -72,37 +72,32 @@
 
         /** Xóa TOÀN BỘ dữ liệu app khỏi IndexedDB: cả 2 store songs + meta — dùng chung cho cả 2 nút giải phóng bộ nhớ. */
         async function clearAllStoredData() {
+            // [QUYẾT ĐỊNH 1.8] "Xóa hết dữ liệu" CHỈ xóa bài hát (và thống kê nghe riêng từng bài,
+            // vì bài hát đã mất). KHÔNG đụng tới ảnh/video nền (bgImage/videoBg) — đó là tài nguyên
+            // người dùng thiết lập riêng, không nằm trong "thư viện nhạc".
             const songKeys = await getAllSongKeys();
             for (const key of songKeys) await deleteSongRecord(key);
-            await delMeta('bgImage');
-            await delMeta('videoBg');
             await delMeta('totalListenSeconds');
+            if (typeof clearAllSongStats === 'function') await clearAllSongStats();
 
             // Đồng bộ lại toàn bộ state RAM — không reload trang, để người dùng thấy ngay kết quả.
             playlistOrder = []; displayOrder = []; playlistCache.clear(); songNameIndex.clear(); confirmedBrokenKeys.clear();
             pendingResortKeys.clear();
+            if (typeof recomputeRenderOrder === 'function') recomputeRenderOrder();
             if (currentKey) { audioPlayer.pause(); audioPlayer.src = ''; currentKey = null; }
             if (currentObjectURL) { URL.revokeObjectURL(currentObjectURL); currentObjectURL = null; }
             if (currentCoverObjectURL) { URL.revokeObjectURL(currentCoverObjectURL); currentCoverObjectURL = null; }
             playerTitle.textContent = 'Chưa chọn bài'; playerArtist.textContent = '---';
             updateShuffleArray();
             renderPlaylistFull();
-            playlistEmpty.classList.remove('hidden');
-            vizConfig.bgImage = ''; vizConfig.bgImageEnabled = false;
-            vizConfig.videoBgUrl = ''; vizConfig.videoBgEnabled = false; vizConfig.videoHideVisual = false;
-            if (bgImageEnableToggle) bgImageEnableToggle.checked = false;
-            if (videoEnableToggle) videoEnableToggle.checked = false;
-            if (videoHideVisualToggle) videoHideVisualToggle.checked = false;
-            if (bgVideoElement) { bgVideoElement.pause(); bgVideoElement.removeAttribute('src'); bgVideoElement.src = ''; }
-            updatePlaylistBg();
-            updateDOMBackground();
+            // updateEmptyState() đã được renderPlaylistFull() gọi -> tự bật #playlist-empty đúng lúc.
             saveConfig();
         }
 
         const btnDownloadThenClear = document.getElementById('btn-storage-download-then-clear');
         if (btnDownloadThenClear) {
             btnDownloadThenClear.addEventListener('click', () => {
-                const ok = confirm('Tải toàn bộ nhạc thành 1 file zip, sau đó XÓA toàn bộ khỏi thiết bị này? Hành động xóa không thể hoàn tác sau khi tải xong.');
+                const ok = confirm('Tải toàn bộ nhạc thành 1 file zip, sau đó XÓA toàn bộ BÀI HÁT khỏi thiết bị này? (Ảnh/video nền vẫn được giữ lại.) Hành động xóa không thể hoàn tác sau khi tải xong.');
                 if (!ok) return;
                 withLoadingShield('Đang đóng gói file zip (0%)...', async () => {
                     const keys = await getAllSongKeys();
@@ -124,7 +119,7 @@
                     loadingText.textContent = 'Đang xóa dữ liệu...';
                     await clearAllStoredData();
                     renderStorageStats();
-                    alert('Đã tải xong file zip và xóa toàn bộ dữ liệu đã lưu trên thiết bị.');
+                    alert('Đã tải xong file zip và xóa toàn bộ bài hát. Ảnh/video nền vẫn được giữ lại.');
                 });
             });
         }
@@ -132,12 +127,12 @@
         const btnClearNoDownload = document.getElementById('btn-storage-clear-no-download');
         if (btnClearNoDownload) {
             btnClearNoDownload.addEventListener('click', () => {
-                const ok = confirm('Xóa toàn bộ nhạc, ảnh/video nền đã lưu trên thiết bị này? Hành động này KHÔNG thể hoàn tác.');
+                const ok = confirm('Xóa toàn bộ BÀI HÁT đã lưu trên thiết bị này? (Ảnh/video nền vẫn được giữ lại.) Hành động này KHÔNG thể hoàn tác.');
                 if (!ok) return;
                 withLoadingShield('Đang xóa dữ liệu...', async () => {
                     await clearAllStoredData();
                     renderStorageStats();
-                    alert('Đã xóa toàn bộ dữ liệu đã lưu trên thiết bị.');
+                    alert('Đã xóa toàn bộ bài hát. Ảnh/video nền vẫn được giữ lại.');
                 });
             });
         }

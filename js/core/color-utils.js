@@ -17,7 +17,7 @@
 
         function updateDOMBackground() { 
             if(!vizConfig.videoBgEnabled) document.body.style.backgroundColor = vizConfig.bgColor; 
-            else document.body.style.backgroundColor = 'transparent';
+            else document.body.style.backgroundColor = '#000000';
         }
         
         function updatePlaylistBg() {

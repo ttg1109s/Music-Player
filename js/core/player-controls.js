@@ -52,7 +52,8 @@
 
         function switchToVisualizer() {
             playlistView.classList.add('-translate-y-full'); visualizerUI.classList.remove('hidden'); playerContainer.classList.remove('hidden');
-            handleVideoBackground(); // rời Playlist -> cho video nền hiện lại nếu đang bật
+            // KHÔNG gọi handleVideoBackground() ở đây nữa: chuyển màn hình KHÔNG được điều khiển video
+            // (video chỉ bám theo trạng thái nhạc). Playlist đè z-[60] tự che video khi cần.
             setTimeout(() => { 
                 visualizerUI.classList.add('fade-enter-active'); canvas.classList.remove('opacity-0'); 
                 if (vizConfig.type === 'vortex') document.getElementById('webgl-canvas').classList.remove('opacity-0');
@@ -61,8 +62,8 @@
 
         btnBackPlaylist.addEventListener('click', () => {
             visualizerUI.classList.remove('fade-enter-active'); canvas.classList.add('opacity-0'); document.getElementById('webgl-canvas').classList.add('opacity-0');
-            playlistView.classList.remove('-translate-y-full'); // bỏ translate TRƯỚC để handleVideoBackground() nhận đúng màn hình hiện tại là Playlist
-            handleVideoBackground(); // sang Playlist -> ẩn & dừng video nền (Playlist không dùng nó làm nền)
+            playlistView.classList.remove('-translate-y-full');
+            // KHÔNG dừng/ẩn video ở đây nữa: Playlist (z-[60]) tự che video, video vẫn chạy theo nhạc.
             setTimeout(() => { visualizerUI.classList.add('hidden'); playerContainer.classList.add('hidden'); renderPlaylistDiff(); }, 300);
         });
 
@@ -101,7 +102,9 @@
             let recordArtDynamic = document.getElementById('record-art'); if(recordArtDynamic) recordArtDynamic.classList.remove('paused');
             if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing";
             if (currentKey) refreshSongNode(currentKey);
-            if (vizConfig.videoBgEnabled && vizConfig.videoBgUrl && bgVideoElement.paused) { bgVideoElement.play().catch(() => {}); }
+            // Video nền chỉ chịu sự điều khiển của trạng thái phát nhạc (không phải của màn hình).
+            // handleVideoBackground() tự lo: gán src 1 lần, ép nền đen, fade video lên rồi mới phát.
+            handleVideoBackground();
         });
         audioPlayer.addEventListener('pause', () => { 
             iconPlay.classList.remove('hidden'); iconPause.classList.add('hidden'); 
@@ -135,7 +138,10 @@
             if (!audioPlayer.paused && !isSeeking) {
                 const now = audioPlayer.currentTime;
                 if (lastListenTrackTime !== null && now > lastListenTrackTime) {
-                    pendingListenSeconds += (now - lastListenTrackTime);
+                    const delta = now - lastListenTrackTime;
+                    pendingListenSeconds += delta;
+                    // Cộng dồn thời gian nghe riêng cho từng bài (mục 2.6): key songStats[currentKey].totalTime
+                    if (currentKey && typeof addSongListenTime === 'function') addSongListenTime(currentKey, delta);
                 }
                 lastListenTrackTime = now;
                 if (pendingListenSeconds >= 5) {

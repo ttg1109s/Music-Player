@@ -1,0 +1,91 @@
+/**
+ * listen-stats.js — Thống kê NGHE RIÊNG TỪNG BÀI (mục 6 v6): mỗi bài có { count, totalTime }
+ *   - count     : số lần bắt đầu phát bài đó (tăng khi playSong sang bài mới).
+ *   - totalTime : tổng số giây đã thực sự nghe bài đó (cộng dồn theo delta thời gian thực ở
+ *                 timeupdate, giống cách tính tổng `totalListenSeconds` toàn cục).
+ *
+ * LƯU Ở ĐÂU: trong store `meta` dưới 1 key gộp `songStats` = { [songKey]: {count, totalTime} },
+ * KHÔNG nhét vào record bài hát. Lý do: record bài hát chứa cả `blob` mp3 (vài MB) — ghi đè record
+ * mỗi 5 giây để cập nhật totalTime sẽ phải ghi lại cả blob, rất tốn I/O và dễ gây giật. Tách ra
+ * 1 object nhẹ, ghi debounce, thì cập nhật liên tục vẫn mượt. Về mặt dữ liệu, mỗi bài vẫn có đúng
+ * "key {count, totalTime}" như yêu cầu — chỉ là cư trú ở store meta cho hợp lý về hiệu năng.
+ *
+ * PHẢI nạp SAU db.js (cần getMeta/setMeta) và TRƯỚC playlist/* + player-controls.js (các file đó
+ * gọi bumpSongPlayCount / addSongListenTime / getSongStats / removeSongStats / formatListenTime).
+ */
+        let songStatsMap = new Map(); // key -> { count, totalTime }
+        let _songStatsSaveTimer = null;
+        let _songStatsDirty = false;
+
+        async function loadSongStats() {
+            try {
+                const raw = await getMeta('songStats');
+                songStatsMap = new Map();
+                if (raw && typeof raw === 'object') {
+                    for (const k of Object.keys(raw)) {
+                        const v = raw[k] || {};
+                        songStatsMap.set(k, { count: v.count || 0, totalTime: v.totalTime || 0 });
+                    }
+                }
+            } catch (e) { console.warn('[listen-stats] Không đọc được songStats:', e); songStatsMap = new Map(); }
+        }
+
+        function getSongStats(key) {
+            const s = songStatsMap.get(key);
+            return s ? { count: s.count, totalTime: s.totalTime } : { count: 0, totalTime: 0 };
+        }
+
+        function _ensureStats(key) {
+            let s = songStatsMap.get(key);
+            if (!s) { s = { count: 0, totalTime: 0 }; songStatsMap.set(key, s); }
+            return s;
+        }
+
+        function bumpSongPlayCount(key) {
+            if (!key) return;
+            _ensureStats(key).count += 1;
+            scheduleSongStatsSave();
+        }
+
+        function addSongListenTime(key, seconds) {
+            if (!key || !(seconds > 0)) return;
+            _ensureStats(key).totalTime += seconds;
+            scheduleSongStatsSave();
+        }
+
+        function removeSongStats(key) {
+            if (songStatsMap.delete(key)) scheduleSongStatsSave(true);
+        }
+
+        function clearAllSongStats() {
+            songStatsMap = new Map();
+            // Ghi thẳng object rỗng (không debounce) để Quản lý dung lượng thấy kết quả ngay.
+            return setMeta('songStats', {});
+        }
+
+        /** Ghi debounce (mặc định 4s gom nhiều cập nhật thành 1 lần ghi). immediate=true ghi ngay. */
+        function scheduleSongStatsSave(immediate) {
+            _songStatsDirty = true;
+            if (immediate) { flushSongStats(); return; }
+            if (_songStatsSaveTimer) return;
+            _songStatsSaveTimer = setTimeout(flushSongStats, 4000);
+        }
+
+        function flushSongStats() {
+            if (_songStatsSaveTimer) { clearTimeout(_songStatsSaveTimer); _songStatsSaveTimer = null; }
+            if (!_songStatsDirty) return;
+            _songStatsDirty = false;
+            const obj = {};
+            for (const [k, v] of songStatsMap.entries()) obj[k] = { count: v.count, totalTime: v.totalTime };
+            setMeta('songStats', obj).catch(e => console.warn('[listen-stats] Lưu songStats lỗi:', e));
+        }
+
+        /** Định dạng thời gian nghe thân thiện: "1 giờ 5 phút", "12 phút 30 giây", "45 giây". */
+        function formatListenTime(totalSeconds) {
+            const s = Math.floor(totalSeconds || 0);
+            if (s <= 0) return '0 giây';
+            const h = Math.floor(s / 3600); const m = Math.floor((s % 3600) / 60); const sec = s % 60;
+            if (h > 0) return `${h} giờ ${m} phút`;
+            if (m > 0) return `${m} phút ${sec} giây`;
+            return `${sec} giây`;
+        }

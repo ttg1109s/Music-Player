@@ -43,6 +43,7 @@
 
         const videoEnableToggle = document.getElementById('setting-video-enable'), videoUploadInput = document.getElementById('setting-video-upload'), bgVideoElement = document.getElementById('bg-video');
         const videoHideVisualToggle = document.getElementById('setting-video-hide-visual');
+        const keepScreenOnToggle = document.getElementById('setting-keep-screen-on');
 
         const btnSubtitle = document.getElementById('btn-subtitle'), subToggleBadge = document.getElementById('sub-toggle-badge');
         const subtitleModal = document.getElementById('subtitle-modal'), btnCloseSubModal = document.getElementById('btn-close-sub-modal');
