@@ -23,7 +23,7 @@
             quality: 'high', type: 'bar', barStyle: 'mirror', vortexStyle: 'rings', rainStyle: 'glass', glassFlash: true, mode: 'solid', 
             bgColor: '#000000', solidColor: '#ffffff', dynA: '#ec4899', dynB: '#3b82f6', 
             minH: 4, maxH: 400, barWidth: 4, bgImage: '', bgBlur: 0,
-            mirrorBarCount: 32, mirrorCircleSize: 1.8,
+            mirrorBarCount: 32,
             volume: 100, eqMode: 'flat', manualEq: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             videoBgEnabled: false, videoBgUrl: '', videoHideVisual: false
         };
