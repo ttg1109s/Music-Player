@@ -31,6 +31,12 @@
             if (saved) { try { vizConfig = { ...vizConfig, ...JSON.parse(saved) }; } catch(e) {} }
             if(!vizConfig.manualEq) vizConfig.manualEq = [0,0,0,0,0,0,0,0,0,0];
             if(vizConfig.vortexStyle === 'tardis' || vizConfig.vortexStyle === 'classic' || vizConfig.vortexStyle === 'dust') vizConfig.vortexStyle = 'rings';
+            // Cấu hình cũ từng có rainStyle 'classic', visualizer 'synthesia'/'firefly_forest'/'seasons' đã bị loại bỏ —
+            // quy về giá trị tương đương gần nhất để không vỡ trải nghiệm của người dùng cũ.
+            if (vizConfig.rainStyle === 'classic') vizConfig.rainStyle = 'glass';
+            if (vizConfig.type === 'synthesia') { vizConfig.type = 'bar'; vizConfig.barStyle = 'cascade'; }
+            if (vizConfig.type === 'firefly_forest' || vizConfig.type === 'seasons') vizConfig.type = 'bar';
+            if (!vizConfig.barStyle) vizConfig.barStyle = 'mirror';
 
             qualitySelect.value = vizConfig.quality; bgColorPicker.value = vizConfig.bgColor;
             bgBlurSlider.value = vizConfig.bgBlur; valBgBlurDisplay.textContent = vizConfig.bgBlur + 'px';
@@ -44,14 +50,11 @@
             maxHeightSlider.value = vizConfig.maxH; valMaxDisplay.textContent = vizConfig.maxH;
             barWidthSlider.value = vizConfig.barWidth; valWidthDisplay.textContent = vizConfig.barWidth;
             vortexStyleSelect.value = vizConfig.vortexStyle;
+            barStyleSelect.value = vizConfig.barStyle;
             rainStyleSelect.value = vizConfig.rainStyle;
             glassFlashToggle.checked = vizConfig.glassFlash;
-            if (!vizConfig.rainSitter) vizConfig.rainSitter = 'none';
-            if (!vizConfig.rainCoupleType) vizConfig.rainCoupleType = 'mf';
-            rainSitterSelect.value = vizConfig.rainSitter; rainCoupleTypeSelect.value = vizConfig.rainCoupleType;
-            if (!vizConfig.seasonMode) vizConfig.seasonMode = 'fixed';
-            if (!vizConfig.seasonFixed) vizConfig.seasonFixed = 'spring';
-            seasonModeSelect.value = vizConfig.seasonMode; seasonFixedSelect.value = vizConfig.seasonFixed;
+            if (vizConfig.streetStanding === undefined || vizConfig.streetStanding === null) vizConfig.streetStanding = 1;
+            streetStandingSelect.value = String(vizConfig.streetStanding);
             
             volumeSlider.value = vizConfig.volume; valVolumeDisplay.textContent = vizConfig.volume + '%';
             if(masterGainNode) masterGainNode.gain.value = vizConfig.volume / 100;

@@ -1,5 +1,5 @@
 /**
- * Tham chiếu các phần tử DOM (getElementById) + toàn bộ biến trạng thái runtime toàn cục (audio, hiệu ứng, rubik, mưa, đom đóm, vortex...).
+ * Tham chiếu các phần tử DOM (getElementById) + toàn bộ biến trạng thái runtime toàn cục (audio, hiệu ứng, rubik, mưa phố, vortex...).
  * QUAN TRỌNG: phải nạp SAU KHI các component HTML (playlist-view, settings-drawer, ...) đã được chèn vào DOM, nếu không getElementById sẽ trả về null.
  * (Trích từ file gốc, dòng 26-99 trong khối <script>)
  */
@@ -32,10 +32,9 @@
         const maxHeightSlider = document.getElementById('setting-max-height'), barWidthSlider = document.getElementById('setting-bar-width'), valMaxDisplay = document.getElementById('val-max'), valWidthDisplay = document.getElementById('val-width');
         const blockGeometry = document.getElementById('block-geometry'), blockVortex = document.getElementById('block-vortex'), vortexStyleSelect = document.getElementById('setting-vortex-style');
         const blockRain = document.getElementById('block-rain'), rainStyleSelect = document.getElementById('setting-rain-style'), glassFlashToggle = document.getElementById('setting-glass-flash');
-        const rainGlassFlashRow = document.getElementById('rain-glass-flash-row'), rainStreetOptions = document.getElementById('rain-street-options');
-        const rainSitterSelect = document.getElementById('setting-rain-sitter'), rainCoupleTypeRow = document.getElementById('rain-couple-type-row'), rainCoupleTypeSelect = document.getElementById('setting-rain-couple-type');
-        const blockSeasons = document.getElementById('block-seasons'), seasonModeSelect = document.getElementById('setting-season-mode');
-        const seasonFixedRow = document.getElementById('season-fixed-row'), seasonFixedSelect = document.getElementById('setting-season-fixed');
+        const rainStreetOptions = document.getElementById('rain-street-options');
+        const streetStandingSelect = document.getElementById('setting-street-standing');
+        const blockBarStyle = document.getElementById('block-bar-style'), barStyleSelect = document.getElementById('setting-bar-style');
         
         const volumeSlider = document.getElementById('setting-volume'), valVolumeDisplay = document.getElementById('val-volume');
         const eqSelect = document.getElementById('setting-eq'), eqSlidersWrapper = document.getElementById('eq-sliders-wrapper');
@@ -55,7 +54,7 @@
         let audioContext, analyser, analyserPitch, source, animationId;
         let masterGainNode; let eqBandNodes = []; 
         let isSeeking = false, dpr = 1, currentObjectURL = null, frameCounter = 0; 
-        let smoothedBeatRadius = 0, smoothedEnergy = 0, globalHueOffset = 0, smoothedPitchY = 0;
+        let smoothedBeatRadius = 0, smoothedEnergy = 0, globalHueOffset = 0, smoothedPitchY = 0, beatScale = 0;
         let vizDataArray, pitchTimeDomainArray, waveTimeDomainArray, previousSpectrumArray;
         let beatTimes = [], lastBeatTime = 0, fluxHistory = [], runningFluxMean = 0;
 
@@ -69,19 +68,9 @@
         let glassStaticDrops = [], glassStreaks = [], cityBuildings = [];
         let activeLightnings = [];
 
-        // Rain - Street scene (đèn đường, ghế công viên, mưa phố)
-        let streetLamps = [], streetRain = [], streetBench = null;
-        let currentSeasonRuntime = 'spring'; // mùa đang áp dụng thật sự lúc render (tính từ seasonMode)
-        let lastSeasonSongIndex = -1;
-
-        // Seasons scene (hạt rơi theo từng mùa + nền đồi cỏ/mái nhà tuyết)
-        let seasonParticles = []; // hoa đào / lá / tuyết, tuỳ mùa
-        let seasonHills = []; let seasonHouse = null; let sunflowers = [];
-        
-        // Firefly 3.0 (Swarm hữu cơ, có chiều sâu không gian)
-        let fireflies = [], hills = [], grassTufts = [], hut = null;
-        let fireflyMist = []; // các đám sương mù nhẹ phía xa, tăng cảm giác chiều sâu
-        let fireflyClusters = []; // các tâm cụm mà đàn đom đóm tụ quanh, trôi nhẹ theo thời gian
+        // Rain - Street scene (đèn đường, người đứng dưới đèn, mưa phố)
+        let streetLamps = [], streetRain = [], streetStandees = [];
+        let streetGroundY = 0; // mặt đất Street, luôn cao hơn vùng thanh điều khiển dưới cùng
 
         // ==========================================
         // KHỞI TẠO THREE.JS CHO VORTEX ENGINE MỚI

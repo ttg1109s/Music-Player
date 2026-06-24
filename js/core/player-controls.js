@@ -110,7 +110,7 @@
 
         function updateTypeUI() {
             vizConfig.type = MODES[currentModeIndex]; modeBadge.textContent = `${currentModeIndex + 1}/${MODES.length}`;
-            blockGeometry.classList.add('hidden'); blockVortex.classList.add('hidden'); blockRain.classList.add('hidden'); blockSeasons.classList.add('hidden');
+            blockGeometry.classList.add('hidden'); blockVortex.classList.add('hidden'); blockRain.classList.add('hidden'); blockBarStyle.classList.add('hidden');
             
             if (vizConfig.type === 'vortex') {
                 if(!tInitialized) initThreeJS();
@@ -120,8 +120,11 @@
 
             if (vizConfig.type === 'vortex') { blockVortex.classList.remove('hidden'); blockVortex.classList.add('flex'); }
             else if (vizConfig.type === 'rain') { blockRain.classList.remove('hidden'); blockRain.classList.add('flex'); updateRainStyleUI(); }
-            else if (vizConfig.type === 'seasons') { blockSeasons.classList.remove('hidden'); blockSeasons.classList.add('flex'); updateSeasonModeUI(); }
-            else if (vizConfig.type !== 'rubik' && vizConfig.type !== 'synthesia' && vizConfig.type !== 'lightning' && vizConfig.type !== 'firefly_forest') { 
+            else if (vizConfig.type === 'bar') {
+                blockGeometry.classList.remove('hidden'); blockGeometry.classList.add('flex');
+                blockBarStyle.classList.remove('hidden'); blockBarStyle.classList.add('flex');
+            }
+            else if (vizConfig.type !== 'rubik' && vizConfig.type !== 'lightning') { 
                 blockGeometry.classList.remove('hidden'); blockGeometry.classList.add('flex'); 
             }
 
@@ -129,21 +132,9 @@
         }
 
         function updateRainStyleUI() {
-            if (vizConfig.rainStyle === 'street') {
-                rainGlassFlashRow.classList.add('hidden');
-                rainStreetOptions.classList.remove('hidden'); rainStreetOptions.classList.add('flex');
-                rainCoupleTypeRow.classList.toggle('hidden', vizConfig.rainSitter !== 'couple');
-                if (vizConfig.rainSitter === 'couple') rainCoupleTypeRow.classList.add('flex');
-            } else {
-                rainGlassFlashRow.classList.remove('hidden');
-                rainStreetOptions.classList.add('hidden'); rainStreetOptions.classList.remove('flex');
-            }
-        }
-
-        function updateSeasonModeUI() {
-            const isFixed = vizConfig.seasonMode === 'fixed';
-            seasonFixedRow.classList.toggle('hidden', !isFixed);
-            if (isFixed) seasonFixedRow.classList.add('flex');
+            const isStreet = vizConfig.rainStyle === 'street';
+            rainStreetOptions.classList.toggle('hidden', !isStreet);
+            rainStreetOptions.classList.toggle('flex', isStreet);
         }
 
         function updateColorMenuUI() {
@@ -181,12 +172,10 @@
         dynColorA.addEventListener('input', (e) => { vizConfig.dynA = e.target.value; saveConfig(); }); 
         dynColorB.addEventListener('input', (e) => { vizConfig.dynB = e.target.value; updateProgressBarCSS(); saveConfig(); });
         vortexStyleSelect.addEventListener('change', (e) => { vizConfig.vortexStyle = e.target.value; updateVortexVisibility(); saveConfig(); });
-        rainStyleSelect.addEventListener('change', (e) => { vizConfig.rainStyle = e.target.value; updateRainStyleUI(); saveConfig(); });
+        barStyleSelect.addEventListener('change', (e) => { vizConfig.barStyle = e.target.value; saveConfig(); });
+        rainStyleSelect.addEventListener('change', (e) => { vizConfig.rainStyle = e.target.value; updateRainStyleUI(); resizeCanvas(); saveConfig(); });
         glassFlashToggle.addEventListener('change', (e) => { vizConfig.glassFlash = e.target.checked; saveConfig(); });
-        rainSitterSelect.addEventListener('change', (e) => { vizConfig.rainSitter = e.target.value; updateRainStyleUI(); saveConfig(); });
-        rainCoupleTypeSelect.addEventListener('change', (e) => { vizConfig.rainCoupleType = e.target.value; saveConfig(); });
-        seasonModeSelect.addEventListener('change', (e) => { vizConfig.seasonMode = e.target.value; updateSeasonModeUI(); saveConfig(); });
-        seasonFixedSelect.addEventListener('change', (e) => { vizConfig.seasonFixed = e.target.value; saveConfig(); });
+        streetStandingSelect.addEventListener('change', (e) => { vizConfig.streetStanding = parseInt(e.target.value); generateStreetScene(); saveConfig(); });
         maxHeightSlider.addEventListener('input', (e) => { vizConfig.maxH = parseInt(e.target.value); valMaxDisplay.textContent = vizConfig.maxH; saveConfig(); });
         barWidthSlider.addEventListener('input', (e) => { vizConfig.barWidth = parseInt(e.target.value); valWidthDisplay.textContent = vizConfig.barWidth; saveConfig(); });
 
