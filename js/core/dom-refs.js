@@ -30,9 +30,13 @@
         const colorModeSelect = document.getElementById('setting-color-mode'), solidColorContainer = document.getElementById('solid-color-container'), solidColorPicker = document.getElementById('solid-color-picker'), solidColorText = document.getElementById('solid-color-text');
         const dynColorContainer = document.getElementById('dynamic-color-container'), dynColorA = document.getElementById('dyn-color-a'), dynColorB = document.getElementById('dyn-color-b');
         const maxHeightSlider = document.getElementById('setting-max-height'), barWidthSlider = document.getElementById('setting-bar-width'), valMaxDisplay = document.getElementById('val-max'), valWidthDisplay = document.getElementById('val-width');
-        const blockGeometry = document.getElementById('block-geometry'), blockVortex = document.getElementById('block-vortex'), vortexStyleSelect = document.getElementById('setting-vortex-style');
+        const blockMaxHeight = document.getElementById('block-max-height'), blockBarWidth = document.getElementById('block-bar-width');
+        const blockVortex = document.getElementById('block-vortex'), vortexStyleSelect = document.getElementById('setting-vortex-style');
         const blockRain = document.getElementById('block-rain'), rainStyleSelect = document.getElementById('setting-rain-style'), glassFlashToggle = document.getElementById('setting-glass-flash');
         const blockBarStyle = document.getElementById('block-bar-style'), barStyleSelect = document.getElementById('setting-bar-style');
+        const barMirrorOptions = document.getElementById('bar-mirror-options');
+        const mirrorCountSlider = document.getElementById('setting-mirror-count'), valMirrorCountDisplay = document.getElementById('val-mirror-count');
+        const mirrorCircleSlider = document.getElementById('setting-mirror-circle'), valMirrorCircleDisplay = document.getElementById('val-mirror-circle');
         
         const volumeSlider = document.getElementById('setting-volume'), valVolumeDisplay = document.getElementById('val-volume');
         const eqSelect = document.getElementById('setting-eq'), eqSlidersWrapper = document.getElementById('eq-sliders-wrapper');
@@ -62,11 +66,28 @@
         let stars = [], tunnelAngle = 0;
         let starFlashes = []; 
         let rubikCubes = [], rubikRotX = 0, rubikRotY = 0, rubikAnim = { active: false, axis: 'x', layer: 0, angle: 0, dir: 1 };
+        // Xoay TỰ THÂN của khối Rubik theo pitch (nốt nhạc):
+        //   - rubikPitchHistory/rubikPitchAvg: nốt MIDI trung bình động gần đây, dùng làm "pha"
+        //     tham chiếu — nốt hiện tại thấp hơn pha thì xoay chậm lại, cao hơn thì xoay nhanh lên.
+        //   - rubikSelfSpinDirX/Y: hướng xoay tự thân (1 hoặc -1) của mỗi trục, chọn ngẫu nhiên một
+        //     lần khi khởi động rồi giữ cố định (chỉ tốc độ đổi theo nhạc, hướng không đảo liên tục).
+        let rubikPitchHistory = [], rubikPitchAvg = 0;
+        let rubikSelfSpinDirX = Math.random() > 0.5 ? 1 : -1, rubikSelfSpinDirY = Math.random() > 0.5 ? 1 : -1;
+        // Xoay LỚP (kiểu 2) theo nốt cụ thể: mỗi 1 trong 12 nốt (C..B) map cố định ra 1 cặp
+        // (trục x/y/z, lớp -1/0/1) — khi phát hiện nốt mới (đổi so với nốt vừa rồi) và năng lượng
+        // nhạc đủ cao, kích hoạt lượt xoay lớp tương ứng thay cho chọn random như trước.
+        const RUBIK_NOTE_TO_TURN = [
+            { axis: 'x', layer: -1 }, { axis: 'x', layer:  0 }, { axis: 'x', layer:  1 }, // C, C#, D
+            { axis: 'y', layer: -1 }, { axis: 'y', layer:  0 }, { axis: 'y', layer:  1 }, // D#, E, F
+            { axis: 'z', layer: -1 }, { axis: 'z', layer:  0 }, { axis: 'z', layer:  1 }, // F#, G, G#
+            { axis: 'x', layer: -1 }, { axis: 'y', layer:  1 }, { axis: 'z', layer:  0 }  // A, A#, B
+        ];
+        let rubikLastTurnNote = null;
         let raindrops = [], ripples = [], bgRaindrops = [];
         let glassStaticDrops = [], glassStreaks = [], cityBuildings = [];
         let activeLightnings = [];
 
-        // Rain - Street scene (đèn đường, người đứng dưới đèn, mưa phố)
+        // Rain - Street scene (đèn đường, hàng rào công viên, mưa phố)
         let streetLamps = [], streetRain = [];
         let streetGroundY = 0; // mặt đất Street, luôn cao hơn vùng thanh điều khiển dưới cùng
 
