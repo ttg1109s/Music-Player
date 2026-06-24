@@ -8,10 +8,21 @@ không cần server, không cần build step.
 
 Ngoài việc chia module, project đã qua nhiều lượt cải tiến tính năng/visual.
 Lịch sử chi tiết từng lượt cũ nằm ở các file changelog riêng (CHANGELOG_v1
-đến v4) — bản hiện tại đã cập nhật thêm so với CHANGELOG_v4: bỏ hẳn visual
-"Wave", bỏ người đứng dưới đèn ở Mưa Phố (đèn đường giờ chỉ còn 3 cột, đều
-chạm mặt đất), và visual "Bar" kiểu Phản chiếu cánh bướm giờ bắt đầu dải bar
-sát rìa vòng tròn ở tâm (không còn khoảng hở).
+đến v4) — bản hiện tại đã cập nhật thêm so với CHANGELOG_v4:
+
+- Bỏ hẳn visual "Wave"; bỏ người đứng dưới đèn ở Mưa Phố (đèn đường giờ chỉ
+  còn 3 cột, đều chạm mặt đất) và bổ sung hàng rào công viên chạy dọc mặt đất
+  ngay sau lưng các cột đèn.
+- Visual "Bar" kiểu Phản chiếu cánh bướm: hai bên trái/phải KHÔNG còn đối
+  xứng gương về xu hướng độ cao (trái: xa tâm cao → gần tâm thấp; phải: gần
+  tâm thấp → xa tâm cao); số lượng thanh mỗi bên và độ to vòng tròn tâm giờ
+  TÙY CHỈNH được qua setting riêng (10-32 thanh; vòng tròn có thể chồng lấn
+  lên các thanh khi để to, dải bar không co giãn theo). Setting "Độ dày
+  thanh" đã bỏ khỏi cả 2 kiểu của Bar — giờ chỉ còn áp dụng cho Black Hole.
+- Visual "Rubik": mỗi mảnh phóng to/thu nhỏ ngay tại tâm riêng theo biên độ
+  tần số của mảnh đó cộng với cú đập beat chung. Xoay không còn ngẫu nhiên —
+  xoay tự thân nhanh/chậm theo nốt nhạc so với pha trung bình động, và xoay
+  từng lớp theo nốt cụ thể (mỗi 1 trong 12 nốt map cố định ra 1 trục+lớp).
 
 - [CHANGELOG_v4.md](./CHANGELOG_v4.md)
 - [CHANGELOG_v3.md](./CHANGELOG_v3.md)
@@ -111,18 +122,20 @@ do việc chia file hay các thay đổi visual.
 | Muốn sửa... | Vào file... |
 |---|---|
 | Giao diện danh sách bài hát | `js/components/playlist-view.js` |
-| Giao diện ngăn cài đặt (kiểu Bar, kiểu mưa...) | `js/components/settings-drawer.js` |
+| Giao diện ngăn cài đặt (kiểu Bar, số lượng thanh/độ to vòng tròn, kiểu mưa...) | `js/components/settings-drawer.js` |
 | Visual "Bar" (kiểu Phản chiếu cánh bướm / kiểu Thác đổ) | `js/visualizers/types/bar.js` |
-| Visual "Rain" (kiểu Trôi cửa kính / kiểu Mưa phố, đèn đường) | `js/visualizers/types/rain.js` |
-| Visual Lightning / Rubik / Black Hole | `js/visualizers/types/lightning.js`, `rubik.js`, `black-hole.js` (tương ứng) |
+| Visual "Rain" (kiểu Trôi cửa kính / kiểu Mưa phố, đèn đường, hàng rào) | `js/visualizers/types/rain.js` |
+| Visual "Rubik" (phóng to/thu nhỏ theo beat, xoay tự thân + xoay lớp theo pitch) | `js/visualizers/types/rubik.js` (map nốt→trục/lớp ở `RUBIK_NOTE_TO_TURN` trong `js/core/dom-refs.js`) |
+| Visual Lightning / Black Hole | `js/visualizers/types/lightning.js`, `black-hole.js` (tương ứng) |
 | Vòng lặp render chính, thêm visual mới vào bảng dispatch | `js/visualizers/draw-visualizer.js` (object `VISUALIZER_DRAWERS`) |
 | Hàm vẽ dùng chung (giọt nước, khung kính, nốt nhạc bay lên) | `js/visualizers/draw-helpers.js` |
 | Logic phát nhạc, next/prev, shuffle | `js/core/playlist.js`, `js/core/player-controls.js` |
-| Hiện/ẩn các khối setting theo kiểu visualizer đang chọn | `js/core/player-controls.js` (hàm `updateTypeUI`) |
+| Hiện/ẩn các khối setting theo kiểu visualizer/kiểu Bar đang chọn | `js/core/player-controls.js` (hàm `updateTypeUI`, `updateBarStyleUI`) |
 | Equalizer, cấu hình lưu localStorage | `js/core/equalizer-settings.js` |
 | Phụ đề (.srt) | `js/core/subtitles.js`, `js/core/subtitle-display.js` |
 | Hiệu ứng Vortex (Three.js) — khởi tạo rings/bars/wave, camera | `js/core/three-vortex.js` (khởi tạo) + `js/visualizers/types/vortex.js` (cập nhật mỗi khung hình) |
-| Khởi tạo đèn đường/mưa phố, mặt đất an toàn dưới control bar | `js/core/canvas-scene-setup.js` (hàm `generateStreetScene`, `getPlayerBarSafeHeight`) |
+| Khởi tạo đèn đường/hàng rào/mưa phố, mặt đất an toàn dưới control bar | `js/core/canvas-scene-setup.js` (hàm `generateStreetScene`, `getPlayerBarSafeHeight`) |
+| Phát hiện pitch (nốt nhạc YIN), nốt MIDI trung bình động dùng cho Rubik | `js/core/audio-analysis.js` (hàm `updateStatsDashboard`), `js/core/audio-engine.js` (hàm `detectPitchYIN`) |
 | Thêm trường cấu hình mới (lưu vào `vizConfig`) | `js/core/config.js` (giá trị mặc định) + `js/core/equalizer-settings.js` (nạp lúc `loadConfig`) |
 | Màu sắc, nền | `js/core/color-utils.js` |
 | Toàn bộ màu sắc/giao diện CSS | `css/styles.css` |
