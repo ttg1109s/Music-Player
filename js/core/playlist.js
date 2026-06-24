@@ -126,9 +126,11 @@
                     } catch (err) {
                         // Lỗi IndexedDB (quota/transaction abort trên Safari, v.v.) hoặc bất kỳ lỗi nào khác
                         // ở 1 file: không để nó chặn các file còn lại trong hàng đợi hoặc "nuốt" mất
-                        // renderPlaylist() phía dưới — ghi log rõ + nhớ tên file để báo cuối cùng.
+                        // renderPlaylist() phía dưới — ghi log rõ + nhớ tên file VÀ nội dung lỗi để báo
+                        // trực tiếp cho người dùng (trên mobile không mở được Console/F12 để xem).
                         console.error(`[playlist] Không nạp được "${file.name}":`, err);
-                        failedFiles.push(file.name);
+                        const errMsg = (err && err.name && err.message) ? `${err.name}: ${err.message}` : String(err && err.message || err || 'Lỗi không xác định');
+                        failedFiles.push(`${file.name} — ${errMsg}`);
                     }
 
                     if (i % 10 === 0 || i === files.length - 1) { renderPlaylist(); await new Promise(r => setTimeout(r, 10)); }
@@ -138,7 +140,7 @@
             });
 
             if (failedFiles.length > 0) {
-                alert(`Không nạp được ${failedFiles.length} file:\n${failedFiles.join('\n')}\n\nXem Console (F12) để biết chi tiết lỗi.`);
+                alert(`Không nạp được ${failedFiles.length} file:\n\n${failedFiles.join('\n\n')}`);
             }
         });
 
