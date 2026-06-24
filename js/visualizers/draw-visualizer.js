@@ -4,7 +4,7 @@
  * File này CHỈ còn: cập nhật các biến phân tích âm thanh dùng chung mỗi khung hình (năng
  * lượng/beat/hue), rồi dispatch sang đúng hàm vẽ của visual đang chọn — tra trong object
  * VISUALIZER_DRAWERS thay vì một chuỗi if/else if dài. Logic vẽ thực tế của từng visual nằm ở
- * các file riêng trong js/visualizers/types/ (bar.js, wave.js, lightning.js, rubik.js,
+ * các file riêng trong js/visualizers/types/ (bar.js, lightning.js, rubik.js,
  * vortex.js, black-hole.js, rain.js).
  */
 
@@ -13,7 +13,6 @@
         // thêm visual mới sau này mà không phải sửa lại vòng lặp chính.
         const VISUALIZER_DRAWERS = {
             'bar':        (ctx, perf) => drawBar(ctx, perf),
-            'wave':       (ctx, perf) => drawWave(ctx, perf),
             'lightning':  (ctx, perf, isPlaying) => drawLightning(ctx, perf, isPlaying),
             'rubik':      (ctx, perf, isPlaying) => drawRubik(ctx, perf, isPlaying),
             'black hole': (ctx, perf, isPlaying) => drawBlackHole(ctx, perf, isPlaying),

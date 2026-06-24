@@ -1,5 +1,5 @@
 /**
- * Các hàm vẽ canvas dùng chung giữa nhiều hiệu ứng (giọt nước, khung cửa kính, người đứng/standee, nốt nhạc bay lên).
+ * Các hàm vẽ canvas dùng chung giữa nhiều hiệu ứng (giọt nước, khung cửa kính, nốt nhạc bay lên).
  * (Trích từ file gốc, dòng 1084-1116 trong khối <script>)
  */
         function drawWaterDrop(ctx, x, y, r, alpha=1) {
@@ -34,58 +34,3 @@
             note.style.color = `hsl(${globalHueOffset + Math.random()*60}, 100%, 70%)`; recordContainer.appendChild(note);
             setTimeout(() => { if (note.parentNode) note.parentNode.removeChild(note); }, 1500);
         }
-
-        // Vẽ silhouette người đứng đơn giản (tối giản, đồng bộ phong cách vector của visualizer).
-        // baseX/baseY: điểm chân đứng trên mặt đất. scaleH: đơn vị chiều cao tham chiếu của người.
-        // gender: 'm' (dáng tóc ngắn, vai rộng hơn) | 'f' (tóc dài ngang vai, eo thu hẹp hơn).
-        function drawStandingSilhouette(ctx, baseX, baseY, scaleH, gender, swayPhase) {
-            const sway = Math.sin(swayPhase) * scaleH * 0.015; // đung đưa rất nhẹ, như đứng chờ dưới mưa
-            const s = scaleH;
-            const headR = s * 0.09;
-            const shoulderW = gender === 'f' ? s * 0.2 : s * 0.26;
-            const torsoH = s * 0.42;
-            const legH = s * 0.46;
-            const headCenterY = baseY - legH - torsoH - headR;
-            const topX = baseX + sway;
-
-            ctx.fillStyle = '#0a0b0e';
-
-            // Thân (hình thang đơn giản: hẹp ở cổ, rộng ở hông)
-            ctx.beginPath();
-            ctx.moveTo(baseX - shoulderW * 0.42, baseY - legH);
-            ctx.lineTo(topX - shoulderW * 0.5, headCenterY + headR * 1.5);
-            ctx.lineTo(topX + shoulderW * 0.5, headCenterY + headR * 1.5);
-            ctx.lineTo(baseX + shoulderW * 0.42, baseY - legH);
-            ctx.closePath();
-            ctx.fill();
-
-            // Đầu
-            ctx.beginPath(); ctx.arc(topX, headCenterY, headR, 0, Math.PI * 2); ctx.fill();
-
-            // Tóc: nam ngắn gọn ôm đầu; nữ dài phủ xuống ngang vai
-            if (gender === 'f') {
-                ctx.beginPath();
-                ctx.moveTo(topX - headR * 0.95, headCenterY - headR * 0.2);
-                ctx.quadraticCurveTo(topX - headR * 1.3, headCenterY + headR * 2.0, topX - headR * 0.5, headCenterY + headR * 2.4);
-                ctx.lineTo(topX - headR * 0.3, headCenterY + headR * 0.6);
-                ctx.closePath(); ctx.fill();
-                ctx.beginPath();
-                ctx.moveTo(topX + headR * 0.95, headCenterY - headR * 0.2);
-                ctx.quadraticCurveTo(topX + headR * 1.3, headCenterY + headR * 2.0, topX + headR * 0.5, headCenterY + headR * 2.4);
-                ctx.lineTo(topX + headR * 0.3, headCenterY + headR * 0.6);
-                ctx.closePath(); ctx.fill();
-            } else {
-                ctx.beginPath(); ctx.arc(topX, headCenterY - headR * 0.1, headR * 1.05, Math.PI, Math.PI * 2); ctx.fill();
-            }
-
-            // Cánh tay buông dọc thân
-            const armW = s * 0.045;
-            ctx.fillRect(baseX - shoulderW * 0.46 - armW * 0.5 + sway * 0.6, headCenterY + headR * 1.6, armW, torsoH * 0.85);
-            ctx.fillRect(baseX + shoulderW * 0.46 - armW * 0.5 + sway * 0.6, headCenterY + headR * 1.6, armW, torsoH * 0.85);
-
-            // Hai chân đứng thẳng, hơi tách
-            const legW = s * 0.085;
-            ctx.fillRect(baseX - shoulderW * 0.26, baseY - legH, legW, legH);
-            ctx.fillRect(baseX + shoulderW * 0.26 - legW, baseY - legH, legW, legH);
-        }
-
