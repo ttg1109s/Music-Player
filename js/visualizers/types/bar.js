@@ -8,9 +8,9 @@
  *     chọn; nếu chọn vòng tròn to, nó có thể chồng lấn lên các thanh gần tâm (đánh đổi được người
  *     dùng chấp nhận khi bật setting này). Hai bên ĐỐI XỨNG GƯƠNG thật qua tâm: tại cùng một
  *     khoảng cách từ tâm, bên trái và bên phải dùng CÙNG một bin tần số (binLeft === binRight)
- *     nên độ cao bar luôn bằng nhau hai bên — đúng nghĩa "phản chiếu". Bin tần số thấp (bass) nằm
- *     ở slot gần tâm, bin cao (treble) nằm ở slot ngoài rìa, độ cao bar tăng dần ra ngoài, giống
- *     nhau ở cả hai cánh.
+ *     nên độ cao bar luôn bằng nhau hai bên — đúng nghĩa "phản chiếu". Slot GẦN tâm lấy bin
+ *     CAO (treble), slot XA tâm (gần mép màn hình) lấy bin THẤP (bass, biên độ thường lớn hơn)
+ *     -> bar có xu hướng cao dần khi ra xa tâm, giống nhau ở cả hai cánh.
  *   - barStyle 'cascade' : Thác đổ — giữ nguyên cách vẽ của visual "synthesia" cũ (các "phím" rơi
  *     xuống đáy màn hình theo tần số). Độ dày mỗi phím tự tính theo độ rộng slot của bố cục 64
  *     phím, KHÔNG còn phụ thuộc setting "Độ dày thanh" (cùng lý do với 'mirror' ở trên).
@@ -40,9 +40,11 @@
                 const slotW = barSlotWidth * 0.6;
 
                 // ĐỐI XỨNG GƯƠNG THẬT: cùng khoảng cách từ tâm (cùng chỉ số slot i) -> cùng một
-                // bin tần số cho cả hai bên. Bass (bin thấp) luôn ở slot gần tâm, treble (bin cao)
-                // luôn ở slot ngoài rìa, độ cao bar tăng dần ra ngoài — giống nhau ở cả hai cánh.
-                const bin = Math.floor((i / barCount) * maxBin);
+                // bin tần số cho cả hai bên (binLeft === binRight luôn). Đảo chiều map so với
+                // trước: slot GẦN tâm (i nhỏ) lấy bin CAO (treble), slot XA tâm (i lớn, gần mép
+                // màn hình) lấy bin THẤP (bass). Vì bass thường có biên độ lớn hơn treble, kết quả
+                // là bar XA tâm cao hơn, bar GẦN tâm thấp hơn — đúng ý đồ ban đầu.
+                const bin = Math.floor(((barCount - 1 - i) / barCount) * maxBin);
                 const val = vizDataArray[bin] || 0;
                 let len = val ? (val / 255) * maxBarLen : 0;
 
