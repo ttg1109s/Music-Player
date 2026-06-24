@@ -38,7 +38,6 @@
             if (vizConfig.type === 'firefly_forest' || vizConfig.type === 'seasons' || vizConfig.type === 'wave') vizConfig.type = 'bar';
             if (!vizConfig.barStyle) vizConfig.barStyle = 'mirror';
             if (vizConfig.mirrorBarCount == null) vizConfig.mirrorBarCount = 32;
-            if (vizConfig.mirrorCircleSize == null) vizConfig.mirrorCircleSize = 1.8;
 
             qualitySelect.value = vizConfig.quality; bgColorPicker.value = vizConfig.bgColor;
             bgBlurSlider.value = vizConfig.bgBlur; valBgBlurDisplay.textContent = vizConfig.bgBlur + 'px';
@@ -52,7 +51,6 @@
             maxHeightSlider.value = vizConfig.maxH; valMaxDisplay.textContent = vizConfig.maxH;
             barWidthSlider.value = vizConfig.barWidth; valWidthDisplay.textContent = vizConfig.barWidth;
             mirrorCountSlider.value = vizConfig.mirrorBarCount; valMirrorCountDisplay.textContent = vizConfig.mirrorBarCount;
-            mirrorCircleSlider.value = vizConfig.mirrorCircleSize; valMirrorCircleDisplay.textContent = vizConfig.mirrorCircleSize + '%';
             vortexStyleSelect.value = vizConfig.vortexStyle;
             barStyleSelect.value = vizConfig.barStyle;
             rainStyleSelect.value = vizConfig.rainStyle;
