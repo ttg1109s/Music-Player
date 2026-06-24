@@ -33,6 +33,8 @@
             subtitleFrame.style.backdropFilter = s.bgOpacity > 0 ? 'blur(12px)' : 'none';
             subActiveLines.style.color = s.textColor;
             subActiveLines.style.fontSize = `${s.fontSize}px`;
+            subActiveLines.style.lineHeight = s.lineHeight;
+            subActiveLines.style.letterSpacing = `${s.letterSpacing}px`;
         }
 
         function processSubtitles(currentTime) {

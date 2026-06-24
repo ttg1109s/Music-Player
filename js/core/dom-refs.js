@@ -59,6 +59,8 @@
         const settingSubBorderRadius = document.getElementById('setting-sub-border-radius'), valSubBorderRadius = document.getElementById('val-sub-border-radius');
         const settingSubTextColor = document.getElementById('setting-sub-text-color');
         const settingSubFontSize = document.getElementById('setting-sub-font-size'), valSubFontSize = document.getElementById('val-sub-font-size');
+        const settingSubLineHeight = document.getElementById('setting-sub-line-height'), valSubLineHeight = document.getElementById('val-sub-line-height');
+        const settingSubLetterSpacing = document.getElementById('setting-sub-letter-spacing'), valSubLetterSpacing = document.getElementById('val-sub-letter-spacing');
 
         let audioContext, analyser, analyserPitch, source, animationId;
         let masterGainNode; let eqBandNodes = []; 

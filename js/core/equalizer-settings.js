@@ -40,6 +40,9 @@
             if (vizConfig.mirrorBarCount == null) vizConfig.mirrorBarCount = 32;
             if (!vizConfig.subtitleStyle) vizConfig.subtitleStyle = { ...DEFAULT_VIZ_CONFIG.subtitleStyle };
             else vizConfig.subtitleStyle = { ...DEFAULT_VIZ_CONFIG.subtitleStyle, ...vizConfig.subtitleStyle };
+            // Cấu hình cũ (trước khi thang cỡ chữ đổi thành 8-16px) có thể đã lưu giá trị lớn hơn —
+            // giới hạn lại để khớp với range slider hiện tại, tránh lệch giữa dữ liệu và UI.
+            vizConfig.subtitleStyle.fontSize = Math.min(16, Math.max(8, vizConfig.subtitleStyle.fontSize));
 
             qualitySelect.value = vizConfig.quality; bgColorPicker.value = vizConfig.bgColor;
             bgBlurSlider.value = vizConfig.bgBlur; valBgBlurDisplay.textContent = vizConfig.bgBlur + 'px';
@@ -73,6 +76,8 @@
             settingSubBorderRadius.value = ss.borderRadius; valSubBorderRadius.textContent = ss.borderRadius;
             settingSubTextColor.value = ss.textColor;
             settingSubFontSize.value = ss.fontSize; valSubFontSize.textContent = ss.fontSize;
+            settingSubLineHeight.value = ss.lineHeight; valSubLineHeight.textContent = ss.lineHeight;
+            settingSubLetterSpacing.value = ss.letterSpacing; valSubLetterSpacing.textContent = ss.letterSpacing;
             applySubtitleStyle();
         }
 
@@ -88,3 +93,5 @@
         settingSubBorderRadius.addEventListener('input', (e) => { const v = parseInt(e.target.value); vizConfig.subtitleStyle.borderRadius = v; valSubBorderRadius.textContent = v; applySubtitleStyle(); saveConfig(); });
         settingSubTextColor.addEventListener('input', (e) => { vizConfig.subtitleStyle.textColor = e.target.value; applySubtitleStyle(); saveConfig(); });
         settingSubFontSize.addEventListener('input', (e) => { const v = parseInt(e.target.value); vizConfig.subtitleStyle.fontSize = v; valSubFontSize.textContent = v; applySubtitleStyle(); saveConfig(); });
+        settingSubLineHeight.addEventListener('input', (e) => { const v = parseFloat(e.target.value); vizConfig.subtitleStyle.lineHeight = v; valSubLineHeight.textContent = v; applySubtitleStyle(); saveConfig(); });
+        settingSubLetterSpacing.addEventListener('input', (e) => { const v = parseFloat(e.target.value); vizConfig.subtitleStyle.letterSpacing = v; valSubLetterSpacing.textContent = v; applySubtitleStyle(); saveConfig(); });

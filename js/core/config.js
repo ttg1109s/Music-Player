@@ -29,7 +29,7 @@
             subtitleStyle: {
                 bgColor: '#000000', bgOpacity: 0.4,
                 borderColor: '#ffffff', borderOpacity: 0.1, borderWidth: 1, borderRadius: 16,
-                textColor: '#ffffff', fontSize: 24
+                textColor: '#ffffff', fontSize: 8, lineHeight: 1.3, letterSpacing: 0
             }
         };
         let vizConfig = { ...DEFAULT_VIZ_CONFIG };
