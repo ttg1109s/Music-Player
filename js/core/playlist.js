@@ -1,27 +1,65 @@
 /**
- * Quản lý danh sách phát — viết lại hoàn toàn để dùng IndexedDB (xem PLAN_INDEXEDDB.md mục 3).
+ * Quản lý danh sách phát — KIẾN TRÚC MỚI: store `songs` trong IndexedDB là CHÂN LÝ DUY NHẤT,
+ * không còn lưu `meta.playlistOrder` riêng. Mỗi lần cần danh sách (khởi động, sau khi thêm/xoá
+ * bài, sau khi quét/xoá file lỗi ở Quản lý dung lượng), quét lại toàn bộ key qua getAllSongKeys()
+ * rồi lọc hợp lệ ngay trong RAM — "có sao thì playlistOrder nhận vậy", không cố lưu/khôi phục thứ
+ * tự cũ qua reload.
  *
- * Nguồn sự thật của playlist giờ là:
- *   - `playlistOrder` (mảng key/slug, đồng bộ với meta.playlistOrder trong IndexedDB).
- *   - `playlistCache` (Map key -> {filename, tag, cover, duration}) — bản nhẹ giữ trong RAM để
- *     render danh sách nhanh, KHÔNG chứa `blob` (blob chỉ đọc tại thời điểm playSong, mục 3.2/3.3).
- *   - `brokenKeys` (Set key) — các key có trong playlistOrder nhưng record không đọc được từ
- *     IndexedDB (dữ liệu lỗi) — dùng để hiện icon cảnh báo riêng trong renderPlaylist (mục 3.8).
+ * 1) QUÉT NHANH (KHÔNG decode duration): scanValidSongsFromDB() chỉ kiểm tra record có `blob` +
+ *    `tag` + MIME đúng mp3 (xem isQuickValidMime trong storage-manager.js) — KHÔNG gọi
+ *    readAudioDuration() (tạo Audio() + chờ event, có thể mất tới 8s/bài nếu lỗi) để giữ tốc độ
+ *    khởi động nhanh dù playlist dài. File đúng MIME nhưng hỏng thật (không decode được) vẫn được
+ *    tạm cho vào playlist — chỉ phát hiện khi thực sự bấm phát (xem audioPlayer 'error' listener
+ *    trong player-controls.js) hoặc khi quét sâu ở Quản lý dung lượng.
  *
- * `currentIndex`/`playlist` (mảng File object cũ) đã bị loại bỏ hoàn toàn, thay bằng `currentKey`.
+ * 2) DIFF-BASED RENDER: `domNodesByKey` (Map key -> phần tử DOM) giữ tham chiếu node đã render.
+ *    Khi thêm bài mới, không gọi lại render toàn bộ — chỉ insert node CÒN THIẾU vào đúng vị trí.
+ *
+ * 3) SORT HIỂN THỊ (`displaySortMode`: 'default' | 'az' | 'za' | 'random') — mặc định 'az' (lần
+ *    đầu mở app, theo yêu cầu, cân nhắc tốc độ nên KHÔNG có lựa chọn "đúng thứ tự lưu" ổn định qua
+ *    reload nữa, vì không còn gì để giữ thứ tự đó). Khi KHÔNG shuffle, Next/Prev dùng trực tiếp
+ *    `displayOrder`. Thêm bài lúc đang phát -> vào CUỐI displayOrder trước, resort thật khi
+ *    Next/Prev "chạm biên" (xem player-controls.js) — trừ mode 'random', resort ngay khi thêm.
+ *
+ * 4) MENU 3 CHẤM: 4 icon cũ gộp vào 1 dropdown chung (#song-action-menu).
+ *
+ * 5) PHÁT LỖI THẬT (audioPlayer bắn event 'error' sau khi gán src — khác với lỗi MIME/thiếu blob
+ *    phát hiện được ngay lúc quét): hiện modal hỏi "Giữ lại" (thêm vào confirmedBrokenKeys, ẩn khỏi
+ *    playlist, chờ xử lý ở Quản lý dung lượng) hay "Xóa luôn" (xoá thẳng khỏi IndexedDB, cập nhật
+ *    lại danh sách ngay). Xem handlePlaybackError() + listener 'error' trong player-controls.js.
+ *
+ * Biến trạng thái:
+ *   - `playlistOrder` (mảng key) — kết quả quét HỢP LỆ gần nhất từ store `songs`, chỉ tồn tại
+ *     trong RAM, KHÔNG persist.
+ *   - `displayOrder` (mảng key) — thứ tự ĐANG HIỂN THỊ/PHÁT, tính từ playlistOrder + displaySortMode.
+ *   - `playlistCache` (Map key -> {filename, tag, cover, duration}) — bản nhẹ trong RAM để render.
+ *   - `confirmedBrokenKeys` (Set key) — key người dùng đã chọn "Giữ lại" lúc phát lỗi: loại khỏi
+ *     playlist hiển thị, KHÔNG xoá khỏi IndexedDB, chờ xử lý thủ công ở Quản lý dung lượng.
  */
         let playlistOrder = [];
+        let displayOrder = [];
         let playlistCache = new Map();
-        let brokenKeys = new Set();
+        let songNameIndex = new Map(); // key -> tên bài đã chuẩn hoá (bỏ dấu, hạ thường) để sort nhanh
+        let confirmedBrokenKeys = new Set(); // key lỗi phát thật, người dùng chọn "Giữ lại" — ẩn khỏi playlist
         let currentKey = null;
+        let displaySortMode = 'az'; // 'default' | 'az' | 'za' | 'random' — mặc định A-Z lúc mở app lần đầu
+        let pendingResortKeys = new Set(); // key mới thêm lúc đang phát, đợi chạm biên mới sort lại
+        const domNodesByKey = new Map(); // key -> phần tử DOM đã render, dùng cho diff-render
 
         function formatTime(seconds) {
             if (isNaN(seconds)) return "0:00";
             const min = Math.floor(seconds / 60); const sec = Math.floor(seconds % 60); return `${min}:${sec < 10 ? '0' : ''}${sec}`;
         }
 
+        /** Chuẩn hoá tên bài để sort A-Z/Z-A ổn định: bỏ dấu tiếng Việt, hạ thường, trim. */
+        function normalizeSongName(name) {
+            return (name || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+        }
+
         /**
-         * Đọc duration của 1 file qua thẻ Audio() tạm (event loadedmetadata) — mục 3.1 bước 2.
+         * Đọc duration của 1 file qua thẻ Audio() tạm (event loadedmetadata) — CHỈ dùng lúc nạp file
+         * mới (đã chọn từ file picker) và lúc quét sâu ở Quản lý dung lượng — KHÔNG dùng lúc khởi
+         * động/quét nhanh (xem scanValidSongsFromDB) để giữ tốc độ load playlist.
          * Có timeout an toàn: một số trình duyệt (đặc biệt Safari iOS) đôi khi không bắn cả
          * 'loadedmetadata' lẫn 'error' cho blob: URL trong vài trường hợp hiếm — không có timeout
          * thì Promise treo vĩnh viễn, kéo theo toàn bộ vòng lặp nạp file bị "đứng hình".
@@ -55,7 +93,8 @@
             e.target.value = ''; // cho phép chọn lại đúng file cũ ở lần sau (đổi tag rồi nạp lại)
             playlistEmpty.classList.add('hidden');
 
-            const failedFiles = []; // tên các file lỗi giữa đường, báo cho người dùng sau khi xong (mục vá lỗi treo im lặng)
+            const failedFiles = []; // tên các file lỗi giữa đường, báo cho người dùng sau khi xong
+            const newlyAddedKeys = []; // key thực sự MỚI (không phải ghi đè) thêm trong lượt này
 
             await withLoadingShield(`Đang nạp 1 / ${files.length}...`, async () => {
                 for (let i = 0; i < files.length; i++) {
@@ -66,15 +105,9 @@
                         let tag = { title: file.name.replace(/\.[^/.]+$/, ""), artist: "Không rõ nghệ sĩ", album: "" };
                         let cover = null;
 
-                        // jsmediatags.read không tự bắt lỗi trong onSuccess: nếu picture.data hỏng/định
-                        // dạng lạ, việc tạo Blob ở đây có thể throw đồng bộ TRƯỚC khi gọi resolve(), khiến
-                        // Promise treo vĩnh viễn và "đứng hình" cả vòng lặp (không bài nào hiện ra danh
-                        // sách nữa) — bọc try/catch + timeout an toàn để LUÔN resolve, dù tag lỗi.
                         await new Promise(resolve => {
                             let settled = false;
                             const safeResolve = () => { if (!settled) { settled = true; resolve(); } };
-                            // Phòng trường hợp jsmediatags không gọi cả onSuccess/onError (treo im lặng
-                            // trên một số file/trình duyệt) — không chờ quá 5s, vẫn nạp bài với tag mặc định.
                             const timeoutId = setTimeout(safeResolve, 5000);
 
                             if (window.jsmediatags) {
@@ -113,30 +146,25 @@
                         const isOverwrite = playlistOrder.includes(key);
 
                         const record = { filename: file.name, blob: file, tag, cover, subtitles: [], duration, addedAt: Date.now() };
-                        // Ghi đè đúng bài cũ: giữ lại phụ đề đã có trước đó (không mất phụ đề khi nạp lại file trùng).
                         if (isOverwrite) {
                             const old = await getSongRecord(key);
                             if (old && old.subtitles) record.subtitles = old.subtitles;
                         }
                         await setSongRecord(key, record);
 
-                        if (!isOverwrite) playlistOrder.push(key);
+                        if (!isOverwrite) { playlistOrder.push(key); newlyAddedKeys.push(key); }
                         playlistCache.set(key, { filename: record.filename, tag: record.tag, cover: record.cover, duration: record.duration });
-                        brokenKeys.delete(key);
+                        songNameIndex.set(key, normalizeSongName(record.tag.title));
+                        confirmedBrokenKeys.delete(key); // nạp lại file trùng key coi như đã sửa, bỏ khỏi danh sách lỗi cũ nếu có
                     } catch (err) {
-                        // Lỗi IndexedDB (quota/transaction abort trên Safari, v.v.) hoặc bất kỳ lỗi nào khác
-                        // ở 1 file: không để nó chặn các file còn lại trong hàng đợi hoặc "nuốt" mất
-                        // renderPlaylist() phía dưới — ghi log rõ + nhớ tên file VÀ nội dung lỗi để báo
-                        // trực tiếp cho người dùng (trên mobile không mở được Console/F12 để xem).
                         console.error(`[playlist] Không nạp được "${file.name}":`, err);
                         const errMsg = (err && err.name && err.message) ? `${err.name}: ${err.message}` : String(err && err.message || err || 'Lỗi không xác định');
                         failedFiles.push(`${file.name} — ${errMsg}`);
                     }
-
-                    if (i % 10 === 0 || i === files.length - 1) { renderPlaylist(); await new Promise(r => setTimeout(r, 10)); }
                 }
-                await setPlaylistOrder(playlistOrder);
                 updateShuffleArray();
+                applyNewSongsToDisplayOrder(newlyAddedKeys);
+                renderPlaylistDiff();
             });
 
             if (failedFiles.length > 0) {
@@ -154,82 +182,261 @@
             }
         }
 
+        function recomputeDisplayOrder() {
+            let order = playlistOrder.filter(k => !confirmedBrokenKeys.has(k));
+            if (displaySortMode === 'az' || displaySortMode === 'za') {
+                order = order.slice().sort((a, b) => {
+                    const nameA = songNameIndex.get(a) || ''; const nameB = songNameIndex.get(b) || '';
+                    const cmp = nameA.localeCompare(nameB, 'vi');
+                    return displaySortMode === 'az' ? cmp : -cmp;
+                });
+            } else if (displaySortMode === 'random') {
+                order = order.slice();
+                for (let i = order.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [order[i], order[j]] = [order[j], order[i]];
+                }
+            }
+            displayOrder = order;
+            pendingResortKeys.clear();
+        }
+
+        function applyNewSongsToDisplayOrder(newKeys) {
+            if (newKeys.length === 0) {
+                if (displayOrder.length !== playlistOrder.filter(k => !confirmedBrokenKeys.has(k)).length) recomputeDisplayOrder();
+                return;
+            }
+            if (!currentKey || displaySortMode === 'random') {
+                recomputeDisplayOrder();
+                return;
+            }
+            for (const k of newKeys) {
+                if (!displayOrder.includes(k)) displayOrder.push(k);
+                pendingResortKeys.add(k);
+            }
+        }
+
+        function setDisplaySortMode(mode) {
+            if (!['default', 'az', 'za', 'random'].includes(mode)) return;
+            displaySortMode = mode;
+            recomputeDisplayOrder();
+            renderPlaylistDiff();
+        }
+
         /**
-         * Khởi động app (mục 3.2): đọc meta.playlistOrder, nạp tag+cover (KHÔNG nạp blob) cho mỗi
-         * key vào playlistCache, render danh sách ban đầu. Gọi 1 lần từ main bootstrap (xem index.html).
+         * Quét NHANH toàn bộ store `songs` — KHÔNG decode duration (xem ghi chú đầu file). Mỗi key
+         * đọc record lên, hợp lệ (có blob + tag + MIME đúng mp3) thì add vào danh sách, không hợp lệ
+         * thì bỏ qua (không đưa vào playlist, sẽ hiện trong Quản lý dung lượng khi quét sâu ở đó).
+         * isQuickValidMime() định nghĩa trong storage-manager.js (dùng chung với phần quét sâu ở
+         * Quản lý dung lượng, tránh 2 nơi định nghĩa "thế nào là hợp lệ" lệch nhau).
+         */
+        async function scanValidSongsFromDB() {
+            const keys = await getAllSongKeys();
+            const validKeys = [];
+            playlistCache.clear(); songNameIndex.clear();
+            for (const key of keys) {
+                if (confirmedBrokenKeys.has(key)) continue;
+                const record = await getSongRecord(key);
+                if (!record || !record.blob || !record.tag) continue;
+                if (!isQuickValidMime(record.blob.type)) continue;
+                validKeys.push(key);
+                playlistCache.set(key, { filename: record.filename, tag: record.tag, cover: record.cover, duration: record.duration });
+                songNameIndex.set(key, normalizeSongName(record.tag.title));
+            }
+            return validKeys;
+        }
+
+        /**
+         * Khởi động app / quét lại danh sách: store `songs` là CHÂN LÝ DUY NHẤT — quét nhanh, gán
+         * thẳng vào playlistOrder, không còn đọc/lưu meta.playlistOrder nào cả.
          */
         async function initPlaylistFromDB() {
-            playlistOrder = await getPlaylistOrder();
-            for (const key of playlistOrder) {
-                const record = await getSongRecord(key);
-                if (!record) { brokenKeys.add(key); continue; }
-                playlistCache.set(key, { filename: record.filename, tag: record.tag, cover: record.cover, duration: record.duration });
-            }
+            playlistOrder = await scanValidSongsFromDB();
             updateShuffleArray();
-            renderPlaylist();
+            recomputeDisplayOrder();
+            renderPlaylistDiff();
             if (playlistOrder.length === 0) playlistEmpty.classList.remove('hidden');
         }
 
-        function songActionIconsHtml(key) {
-            return `
-                <button data-action="info" data-key="${key}" class="p-2 text-slate-400 hover:text-sky-400 transition-colors z-10" title="Thông tin"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></button>
-                <button data-action="edit" data-key="${key}" class="p-2 text-slate-400 hover:text-emerald-400 transition-colors z-10" title="Sửa thông tin"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg></button>
-                <button data-action="restore" data-key="${key}" class="p-2 text-slate-400 hover:text-amber-400 transition-colors z-10" title="Xuất file (gắn tag mới)"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-8-4V4m0 0L8 8m4-4l4 4" /></svg></button>
-                <button data-action="delete" data-key="${key}" class="p-2 text-slate-400 hover:text-rose-500 transition-colors z-10" title="Xóa bài"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>`;
+        function songActionMenuButtonHtml(key) {
+            return `<button data-action="menu" data-key="${key}" class="p-2 text-slate-400 hover:text-white transition-colors z-10" title="Tùy chọn">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 6a2 2 0 110-4 2 2 0 010 4zm0 8a2 2 0 110-4 2 2 0 010 4zm0 8a2 2 0 110-4 2 2 0 010 4z"/></svg>
+            </button>`;
         }
 
-        function renderPlaylist() {
+        function buildSongNode(key) {
+            const cached = playlistCache.get(key);
+            const title = cached ? cached.tag.title : key;
+            const artist = cached ? cached.tag.artist : '';
+            const coverUrl = (cached && cached.cover) ? URL.createObjectURL(cached.cover) : DEFAULT_VINYL;
+
+            const isPlaying = (key === currentKey); const isActuallyPlaying = isPlaying && !audioPlayer.paused;
+            const eqIconHtml = isActuallyPlaying ? `<div class="flex items-end gap-[2px] h-3 w-3"><div class="w-[3px] bg-sky-400 eq-1"></div><div class="w-[3px] bg-sky-400 eq-2"></div><div class="w-[3px] bg-sky-400 eq-3"></div></div>` : (isPlaying ? `<div class="w-2 h-2 rounded-full bg-sky-500 shadow-[0_0_5px_rgba(14,165,233,0.8)]"></div>` : '');
+            const menuBtnHtml = songActionMenuButtonHtml(key);
+
+            const wrapper = document.createElement('div');
+            wrapper.dataset.key = key;
+
+            if (isGridView) {
+                wrapper.className = `flex flex-col cursor-pointer active:scale-[0.98] transition-transform group relative w-full`;
+                wrapper.dataset.role = 'play-item';
+                wrapper.innerHTML = `
+                    <div class="w-full aspect-square relative mb-2.5">
+                        <img src="${coverUrl}" class="w-full h-full rounded-2xl object-cover shadow-lg">
+                        ${isPlaying ? `<div class="absolute inset-0 bg-black/30 rounded-2xl flex items-center justify-center backdrop-blur-[2px]">${eqIconHtml}</div>` : ''}
+                        <div class="absolute top-2 right-2 flex opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded-full">${menuBtnHtml}</div>
+                    </div>
+                    <h3 class="text-white text-[15px] font-semibold leading-tight line-clamp-1 px-1">${title}</h3>
+                    <p class="text-slate-400 text-[13px] font-medium line-clamp-1 px-1 mt-0.5">${artist}</p>`;
+            } else {
+                wrapper.className = `flex items-center gap-4 px-5 py-3 hover:bg-white/5 active:bg-white/10 transition-colors cursor-pointer w-full group border-b border-white/5`;
+                wrapper.dataset.role = 'play-item';
+                wrapper.innerHTML = `
+                    <img src="${coverUrl}" class="w-12 h-12 rounded-lg flex-shrink-0 object-cover shadow-md">
+                    <div class="flex-grow flex flex-col justify-center overflow-hidden gap-0.5">
+                        <div class="flex items-center gap-2"><h3 class="text-[16px] leading-tight font-semibold truncate ${isPlaying ? 'text-sky-300' : 'text-slate-100'}">${title}</h3>${isPlaying ? eqIconHtml : ''}</div>
+                        <p class="text-[13px] text-slate-400 truncate font-medium">${artist}</p>
+                    </div>
+                    <div class="flex opacity-0 group-hover:opacity-100 transition-opacity">${menuBtnHtml}</div>`;
+            }
+            return wrapper;
+        }
+
+        function renderPlaylistFull() {
             playlistContainer.innerHTML = '';
-            playlistOrder.forEach((key) => {
-                const isBroken = brokenKeys.has(key);
-                const cached = playlistCache.get(key);
-                const title = isBroken ? '(Dữ liệu lỗi)' : cached.tag.title;
-                const artist = isBroken ? key : cached.tag.artist;
-                const coverUrl = (!isBroken && cached.cover) ? URL.createObjectURL(cached.cover) : DEFAULT_VINYL;
-
-                let isPlaying = (key === currentKey); let isActuallyPlaying = isPlaying && !audioPlayer.paused;
-                let warnIconHtml = `<div class="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_5px_rgba(245,158,11,0.8)]" title="Dữ liệu lỗi"></div>`;
-                let eqIconHtml = isActuallyPlaying ? `<div class="flex items-end gap-[2px] h-3 w-3"><div class="w-[3px] bg-sky-400 eq-1"></div><div class="w-[3px] bg-sky-400 eq-2"></div><div class="w-[3px] bg-sky-400 eq-3"></div></div>` : (isPlaying ? `<div class="w-2 h-2 rounded-full bg-sky-500 shadow-[0_0_5px_rgba(14,165,233,0.8)]"></div>` : (isBroken ? warnIconHtml : ''));
-                let actionIconsHtml = songActionIconsHtml(key);
-                let itemHtml = '';
-
-                if (isGridView) {
-                    itemHtml = `
-                        <div data-key="${key}" data-role="play-item" class="flex flex-col cursor-pointer active:scale-[0.98] transition-transform group relative w-full ${isBroken ? 'opacity-60' : ''}">
-                            <div class="w-full aspect-square relative mb-2.5">
-                                <img src="${coverUrl}" class="w-full h-full rounded-2xl object-cover shadow-lg">
-                                ${(isPlaying || isBroken) ? `<div class="absolute inset-0 bg-black/30 rounded-2xl flex items-center justify-center backdrop-blur-[2px]">${isBroken ? warnIconHtml : eqIconHtml}</div>` : ''}
-                                <div class="absolute top-2 right-2 flex opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded-full">${actionIconsHtml}</div>
-                            </div>
-                            <h3 class="text-white text-[15px] font-semibold leading-tight line-clamp-1 px-1">${title}</h3>
-                            <p class="text-slate-400 text-[13px] font-medium line-clamp-1 px-1 mt-0.5">${artist}</p>
-                        </div>`;
-                } else {
-                    itemHtml = `
-                        <div data-key="${key}" data-role="play-item" class="flex items-center gap-4 px-5 py-3 hover:bg-white/5 active:bg-white/10 transition-colors cursor-pointer w-full group border-b border-white/5 ${isBroken ? 'opacity-60' : ''}">
-                            <img src="${coverUrl}" class="w-12 h-12 rounded-lg flex-shrink-0 object-cover shadow-md">
-                            <div class="flex-grow flex flex-col justify-center overflow-hidden gap-0.5">
-                                <div class="flex items-center gap-2"><h3 class="text-[16px] leading-tight font-semibold truncate ${isPlaying ? 'text-sky-300' : 'text-slate-100'}">${title}</h3>${isPlaying ? eqIconHtml : (isBroken ? warnIconHtml : '')}</div>
-                                <p class="text-[13px] text-slate-400 truncate font-medium">${artist}</p>
-                            </div>
-                            <div class="flex opacity-0 group-hover:opacity-100 transition-opacity">${actionIconsHtml}</div>
-                        </div>`;
-                }
-                playlistContainer.insertAdjacentHTML('beforeend', itemHtml);
+            domNodesByKey.clear();
+            displayOrder.forEach((key) => {
+                const node = buildSongNode(key);
+                domNodesByKey.set(key, node);
+                playlistContainer.appendChild(node);
             });
             if (currentKey) btnReturnVisual.classList.remove('hidden'); else btnReturnVisual.classList.add('hidden');
         }
 
-        // Click chuột uỷ thác (event delegation) — thay cho onclick inline, đúng yêu cầu data-key.
-        playlistContainer.addEventListener('click', (e) => {
-            const actionBtn = e.target.closest('button[data-action]');
-            if (actionBtn) {
+        function renderPlaylistDiff() {
+            if (playlistContainer.children.length !== domNodesByKey.size) {
+                renderPlaylistFull();
+                return;
+            }
+
+            const displayKeySet = new Set(displayOrder);
+
+            for (const [key, node] of Array.from(domNodesByKey.entries())) {
+                if (!displayKeySet.has(key)) {
+                    node.remove();
+                    domNodesByKey.delete(key);
+                }
+            }
+
+            let prevNode = null;
+            for (const key of displayOrder) {
+                let node = domNodesByKey.get(key);
+                if (!node) {
+                    node = buildSongNode(key);
+                    domNodesByKey.set(key, node);
+                }
+                const expectedNextSibling = prevNode ? prevNode.nextSibling : playlistContainer.firstChild;
+                if (expectedNextSibling !== node) {
+                    playlistContainer.insertBefore(node, expectedNextSibling);
+                }
+                prevNode = node;
+            }
+
+            if (currentKey) btnReturnVisual.classList.remove('hidden'); else btnReturnVisual.classList.add('hidden');
+        }
+
+        function refreshSongNode(key) {
+            const oldNode = domNodesByKey.get(key);
+            if (!oldNode) return;
+            const newNode = buildSongNode(key);
+            oldNode.replaceWith(newNode);
+            domNodesByKey.set(key, newNode);
+        }
+
+        /**
+         * Loại 1 key khỏi playlist (dùng chung cho: xoá tay, người dùng chọn "Xóa luôn" lúc phát
+         * lỗi, người dùng chọn "Giữ lại" lúc phát lỗi — chỉ khác ở việc record có bị xoá khỏi
+         * IndexedDB hay không, do nơi gọi quyết định trước khi gọi hàm này).
+         */
+        function removeKeyFromDisplay(key) {
+            playlistOrder = playlistOrder.filter(k => k !== key);
+            displayOrder = displayOrder.filter(k => k !== key);
+            pendingResortKeys.delete(key);
+            playlistCache.delete(key); songNameIndex.delete(key);
+            updateShuffleArray();
+            renderPlaylistDiff();
+            if (playlistOrder.length === 0) playlistEmpty.classList.remove('hidden');
+        }
+
+        // ===================== Sort hiển thị =====================
+        const btnSortDisplay = document.getElementById('btn-sort-display');
+        const sortDisplayMenu = document.getElementById('sort-display-menu');
+        function updateSortDisplayCheckmarks() {
+            sortDisplayMenu.querySelectorAll('.sort-display-option').forEach(btn => {
+                const isActive = btn.dataset.sort === displaySortMode;
+                btn.querySelector('.sort-check').classList.toggle('hidden', !isActive);
+            });
+        }
+        if (btnSortDisplay && sortDisplayMenu) {
+            btnSortDisplay.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const key = actionBtn.dataset.key; const action = actionBtn.dataset.action;
-                if (action === 'delete') window.removeSong(key);
-                else if (action === 'info') openSongInfoModal(key);
-                else if (action === 'edit') openSongEditModal(key);
-                else if (action === 'restore') exportSongWithTag(key);
+                updateSortDisplayCheckmarks();
+                sortDisplayMenu.classList.toggle('hidden');
+            });
+            sortDisplayMenu.querySelectorAll('.sort-display-option').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    setDisplaySortMode(btn.dataset.sort);
+                    sortDisplayMenu.classList.add('hidden');
+                });
+            });
+            document.addEventListener('click', (e) => {
+                if (!sortDisplayMenu.classList.contains('hidden') && !sortDisplayMenu.contains(e.target) && e.target !== btnSortDisplay) {
+                    sortDisplayMenu.classList.add('hidden');
+                }
+            });
+        }
+
+        // ===================== Menu 3 chấm dùng chung =====================
+        const songActionMenu = document.getElementById('song-action-menu');
+        const songActionOverlay = document.getElementById('song-action-overlay');
+        let songActionMenuKey = null;
+
+        function openSongActionMenu(key, anchorBtn) {
+            songActionMenuKey = key;
+            const rect = anchorBtn.getBoundingClientRect();
+            const menuWidth = 192;
+            let left = rect.right - menuWidth;
+            if (left < 8) left = 8;
+            let top = rect.bottom + 6;
+            const viewportH = window.innerHeight || 800;
+            if (top + 220 > viewportH) top = rect.top - 220 - 6;
+            songActionMenu.style.left = `${left}px`;
+            songActionMenu.style.top = `${top}px`;
+            songActionMenu.classList.remove('hidden');
+            songActionOverlay.classList.remove('hidden');
+        }
+        function closeSongActionMenu() {
+            songActionMenu.classList.add('hidden');
+            songActionOverlay.classList.add('hidden');
+            songActionMenuKey = null;
+        }
+        songActionOverlay.addEventListener('click', closeSongActionMenu);
+        songActionMenu.addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-menu-action]');
+            if (!btn || !songActionMenuKey) return;
+            const key = songActionMenuKey; const action = btn.dataset.menuAction;
+            closeSongActionMenu();
+            if (action === 'delete') window.removeSong(key);
+            else if (action === 'info') openSongInfoModal(key);
+            else if (action === 'edit') openSongEditModal(key);
+            else if (action === 'restore') exportSongWithTag(key);
+        });
+
+        playlistContainer.addEventListener('click', (e) => {
+            const menuBtn = e.target.closest('button[data-action="menu"]');
+            if (menuBtn) {
+                e.stopPropagation();
+                openSongActionMenu(menuBtn.dataset.key, menuBtn);
                 return;
             }
             const item = e.target.closest('[data-role="play-item"]');
@@ -237,22 +444,13 @@
         });
 
         window.removeSong = function(key) {
-            if (key === currentKey) return; // không cho xoá bài đang phát (giữ đúng hành vi cũ)
+            if (key === currentKey) return;
             withLoadingShield("Đang xóa...", async () => {
                 await deleteSongRecord(key);
-                playlistOrder = playlistOrder.filter(k => k !== key);
-                playlistCache.delete(key); brokenKeys.delete(key);
-                await setPlaylistOrder(playlistOrder);
-                updateShuffleArray(); renderPlaylist();
-                if (playlistOrder.length === 0) playlistEmpty.classList.remove('hidden');
+                removeKeyFromDisplay(key);
             });
         };
 
-        /**
-         * playSong(key) — async hoàn toàn, đọc blob từ IndexedDB tại thời điểm phát (mục 3.3).
-         * Bài lỗi dữ liệu: hiện thông báo + "treo" tại bài hợp lệ cuối cùng, KHÔNG đổi currentKey
-         * (mục 3.8) — return SỚM trước khi gán currentKey.
-         */
         window.playSong = function(key) {
             if (key === currentKey) { switchToVisualizer(); if (audioPlayer.paused) audioPlayer.play(); return; }
             requestWakeLock();
@@ -261,14 +459,14 @@
                 if (currentObjectURL) { URL.revokeObjectURL(currentObjectURL); currentObjectURL = null; }
                 if (currentCoverObjectURL) { URL.revokeObjectURL(currentCoverObjectURL); currentCoverObjectURL = null; }
                 audioPlayer.pause();
+                const previousKey = currentKey;
 
                 const record = await getSongRecord(key);
                 if (!record) {
-                    brokenKeys.add(key); renderPlaylist();
-                    alert("Không đọc được bài hát này, dữ liệu có thể đã lỗi.");
+                    removeKeyFromDisplay(key);
+                    alert("Không đọc được bài hát này, dữ liệu có thể đã bị xóa.");
                     return;
                 }
-                brokenKeys.delete(key);
 
                 currentKey = key;
                 currentCoverObjectURL = record.cover ? URL.createObjectURL(record.cover) : DEFAULT_VINYL;
@@ -286,7 +484,11 @@
                     });
                 }
 
-                audioPlayer.play(); switchToVisualizer(); renderPlaylist();
+                audioPlayer.play(); switchToVisualizer();
+                if (previousKey) refreshSongNode(previousKey);
+                refreshSongNode(key);
+                if (!domNodesByKey.has(key)) renderPlaylistDiff();
+                if (currentKey) btnReturnVisual.classList.remove('hidden');
                 beatTimes = []; fluxHistory = []; currentCalculatedBpm = "---"; statBpm.textContent = "---"; statNote.textContent = "---";
                 raindrops = []; ripples = []; glassStaticDrops = []; glassStreaks = []; activeLightnings = []; starFlashes = [];
                 setupAudioContext(); updateTypeUI();
@@ -296,7 +498,42 @@
             });
         };
 
-        // ===================== Modal: Sửa thông tin (title/artist/album) — mục 3.5 =====================
+        // ===================== Modal: Bài hát lỗi lúc phát (audioPlayer 'error' thật) =====================
+        const playbackErrorModal = document.getElementById('playback-error-modal');
+        const playbackErrorFilename = document.getElementById('playback-error-filename');
+        let playbackErrorKey = null;
+
+        /**
+         * Gọi từ listener 'error' của audioPlayer (xem player-controls.js) khi trình duyệt thực sự
+         * không decode được file đang phát — khác với lỗi "không tìm thấy record" (removeKeyFromDisplay
+         * trực tiếp ở playSong, vì không còn gì để hỏi giữ/xóa).
+         */
+        function handlePlaybackError(key) {
+            playbackErrorKey = key;
+            const cached = playlistCache.get(key);
+            playbackErrorFilename.textContent = cached ? cached.filename : key;
+            playbackErrorModal.classList.remove('hidden');
+        }
+
+        document.getElementById('playback-error-keep').addEventListener('click', () => {
+            if (!playbackErrorKey) return;
+            confirmedBrokenKeys.add(playbackErrorKey);
+            removeKeyFromDisplay(playbackErrorKey);
+            playbackErrorModal.classList.add('hidden');
+            playbackErrorKey = null;
+        });
+        document.getElementById('playback-error-delete').addEventListener('click', () => {
+            if (!playbackErrorKey) return;
+            const key = playbackErrorKey;
+            playbackErrorModal.classList.add('hidden');
+            playbackErrorKey = null;
+            withLoadingShield("Đang xóa...", async () => {
+                await deleteSongRecord(key);
+                removeKeyFromDisplay(key);
+            });
+        });
+
+        // ===================== Modal: Sửa thông tin (title/artist/album) =====================
         const songEditModal = document.getElementById('song-edit-modal');
         const songEditTitleInput = document.getElementById('song-edit-title');
         const songEditArtistInput = document.getElementById('song-edit-artist');
@@ -304,7 +541,6 @@
         let songEditCurrentKey = null;
 
         async function openSongEditModal(key) {
-            if (brokenKeys.has(key)) { alert("Không đọc được bài hát này, dữ liệu có thể đã lỗi."); return; }
             const cached = playlistCache.get(key); if (!cached) return;
             songEditCurrentKey = key;
             songEditTitleInput.value = cached.tag.title || '';
@@ -325,9 +561,12 @@
 
             const cached = playlistCache.get(key);
             if (cached) cached.tag = record.tag;
+            songNameIndex.set(key, normalizeSongName(record.tag.title));
 
             if (key === currentKey) { playerTitle.textContent = record.tag.title; playerArtist.textContent = record.tag.artist; }
-            songEditModal.classList.add('hidden'); renderPlaylist();
+            songEditModal.classList.add('hidden');
+            if (displaySortMode === 'az' || displaySortMode === 'za') recomputeDisplayOrder();
+            renderPlaylistDiff();
         });
 
         // ===================== Modal: Thông tin chi tiết bài hát =====================
@@ -336,10 +575,8 @@
         let songInfoCurrentKey = null;
 
         function openSongInfoModal(key) {
-            if (brokenKeys.has(key)) { alert("Không đọc được bài hát này, dữ liệu có thể đã lỗi."); return; }
             const cached = playlistCache.get(key); if (!cached) return;
             songInfoCurrentKey = key;
-            const sizeMb = cached.blobSize ? (cached.blobSize / (1024*1024)).toFixed(1) : null;
             songInfoBody.innerHTML = `
                 <div class="flex justify-between"><span class="text-slate-500">Tên file gốc</span><span class="text-right break-all max-w-[60%]">${cached.filename}</span></div>
                 <div class="flex justify-between"><span class="text-slate-500">Nghệ sĩ</span><span>${cached.tag.artist || '—'}</span></div>

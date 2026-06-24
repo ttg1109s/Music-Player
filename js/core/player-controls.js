@@ -2,6 +2,16 @@
  * Điều khiển phát nhạc: next/prev, chuyển sang màn hình visualizer, nút play/pause/shuffle/repeat, Media Session API, thanh tiến trình, cập nhật UI loại hiệu ứng & màu sắc, áp EQ preset.
  * (Trích từ file gốc, dòng 802-972 trong khối <script>)
  */
+        /**
+         * Next/Prev khi KHÔNG shuffle giờ dùng `displayOrder` (thứ tự ĐANG HIỂN THỊ theo sort mode
+         * — mục 3 trong playlist.js) làm thứ tự phát, thay cho `playlistOrder` gốc (thứ tự thêm
+         * vào) như trước — đúng yêu cầu "thứ tự phát = thứ tự hiển thị" khi không trộn bài.
+         *
+         * "Chạm biên" (Next từ bài cuối quay về đầu, hoặc Prev từ bài đầu quay về cuối) là điểm áp
+         * lại sort thật cho các bài mới thêm vào lúc đang nghe (`pendingResortKeys`, xem
+         * applyNewSongsToDisplayOrder trong playlist.js) — chỉ áp dụng khi KHÔNG shuffle, vì khi
+         * shuffle thì shuffleIndices đã là nguồn phát riêng, không liên quan displayOrder.
+         */
         function playNext(force = false) {
             if (playlistOrder.length === 0) return;
             if (!force && repeatMode === 2) { audioPlayer.currentTime = 0; audioPlayer.play(); return; }
@@ -11,9 +21,14 @@
                 if (currentPos === -1 || currentPos === playlistOrder.length - 1) { if (repeatMode === 1 || force) nextKey = shuffleIndices[0]; else { audioPlayer.pause(); return; } }
                 else nextKey = shuffleIndices[currentPos + 1];
             } else {
-                let currentPos = playlistOrder.indexOf(currentKey);
-                if (currentPos === playlistOrder.length - 1) { if (repeatMode === 1 || force) nextKey = playlistOrder[0]; else { audioPlayer.pause(); return; } }
-                else nextKey = playlistOrder[currentPos + 1];
+                let currentPos = displayOrder.indexOf(currentKey);
+                const isWrappingToStart = (currentPos === displayOrder.length - 1);
+                if (isWrappingToStart) {
+                    if (repeatMode === 1 || force) {
+                        if (pendingResortKeys.size > 0) recomputeDisplayOrder(); // chạm biên: áp lại sort thật cho bài mới thêm giữa lúc nghe
+                        nextKey = displayOrder[0];
+                    } else { audioPlayer.pause(); return; }
+                } else nextKey = displayOrder[currentPos + 1];
             }
             window.playSong(nextKey);
         }
@@ -25,7 +40,12 @@
             if (isShuffle) {
                 let currentPos = shuffleIndices.indexOf(currentKey); prevKey = (currentPos <= 0) ? shuffleIndices[playlistOrder.length - 1] : shuffleIndices[currentPos - 1];
             } else {
-                let currentPos = playlistOrder.indexOf(currentKey); prevKey = (currentPos <= 0) ? playlistOrder[playlistOrder.length - 1] : playlistOrder[currentPos - 1];
+                let currentPos = displayOrder.indexOf(currentKey);
+                const isWrappingToEnd = (currentPos <= 0);
+                if (isWrappingToEnd) {
+                    if (pendingResortKeys.size > 0) recomputeDisplayOrder(); // chạm biên: áp lại sort thật
+                    prevKey = displayOrder[displayOrder.length - 1];
+                } else prevKey = displayOrder[currentPos - 1];
             }
             window.playSong(prevKey);
         }
@@ -43,12 +63,12 @@
             visualizerUI.classList.remove('fade-enter-active'); canvas.classList.add('opacity-0'); document.getElementById('webgl-canvas').classList.add('opacity-0');
             playlistView.classList.remove('-translate-y-full'); // bỏ translate TRƯỚC để handleVideoBackground() nhận đúng màn hình hiện tại là Playlist
             handleVideoBackground(); // sang Playlist -> ẩn & dừng video nền (Playlist không dùng nó làm nền)
-            setTimeout(() => { visualizerUI.classList.add('hidden'); playerContainer.classList.add('hidden'); renderPlaylist(); }, 300);
+            setTimeout(() => { visualizerUI.classList.add('hidden'); playerContainer.classList.add('hidden'); renderPlaylistDiff(); }, 300);
         });
 
         playPauseBtn.addEventListener('click', () => {
             requestWakeLock(); if (playlistOrder.length === 0) return;
-            if (currentKey === null) { window.playSong(playlistOrder[0]); return; }
+            if (currentKey === null) { window.playSong(displayOrder[0] || playlistOrder[0]); return; }
             if (audioPlayer.paused) { audioPlayer.play(); if (audioContext && audioContext.state === 'suspended') audioContext.resume(); } else { audioPlayer.pause(); }
         });
 
@@ -79,17 +99,28 @@
         audioPlayer.addEventListener('play', () => { 
             iconPlay.classList.add('hidden'); iconPause.classList.remove('hidden'); 
             let recordArtDynamic = document.getElementById('record-art'); if(recordArtDynamic) recordArtDynamic.classList.remove('paused');
-            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing"; renderPlaylist(); 
+            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing";
+            if (currentKey) refreshSongNode(currentKey);
             if (vizConfig.videoBgEnabled && vizConfig.videoBgUrl && bgVideoElement.paused) { bgVideoElement.play().catch(() => {}); }
         });
         audioPlayer.addEventListener('pause', () => { 
             iconPlay.classList.remove('hidden'); iconPause.classList.add('hidden'); 
             let recordArtDynamic = document.getElementById('record-art'); if(recordArtDynamic) recordArtDynamic.classList.add('paused');
-            releaseWakeLock(); if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "paused"; renderPlaylist(); 
+            releaseWakeLock(); if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "paused";
+            if (currentKey) refreshSongNode(currentKey);
             if (!bgVideoElement.paused) bgVideoElement.pause();
         });
         audioPlayer.addEventListener('ended', () => { playNext(false); });
         audioPlayer.addEventListener('loadedmetadata', () => { progressBar.max = audioPlayer.duration; durationTimeDisplay.textContent = formatTime(audioPlayer.duration); updateMediaPositionState(); });
+        // Lỗi decode THẬT (khác với "không tìm thấy record" đã xử lý riêng trong playSong) — trình
+        // duyệt gán src xong rồi mới phát hiện không decode được (file hỏng dù qua được check nhanh
+        // lúc nạp/quét). Chỉ xử lý khi đang thực sự gắn với currentKey (audioPlayer.src vẫn còn trỏ
+        // đúng bài đó) — tránh trường hợp hiếm: lỗi bắn ra sau khi đã playSong() sang bài khác.
+        audioPlayer.addEventListener('error', () => {
+            if (currentKey && currentObjectURL && audioPlayer.src === currentObjectURL) {
+                handlePlaybackError(currentKey);
+            }
+        });
 
         let lastPositionSync = 0;
         let lastListenTrackTime = null; let pendingListenSeconds = 0;

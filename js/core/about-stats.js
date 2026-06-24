@@ -35,15 +35,13 @@
             const statTotalSongs = document.getElementById('stat-about-total-songs');
             const statTotalDuration = document.getElementById('stat-about-total-duration');
             const statListenSeconds = document.getElementById('stat-about-listen-seconds');
-            const statStorage = document.getElementById('stat-about-storage');
             statTotalSongs.textContent = '...'; statTotalDuration.textContent = '...';
-            statListenSeconds.textContent = '...'; statStorage.textContent = '...';
+            statListenSeconds.textContent = '...';
 
             const stats = await computeStats();
             statTotalSongs.textContent = `${stats.totalSongs}`;
             statTotalDuration.textContent = formatDurationLong(stats.totalDuration);
             statListenSeconds.textContent = formatDurationLong(stats.totalListenSeconds);
-            statStorage.textContent = formatBytes(stats.totalBytes);
         }
 
         const drawerAbout = document.getElementById('drawer-about');

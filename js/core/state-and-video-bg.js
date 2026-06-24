@@ -18,7 +18,7 @@
                 iconGridView.classList.remove('hidden'); iconListView.classList.add('hidden');
                 playlistContainer.className = 'flex flex-col pb-32';
             }
-            renderPlaylist();
+            renderPlaylistFull(); // layout grid/list khác cấu trúc node hoàn toàn -> vẽ lại từ đầu, không diff
         });
 
         btnReturnVisual.addEventListener('click', () => { if(currentKey) switchToVisualizer(); });

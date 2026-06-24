@@ -95,6 +95,18 @@
         function getMeta(key) { return idbKeyval.get(key, metaStore); }
         function setMeta(key, value) { return idbKeyval.set(key, value, metaStore); }
         function delMeta(key) { return idbKeyval.del(key, metaStore); }
+        // KHÔNG còn getPlaylistOrder/setPlaylistOrder: playlist không lưu thứ tự riêng trong
+        // store `meta` nữa — store `songs` là chân lý duy nhất. Mỗi lần cần danh sách (khởi động,
+        // sau khi thêm/xoá bài), quét lại toàn bộ key qua getAllSongKeys() + lọc hợp lệ ngay trong
+        // RAM (xem scanValidSongsFromDB() trong playlist.js) — không cố lưu/khôi phục thứ tự cũ.
 
-        async function getPlaylistOrder() { return (await getMeta('playlistOrder')) || []; }
-        function setPlaylistOrder(order) { return setMeta('playlistOrder', order); }
+        // MIME type hợp lệ cho mp3 — trình duyệt/thiết bị khác nhau có thể báo hơi khác nhau, nên
+        // chấp nhận cả audio/mpeg, audio/mp3 (không chuẩn nhưng vẫn gặp), và rỗng (file picker một số
+        // hệ điều hành không set type, không tự coi đó là lỗi chỉ vì thiếu type). Định nghĩa Ở ĐÂY
+        // (db.js, nạp sớm nhất) để dùng CHUNG giữa playlist.js (quét nhanh lúc khởi động/thêm bài,
+        // KHÔNG decode) và storage-manager.js (quét sâu ở Quản lý dung lượng, có decode) — tránh 2
+        // nơi định nghĩa "thế nào là hợp lệ" lệch nhau.
+        const VALID_MP3_MIME_TYPES = new Set(['audio/mpeg', 'audio/mp3', 'audio/mpa', '']);
+        function isQuickValidMime(mime) {
+            return VALID_MP3_MIME_TYPES.has((mime || '').toLowerCase());
+        }
