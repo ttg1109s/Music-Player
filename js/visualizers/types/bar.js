@@ -6,15 +6,11 @@
  *     (vizConfig.mirrorCircleSize, % so với kích thước màn hình). Bố cục dải bar LUÔN dựa trên
  *     một bán kính tâm cơ sở cố định nhỏ — dải KHÔNG co giãn theo độ to vòng tròn người dùng
  *     chọn; nếu chọn vòng tròn to, nó có thể chồng lấn lên các thanh gần tâm (đánh đổi được người
- *     dùng chấp nhận khi bật setting này). Hai bên KHÔNG đối xứng gương về xu hướng độ cao — đây
- *     là chủ đích thiết kế:
- *       + Bên TRÁI : xa tâm cao -> gần tâm thấp (giảm dần khi tới gần vòng tròn).
- *       + Bên PHẢI : gần tâm thấp -> xa tâm cao (tăng dần khi ra xa vòng tròn).
- *     Cả hai vẫn nhảy động theo nhạc thật (độ cao mỗi bar = biên độ bin tần số tương ứng); xu
- *     hướng trên chỉ là cách map vị trí slot -> bin tần số (xem binRight/binLeft trong
- *     drawBarMirror), không phải giá trị cố định.
- *     KHÔNG dùng setting "Độ dày thanh" (vizConfig.barWidth) — setting đó giờ CHỈ áp dụng cho
- *     visual Black Hole.
+ *     dùng chấp nhận khi bật setting này). Hai bên ĐỐI XỨNG GƯƠNG thật qua tâm: tại cùng một
+ *     khoảng cách từ tâm, bên trái và bên phải dùng CÙNG một bin tần số (binLeft === binRight)
+ *     nên độ cao bar luôn bằng nhau hai bên — đúng nghĩa "phản chiếu". Bin tần số thấp (bass) nằm
+ *     ở slot gần tâm, bin cao (treble) nằm ở slot ngoài rìa, độ cao bar tăng dần ra ngoài, giống
+ *     nhau ở cả hai cánh.
  *   - barStyle 'cascade' : Thác đổ — giữ nguyên cách vẽ của visual "synthesia" cũ (các "phím" rơi
  *     xuống đáy màn hình theo tần số). Độ dày mỗi phím tự tính theo độ rộng slot của bố cục 64
  *     phím, KHÔNG còn phụ thuộc setting "Độ dày thanh" (cùng lý do với 'mirror' ở trên).
@@ -43,34 +39,26 @@
                 const distFromCenter = centerCircleBaseR + i * barSlotWidth;
                 const slotW = barSlotWidth * 0.6;
 
-                // BÊN PHẢI: gần tâm THẤP -> xa tâm CAO. Bin tần số thấp (bass) ở slot gần tâm,
-                // bin cao (treble) ở slot ngoài rìa — độ cao bar tăng dần ra ngoài theo cùng chiều.
-                const binRight = Math.floor((i / barCount) * maxBin);
-                const valRight = vizDataArray[binRight] || 0;
-                let lenRight = valRight ? (valRight / 255) * maxBarLen : 0;
-
-                // BÊN TRÁI: xa tâm CAO -> gần tâm THẤP (ngược lại bên phải). Đảo chỉ số slot khi
-                // tra bin, để slot ngoài rìa (i nhỏ về phía mép) nhận bin ứng với biên độ lớn hơn
-                // ở vị trí xa, và giảm dần khi tới gần tâm.
-                const binLeft = Math.floor(((barCount - 1 - i) / barCount) * maxBin);
-                const valLeft = vizDataArray[binLeft] || 0;
-                let lenLeft = valLeft ? (valLeft / 255) * maxBarLen : 0;
+                // ĐỐI XỨNG GƯƠNG THẬT: cùng khoảng cách từ tâm (cùng chỉ số slot i) -> cùng một
+                // bin tần số cho cả hai bên. Bass (bin thấp) luôn ở slot gần tâm, treble (bin cao)
+                // luôn ở slot ngoài rìa, độ cao bar tăng dần ra ngoài — giống nhau ở cả hai cánh.
+                const bin = Math.floor((i / barCount) * maxBin);
+                const val = vizDataArray[bin] || 0;
+                let len = val ? (val / 255) * maxBarLen : 0;
 
                 const rx = centerX + distFromCenter;
                 const lx = centerX - distFromCenter - slotW;
 
-                const colorsRight = getComputedColor(i, barCount, valRight);
+                const colors = getComputedColor(i, barCount, val);
                 ctx.shadowBlur = 15 * dpr * perf.blurMult;
-                ctx.shadowColor = perf.blurMult > 0 ? colorsRight.glow : 'transparent';
-                ctx.fillStyle = colorsRight.fill;
-                ctx.beginPath(); ctx.roundRect(rx, centerY - lenRight, slotW, lenRight, 3 * dpr); ctx.fill();
-                ctx.beginPath(); ctx.roundRect(rx, centerY, slotW, lenRight, 3 * dpr); ctx.fill();
-
-                const colorsLeft = getComputedColor(barCount - 1 - i, barCount, valLeft);
-                ctx.shadowColor = perf.blurMult > 0 ? colorsLeft.glow : 'transparent';
-                ctx.fillStyle = colorsLeft.fill;
-                ctx.beginPath(); ctx.roundRect(lx, centerY - lenLeft, slotW, lenLeft, 3 * dpr); ctx.fill();
-                ctx.beginPath(); ctx.roundRect(lx, centerY, slotW, lenLeft, 3 * dpr); ctx.fill();
+                ctx.shadowColor = perf.blurMult > 0 ? colors.glow : 'transparent';
+                ctx.fillStyle = colors.fill;
+                // Bên phải
+                ctx.beginPath(); ctx.roundRect(rx, centerY - len, slotW, len, 3 * dpr); ctx.fill();
+                ctx.beginPath(); ctx.roundRect(rx, centerY, slotW, len, 3 * dpr); ctx.fill();
+                // Bên trái (gương — cùng giá trị len, cùng màu)
+                ctx.beginPath(); ctx.roundRect(lx, centerY - len, slotW, len, 3 * dpr); ctx.fill();
+                ctx.beginPath(); ctx.roundRect(lx, centerY, slotW, len, 3 * dpr); ctx.fill();
             }
             ctx.shadowBlur = 0;
 
