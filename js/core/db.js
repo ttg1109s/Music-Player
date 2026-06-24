@@ -3,16 +3,56 @@
  * Quản lý 2 store riêng trong database `musicPlayerDB`:
  *   - `songs`: mỗi record 1 bài hát (xem schema trong PLAN_INDEXEDDB.md mục 1).
  *   - `meta`:  key-value đơn lẻ (playlistOrder, totalListenSeconds, bgImage, videoBg).
- * Tách 2 store riêng (qua idbKeyval.createStore) để computeStats() (about-stats.js) chỉ cần
- * liệt kê đúng store `songs`, không lẫn key của ảnh/video nền hay playlistOrder.
+ * Tách 2 store riêng để computeStats() (about-stats.js) chỉ cần liệt kê đúng store `songs`,
+ * không lẫn key của ảnh/video nền hay playlistOrder.
+ *
+ * QUAN TRỌNG — KHÔNG dùng 2 lệnh `idbKeyval.createStore(DB_NAME, ...)` độc lập (1 cho mỗi store)
+ * như cách làm tưởng chừng hợp lý: mỗi lệnh đó tự gọi `indexedDB.open(DB_NAME)` RIÊNG, không version
+ * cụ thể. `onupgradeneeded` chỉ chạy đúng 1 lần khi DB được tạo (version 0 -> 1) — connection nào
+ * "thắng" race đó quyết định CHỈ store của lệnh đó được tạo thật. Tuỳ thứ tự tính năng nào được
+ * dùng trước (nạp nhạc trước hay đổi ảnh nền trước), người dùng có thể kẹt với DB chỉ có 1 trong 2
+ * store ('songs' hoặc 'meta'), gây lỗi `NotFoundError: One of the specified object stores was not
+ * found` ngay khi đụng tới store còn thiếu — và vì đây xảy ra ngay ở lần mở DB đầu tiên trên máy đó,
+ * lỗi sẽ lặp lại ở MỌI lần sau cho tới khi sửa đúng cách (xoá DB thủ công không phải giải pháp tốt
+ * vì mất hết nhạc/ảnh đã lưu).
+ *
+ * Cách sửa: tự quản lý `indexedDB.open(DB_NAME, DB_VERSION)` ĐÚNG MỘT LẦN, tạo CẢ HAI store trong
+ * cùng một `onupgradeneeded` (idempotent — kiểm tra `objectStoreNames.contains` trước khi tạo, để
+ * vẫn chạy đúng cho DB cũ chỉ có sẵn 1 trong 2 store, tự bổ sung store còn thiếu mà KHÔNG mất data
+ * đã có ở store kia). Sau đó bọc lại thành 2 "store accessor" cùng signature mà idb-keyval cần
+ * (`(txMode, callback) => Promise`), để toàn bộ chỗ gọi `idbKeyval.get/set/del/keys(key, songsStore)`
+ * ở các file khác (playlist.js, player-controls.js, about-stats.js...) không cần đổi gì.
  *
  * PHẢI nạp SỚM trong index.html (đầu nhóm core/), TRƯỚC playlist.js, player-controls.js,
  * equalizer-settings.js, subtitles.js, about-stats.js, id3-export.js — các file đó gọi
  * hàm helper định nghĩa ở đây.
  */
         const DB_NAME = 'musicPlayerDB';
-        const songsStore = idbKeyval.createStore(DB_NAME, 'songs');
-        const metaStore = idbKeyval.createStore(DB_NAME, 'meta');
+        const DB_VERSION = 2; // tăng lên 2 để buộc onupgradeneeded chạy lại cho DB cũ (v1) bị thiếu store
+
+        const dbReadyPromise = new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, DB_VERSION);
+            request.onupgradeneeded = () => {
+                const db = request.result;
+                if (!db.objectStoreNames.contains('songs')) db.createObjectStore('songs');
+                if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta');
+            };
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+            request.onblocked = () => console.warn('[db] Mở IndexedDB bị "blocked" — có tab/cửa sổ khác đang giữ kết nối DB phiên bản cũ. Đóng các tab khác của trang này rồi tải lại.');
+        });
+
+        /**
+         * Tạo 1 "store accessor" tương thích đúng signature mà idb-keyval cần
+         * ((txMode, callback) => Promise), dùng chung 1 connection DB đã mở sẵn ở trên — thay cho
+         * idbKeyval.createStore() (nguồn gốc lỗi race condition ở trên).
+         */
+        function makeStoreAccessor(storeName) {
+            return (txMode, callback) => dbReadyPromise.then((db) => callback(db.transaction(storeName, txMode).objectStore(storeName)));
+        }
+
+        const songsStore = makeStoreAccessor('songs');
+        const metaStore = makeStoreAccessor('meta');
 
         /**
          * slugify: hạ thường, bỏ dấu tiếng Việt, bỏ ký tự đặc biệt, nối bằng "-".
