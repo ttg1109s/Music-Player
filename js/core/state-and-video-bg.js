@@ -8,7 +8,7 @@
         let currentCalculatedBpm = "---";
 
         let playlist = [], currentIndex = -1, isShuffle = false, shuffleIndices = [], repeatMode = 0; 
-        window.currentMediaSessionCover = null; window.lastValidNoteStr = null; window.lastValidNoteTime = 0;
+        window.currentMediaSessionCover = null; window.lastValidNoteStr = null; window.lastValidNoteTime = 0; window.lastValidMidiNote = null;
 
         btnToggleView.addEventListener('click', () => {
             isGridView = !isGridView;
@@ -43,4 +43,3 @@
             vizConfig.videoBgUrl = URL.createObjectURL(file);
             if(vizConfig.videoBgEnabled) handleVideoBackground(); saveConfig(); 
         });
-
