@@ -24,7 +24,14 @@
             if (animationId) cancelAnimationFrame(animationId);
             if (audioContext && audioContext.state !== 'closed') audioContext.close();
             if (currentObjectURL) URL.revokeObjectURL(currentObjectURL);
+            if (currentCoverObjectURL) URL.revokeObjectURL(currentCoverObjectURL);
             if (window.currentMediaSessionCover) URL.revokeObjectURL(window.currentMediaSessionCover);
+            // Best-effort: flush phần thời lượng nghe chưa kịp ghi (xem player-controls.js timeupdate).
+            // Không có gì đảm bảo IndexedDB write này hoàn tất trước khi tab đóng hẳn, nhưng vẫn
+            // tốt hơn là bỏ qua hoàn toàn.
+            if (typeof pendingListenSeconds !== 'undefined' && pendingListenSeconds > 0) {
+                getMeta('totalListenSeconds').then(v => setMeta('totalListenSeconds', (v || 0) + pendingListenSeconds));
+            }
             releaseWakeLock();
         });
 

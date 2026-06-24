@@ -4,10 +4,9 @@
  */
 
         let subtitles = []; let isSubtitlesEnabled = true; let activeSubIds = new Set(); let editingSubId = null;
-        let subtitlesBySongId = {}; 
         let currentCalculatedBpm = "---";
 
-        let playlist = [], currentIndex = -1, isShuffle = false, shuffleIndices = [], repeatMode = 0; 
+        let isShuffle = false, shuffleIndices = [], repeatMode = 0;
         window.currentMediaSessionCover = null; window.lastValidNoteStr = null; window.lastValidNoteTime = 0; window.lastValidMidiNote = null;
 
         btnToggleView.addEventListener('click', () => {
@@ -22,7 +21,7 @@
             renderPlaylist();
         });
 
-        btnReturnVisual.addEventListener('click', () => { if(currentIndex > -1) switchToVisualizer(); });
+        btnReturnVisual.addEventListener('click', () => { if(currentKey) switchToVisualizer(); });
 
         // Khi đóng drawer Cài đặt: nếu người dùng đã bật "Sử dụng Video Background" nhưng CHƯA
         // chọn video nào (vizConfig.videoBgUrl rỗng) thì tự tắt lại — tránh trạng thái "on" ảo
@@ -52,11 +51,26 @@
             }
         }
 
-        videoEnableToggle.addEventListener('change', (e) => { vizConfig.videoBgEnabled = e.target.checked; handleVideoBackground(); saveConfig(); });
+        videoEnableToggle.addEventListener('change', (e) => {
+            vizConfig.videoBgEnabled = e.target.checked;
+            if (!vizConfig.videoBgEnabled) {
+                withLoadingShield("Đang xóa video nền...", async () => {
+                    await delMeta('videoBg');
+                    if (vizConfig.videoBgUrl && vizConfig.videoBgUrl.startsWith('blob:')) URL.revokeObjectURL(vizConfig.videoBgUrl);
+                    vizConfig.videoBgUrl = ''; vizConfig.videoHideVisual = false; videoHideVisualToggle.checked = false;
+                    handleVideoBackground(); saveConfig();
+                });
+            } else { handleVideoBackground(); saveConfig(); }
+        });
         videoHideVisualToggle.addEventListener('change', (e) => { vizConfig.videoHideVisual = e.target.checked; saveConfig(); });
         videoUploadInput.addEventListener('change', (e) => {
             const file = e.target.files[0]; if (!file) return;
-            if (vizConfig.videoBgUrl && vizConfig.videoBgUrl.startsWith('blob:')) URL.revokeObjectURL(vizConfig.videoBgUrl);
-            vizConfig.videoBgUrl = URL.createObjectURL(file);
-            if(vizConfig.videoBgEnabled) handleVideoBackground(); saveConfig(); 
+            e.target.value = '';
+            withLoadingShield("Đang lưu video nền...", async () => {
+                await setMeta('videoBg', file);
+                if (vizConfig.videoBgUrl && vizConfig.videoBgUrl.startsWith('blob:')) URL.revokeObjectURL(vizConfig.videoBgUrl);
+                vizConfig.videoBgUrl = URL.createObjectURL(file);
+                vizConfig.videoBgEnabled = true; videoEnableToggle.checked = true;
+                handleVideoBackground(); saveConfig();
+            });
         });

@@ -111,7 +111,8 @@
             if(subtitles.length === 0) { alert("Chưa có phụ đề để xuất!"); return; }
             const blob = new Blob([buildSRTString()], { type: "text/plain;charset=utf-8" });
             const url = URL.createObjectURL(blob); const a = document.createElement('a');
-            a.href = url; a.download = `${playlist[currentIndex]?.title || 'VisualMaster_Sub'}.srt`; a.click(); URL.revokeObjectURL(url);
+            const cached = currentKey ? playlistCache.get(currentKey) : null;
+            a.href = url; a.download = `${cached?.tag?.title || 'VisualMaster_Sub'}.srt`; a.click(); URL.revokeObjectURL(url);
         });
 
         srtUpload.addEventListener('change', (e) => {
@@ -119,10 +120,17 @@
             const reader = new FileReader(); reader.onload = (evt) => { subtitles = parseSRT(evt.target.result); renderSubList(); }; reader.readAsText(file);
         });
 
-        btnApplySub.addEventListener('click', () => {
+        btnApplySub.addEventListener('click', async () => {
             editingSubId = null; resetAutoSub(); renderSubList();
             if (!isSubtitlesEnabled) { isSubtitlesEnabled = true; updateSubToggleUI(); }
             subtitleModal.classList.add('translate-y-full'); clearAllActiveSubBlocks();
+
+            // Ghi đè subtitles của bài hiện tại vào IndexedDB — điểm xác nhận + persist duy nhất.
+            if (currentKey) {
+                const record = await getSongRecord(currentKey);
+                if (record) { record.subtitles = subtitles.slice(); await setSongRecord(currentKey, record); }
+            }
+
             if (!audioPlayer.paused || audioPlayer.currentTime > 0) { audioPlayer.currentTime = 0; audioPlayer.play(); }
         });
 

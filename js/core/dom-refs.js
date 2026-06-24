@@ -27,6 +27,7 @@
         const btnCycleMode = document.getElementById('btn-cycle-mode'), modeBadge = document.getElementById('mode-badge');
         const qualitySelect = document.getElementById('setting-quality'), bgColorPicker = document.getElementById('bg-color-picker');
         const bgUploadInput = document.getElementById('setting-bg-upload'), bgBlurSlider = document.getElementById('setting-bg-blur'), valBgBlurDisplay = document.getElementById('val-bg-blur');
+        const bgImageEnableToggle = document.getElementById('setting-bg-image-enable');
         const colorModeSelect = document.getElementById('setting-color-mode'), solidColorContainer = document.getElementById('solid-color-container'), solidColorPicker = document.getElementById('solid-color-picker'), solidColorText = document.getElementById('solid-color-text');
         const dynColorContainer = document.getElementById('dynamic-color-container'), dynColorA = document.getElementById('dyn-color-a'), dynColorB = document.getElementById('dyn-color-b');
         const maxHeightSlider = document.getElementById('setting-max-height'), barWidthSlider = document.getElementById('setting-bar-width'), valMaxDisplay = document.getElementById('val-max'), valWidthDisplay = document.getElementById('val-width');
@@ -64,7 +65,7 @@
 
         let audioContext, analyser, analyserPitch, source, animationId;
         let masterGainNode; let eqBandNodes = []; 
-        let isSeeking = false, dpr = 1, currentObjectURL = null, frameCounter = 0; 
+        let isSeeking = false, dpr = 1, currentObjectURL = null, currentCoverObjectURL = null, frameCounter = 0; 
         let smoothedBeatRadius = 0, smoothedEnergy = 0, globalHueOffset = 0, smoothedPitchY = 0, beatScale = 0;
         let vizDataArray, pitchTimeDomainArray, previousSpectrumArray;
         let beatTimes = [], lastBeatTime = 0, fluxHistory = [], runningFluxMean = 0;

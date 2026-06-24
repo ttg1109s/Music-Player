@@ -3,28 +3,31 @@
  * (Trích từ file gốc, dòng 802-972 trong khối <script>)
  */
         function playNext(force = false) {
-            if (playlist.length === 0) return;
+            if (playlistOrder.length === 0) return;
             if (!force && repeatMode === 2) { audioPlayer.currentTime = 0; audioPlayer.play(); return; }
-            let nextIdx;
+            let nextKey;
             if (isShuffle) {
-                let currentPos = shuffleIndices.indexOf(currentIndex);
-                if (currentPos === -1 || currentPos === playlist.length - 1) { if (repeatMode === 1 || force) nextIdx = shuffleIndices[0]; else { audioPlayer.pause(); return; } } 
-                else nextIdx = shuffleIndices[currentPos + 1];
+                let currentPos = shuffleIndices.indexOf(currentKey);
+                if (currentPos === -1 || currentPos === playlistOrder.length - 1) { if (repeatMode === 1 || force) nextKey = shuffleIndices[0]; else { audioPlayer.pause(); return; } }
+                else nextKey = shuffleIndices[currentPos + 1];
             } else {
-                if (currentIndex === playlist.length - 1) { if (repeatMode === 1 || force) nextIdx = 0; else { audioPlayer.pause(); return; } } 
-                else nextIdx = currentIndex + 1;
+                let currentPos = playlistOrder.indexOf(currentKey);
+                if (currentPos === playlistOrder.length - 1) { if (repeatMode === 1 || force) nextKey = playlistOrder[0]; else { audioPlayer.pause(); return; } }
+                else nextKey = playlistOrder[currentPos + 1];
             }
-            window.playSong(nextIdx);
+            window.playSong(nextKey);
         }
 
         function playPrev() {
-            if (playlist.length === 0) return;
+            if (playlistOrder.length === 0) return;
             if (audioPlayer.currentTime > 3) { audioPlayer.currentTime = 0; return; }
-            let prevIdx;
+            let prevKey;
             if (isShuffle) {
-                let currentPos = shuffleIndices.indexOf(currentIndex); prevIdx = (currentPos <= 0) ? shuffleIndices[playlist.length - 1] : shuffleIndices[currentPos - 1];
-            } else { prevIdx = (currentIndex <= 0) ? playlist.length - 1 : currentIndex - 1; }
-            window.playSong(prevIdx);
+                let currentPos = shuffleIndices.indexOf(currentKey); prevKey = (currentPos <= 0) ? shuffleIndices[playlistOrder.length - 1] : shuffleIndices[currentPos - 1];
+            } else {
+                let currentPos = playlistOrder.indexOf(currentKey); prevKey = (currentPos <= 0) ? playlistOrder[playlistOrder.length - 1] : playlistOrder[currentPos - 1];
+            }
+            window.playSong(prevKey);
         }
 
         function switchToVisualizer() {
@@ -44,8 +47,8 @@
         });
 
         playPauseBtn.addEventListener('click', () => {
-            requestWakeLock(); if (playlist.length === 0) return;
-            if (currentIndex === -1) { window.playSong(0); return; }
+            requestWakeLock(); if (playlistOrder.length === 0) return;
+            if (currentKey === null) { window.playSong(playlistOrder[0]); return; }
             if (audioPlayer.paused) { audioPlayer.play(); if (audioContext && audioContext.state === 'suspended') audioContext.resume(); } else { audioPlayer.pause(); }
         });
 
@@ -89,10 +92,26 @@
         audioPlayer.addEventListener('loadedmetadata', () => { progressBar.max = audioPlayer.duration; durationTimeDisplay.textContent = formatTime(audioPlayer.duration); updateMediaPositionState(); });
 
         let lastPositionSync = 0;
+        let lastListenTrackTime = null; let pendingListenSeconds = 0;
         audioPlayer.addEventListener('timeupdate', () => { 
             if (!isSeeking) { progressBar.value = audioPlayer.currentTime; updateProgressBarCSS(); } 
             currentTimeDisplay.textContent = formatTime(audioPlayer.currentTime); processSubtitles(audioPlayer.currentTime);
             if (Date.now() - lastPositionSync > 5000) { updateMediaPositionState(); lastPositionSync = Date.now(); }
+
+            // Thống kê "thời lượng đã nghe thật" (mục 1/7 plan) — cộng dồn theo delta thời gian thực
+            // giữa các lần timeupdate liên tiếp khi đang phát (không seek), flush vào IndexedDB mỗi
+            // khi tích lũy đủ 5s để tránh ghi liên tục.
+            if (!audioPlayer.paused && !isSeeking) {
+                const now = audioPlayer.currentTime;
+                if (lastListenTrackTime !== null && now > lastListenTrackTime) {
+                    pendingListenSeconds += (now - lastListenTrackTime);
+                }
+                lastListenTrackTime = now;
+                if (pendingListenSeconds >= 5) {
+                    const toFlush = pendingListenSeconds; pendingListenSeconds = 0;
+                    getMeta('totalListenSeconds').then(v => setMeta('totalListenSeconds', (v || 0) + toFlush));
+                }
+            } else { lastListenTrackTime = null; }
         });
         
         audioPlayer.addEventListener('seeked', updateMediaPositionState);
@@ -166,15 +185,25 @@
         qualitySelect.addEventListener('change', (e) => { vizConfig.quality = e.target.value; resizeCanvas(); saveConfig(); });
         bgUploadInput.addEventListener('change', (e) => {
             const file = e.target.files[0]; if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(evt) {
-                const img = new Image(); img.onload = () => {
-                    const cvs = document.createElement('canvas'); const MAX = 1080; let w = img.width, h = img.height;
-                    if (w > MAX) { h *= MAX/w; w = MAX; }
-                    cvs.width = w; cvs.height = h; cvs.getContext('2d').drawImage(img, 0, 0, w, h);
-                    vizConfig.bgImage = cvs.toDataURL('image/jpeg', 0.6); updatePlaylistBg(); saveConfig();
-                }; img.src = evt.target.result;
-            }; reader.readAsDataURL(file);
+            e.target.value = '';
+            withLoadingShield("Đang lưu ảnh nền...", async () => {
+                await setMeta('bgImage', file);
+                if (vizConfig.bgImage && vizConfig.bgImage.startsWith('blob:')) URL.revokeObjectURL(vizConfig.bgImage);
+                vizConfig.bgImage = URL.createObjectURL(file);
+                vizConfig.bgImageEnabled = true; bgImageEnableToggle.checked = true;
+                updatePlaylistBg(); saveConfig();
+            });
+        });
+        bgImageEnableToggle.addEventListener('change', (e) => {
+            vizConfig.bgImageEnabled = e.target.checked;
+            withLoadingShield(vizConfig.bgImageEnabled ? "Đang xử lý..." : "Đang xóa ảnh nền...", async () => {
+                if (!vizConfig.bgImageEnabled) {
+                    await delMeta('bgImage');
+                    if (vizConfig.bgImage && vizConfig.bgImage.startsWith('blob:')) URL.revokeObjectURL(vizConfig.bgImage);
+                    vizConfig.bgImage = '';
+                }
+                updatePlaylistBg(); saveConfig();
+            });
         });
         bgBlurSlider.addEventListener('input', (e) => { vizConfig.bgBlur = e.target.value; valBgBlurDisplay.textContent = e.target.value + 'px'; updatePlaylistBg(); saveConfig(); });
         

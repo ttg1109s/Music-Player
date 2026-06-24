@@ -26,7 +26,36 @@
 
         function saveConfig() { localStorage.setItem('visualMasterConfigV21', JSON.stringify(vizConfig)); }
 
-        function loadConfig() {
+        /**
+         * Đọc lại ảnh nền & video nền từ IndexedDB (meta.bgImage / meta.videoBg), tự sửa trạng thái
+         * "on ảo" nếu config nói đang bật nhưng IndexedDB không còn Blob tương ứng (mục 6 plan).
+         * Áp dụng đồng nhất cho CẢ ảnh và video.
+         */
+        async function loadBackgroundAssets() {
+            const [imgBlob, videoBlob] = await Promise.all([
+                getMeta('bgImage'),
+                getMeta('videoBg')
+            ]);
+
+            if (vizConfig.bgImageEnabled && !imgBlob) {
+                vizConfig.bgImageEnabled = false;
+            } else if (imgBlob && vizConfig.bgImageEnabled) {
+                vizConfig.bgImage = URL.createObjectURL(imgBlob);
+            }
+
+            if (vizConfig.videoBgEnabled && !videoBlob) {
+                vizConfig.videoBgEnabled = false; vizConfig.videoHideVisual = false;
+            } else if (videoBlob && vizConfig.videoBgEnabled) {
+                vizConfig.videoBgUrl = URL.createObjectURL(videoBlob);
+            }
+
+            saveConfig();
+            bgImageEnableToggle.checked = vizConfig.bgImageEnabled;
+            videoEnableToggle.checked = vizConfig.videoBgEnabled; videoHideVisualToggle.checked = vizConfig.videoHideVisual || false;
+            updatePlaylistBg(); handleVideoBackground();
+        }
+
+        async function loadConfig() {
             const saved = localStorage.getItem('visualMasterConfigV21') || localStorage.getItem('visualMasterConfigV20');
             if (saved) { try { vizConfig = { ...vizConfig, ...JSON.parse(saved) }; } catch(e) {} }
             if(!vizConfig.manualEq) vizConfig.manualEq = [0,0,0,0,0,0,0,0,0,0];
@@ -38,6 +67,7 @@
             if (vizConfig.type === 'firefly_forest' || vizConfig.type === 'seasons' || vizConfig.type === 'wave') vizConfig.type = 'bar';
             if (!vizConfig.barStyle) vizConfig.barStyle = 'mirror';
             if (vizConfig.mirrorBarCount == null) vizConfig.mirrorBarCount = 32;
+            if (vizConfig.bgImageEnabled == null) vizConfig.bgImageEnabled = false;
             if (!vizConfig.subtitleStyle) vizConfig.subtitleStyle = { ...DEFAULT_VIZ_CONFIG.subtitleStyle };
             else vizConfig.subtitleStyle = { ...DEFAULT_VIZ_CONFIG.subtitleStyle, ...vizConfig.subtitleStyle };
             // Cấu hình cũ (trước khi thang cỡ chữ đổi thành 8-16px) có thể đã lưu giá trị lớn hơn —
@@ -46,16 +76,12 @@
 
             qualitySelect.value = vizConfig.quality; bgColorPicker.value = vizConfig.bgColor;
             bgBlurSlider.value = vizConfig.bgBlur; valBgBlurDisplay.textContent = vizConfig.bgBlur + 'px';
-            
-            // videoBgUrl là blob: URL (từ file đã chọn) — KHÔNG sống sót qua reload, nên luôn reset
-            // về rỗng ở đây. Nếu vizConfig.videoBgEnabled vẫn còn true từ config đã lưu trước đó,
-            // mà giờ không còn URL video nào cả, thì đó là trạng thái "on" ảo (mất data video sau
-            // refresh) — phải tự tắt cả videoBgEnabled lẫn videoHideVisual (phụ thuộc vào nó) và
-            // lưu lại ngay, để lần load sau không bị treo "on" mãi.
-            vizConfig.videoBgUrl = '';
-            if (vizConfig.videoBgEnabled) { vizConfig.videoBgEnabled = false; vizConfig.videoHideVisual = false; saveConfig(); }
-            videoEnableToggle.checked = vizConfig.videoBgEnabled; handleVideoBackground();
-            videoHideVisualToggle.checked = vizConfig.videoHideVisual || false;
+
+            // bgImage/videoBgUrl giờ là blob: URL runtime, tạo lại mỗi session từ IndexedDB — KHÔNG
+            // sống sót qua reload, nên luôn reset về rỗng ở đây TRƯỚC khi loadBackgroundAssets() đọc
+            // lại Blob thật và tự sửa trạng thái "on ảo" nếu cần (mục 6).
+            vizConfig.bgImage = ''; vizConfig.videoBgUrl = '';
+            await loadBackgroundAssets();
             
             colorModeSelect.value = vizConfig.mode;
             solidColorPicker.value = vizConfig.solidColor; solidColorText.value = vizConfig.solidColor;
