@@ -65,13 +65,20 @@ visual-master/
     │   ├── wakelock.js          (★★★★★ ver 5 — flush totalListenSeconds, revoke cover URL)
     │   ├── color-utils.js
     │   ├── canvas-scene-setup.js (★ ver 1, ★★ ver 2, ★★★ ver 3, ★★★★ ver 4)
-    │   ├── playlist.js          (★★★★★ ver 5 — viết lại hoàn toàn dùng IndexedDB)
-    │   ├── player-controls.js   (★★★ ver 3, ★★★★ ver 4, ★★★★★ ver 5 — playNext/Prev theo key)
+    │   ├── listen-stats.js      (★★★★★★ mới ở ver 6 — số lần nghe + thời gian nghe riêng từng bài, key {count,totalTime} trong meta.songStats)
+    │   ├── player-controls.js   (★★★ ver 3, ★★★★ ver 4, ★★★★★ ver 5, ★★★★★★ ver 6 — video bám theo nhạc, cộng dồn giờ nghe/bài, gate wake lock)
     │   ├── audio-engine.js
     │   ├── audio-analysis.js
     │   ├── rubik-math.js
     │   ├── about-stats.js       (★★★★★ mới ở ver 5 — computeStats() cho About Drawer)
     │   └── id3-export.js        (★★★★★ mới ở ver 5 — export/restore gắn tag mới qua ID3Writer)
+    ├── playlist/                (★★★★★★ mới ở ver 6 — tách từ core/playlist.js cũ thành module nhiều file, kiểu object-function)
+    │   ├── state.js             (state dùng chung: playlistOrder / displayOrder [hàng đợi phát] / renderOrder [danh sách hiển thị] tách rời)
+    │   ├── order.js             (sort default/az/za — KHÔNG còn random; lọc tìm kiếm; pending-append hàng đợi khi đang phát)
+    │   ├── render.js            (vẽ diff theo renderOrder; trạng thái rỗng #playlist-empty / #playlist-search-empty thuần theo dữ liệu)
+    │   ├── loader.js            (đọc duration, nạp file mới, quét/khởi tạo playlist từ IndexedDB)
+    │   ├── actions.js           (playSong, xoá/sửa/info bài, menu thao tác — info hiện số lần nghe + giờ nghe riêng)
+    │   └── main.js              (object `PlaylistMain`: initSortMenu + initSearch + init(); tự gọi init ở cuối)
     └── visualizers/
         ├── draw-helpers.js      (★★★ ver 3, ★★★★ ver 4)
         ├── draw-visualizer.js   (★ ver 1, ★★ ver 2, ★★★ ver 3, ★★★★ ver 4, ★★★★★ ver 5 — điểm
@@ -86,8 +93,15 @@ visual-master/
 ```
 
 (★ = có thay đổi ở ver 1, ★★ = thêm ở ver 2, ★★★ = thêm ở ver 3, ★★★★ = thêm
-ở ver 4, ★★★★★ = thêm ở ver 5; file không đánh dấu giữ nguyên 100% so với
-bản chia module gốc.)
+ở ver 4, ★★★★★ = thêm ở ver 5, ★★★★★★ = thêm ở ver 6; file không đánh dấu giữ
+nguyên 100% so với bản chia module gốc.)
+
+> **Lưu ý ver 6:** `js/core/playlist.js` (bản ver 5) ĐÃ BỊ XOÁ — toàn bộ nội
+> dung được tách sang thư mục `js/playlist/` (6 file). Mọi tên biến/hàm global
+> cũ (`playlistOrder`, `displayOrder`, `playSong`, `renderPlaylistDiff`,
+> `initPlaylistFromDB`, `currentKey`...) được GIỮ NGUYÊN nên các file khác
+> không phải sửa; chỉ thêm khái niệm mới `renderOrder` (danh sách hiển thị,
+> tách khỏi hàng đợi phát).
 
 ## Thứ tự nạp script — QUAN TRỌNG, không thay đổi
 
@@ -105,9 +119,13 @@ bản chia module gốc.)
    cũng giữ nguyên như trong file gốc vì có phụ thuộc biến/hàm giữa chúng.
    Từ ver 5: `db.js` và `loading-shield-util.js` nạp ngay sau `dom-refs.js` —
    cần `#loading-shield`/`#loading-text` đã có trong DOM, và phải có mặt
-   TRƯỚC `playlist.js`/`equalizer-settings.js`/`subtitles.js`/
+   TRƯỚC các file `js/playlist/*.js`/`equalizer-settings.js`/`subtitles.js`/
    `state-and-video-bg.js`/`about-stats.js`/`id3-export.js` vì các file đó
-   gọi hàm helper định nghĩa trong 2 file này.
+   gọi hàm helper định nghĩa trong 2 file này. Từ ver 6: `listen-stats.js`
+   nạp ngay sau `db.js`, và 6 file `js/playlist/*.js` nạp theo đúng thứ tự
+   `state → order → render → loader → actions → main` (file sau dùng hàm/biến
+   của file trước; `main.js` tự gọi `PlaylistMain.init()` ở cuối), đặt TRƯỚC
+   `player-controls.js`.
 4. **visualizers/draw-helpers.js**, rồi **visualizers/types/\*.js** (mỗi
    visual một file, không phụ thuộc thứ tự lẫn nhau), rồi cuối cùng
    **visualizers/draw-visualizer.js** — file này gọi tới các hàm `draw*`
@@ -145,10 +163,13 @@ khi thiết bị thiếu dung lượng. Xem mục "Cảnh báo" trong About Draw
 | Visual Lightning / Black Hole | `js/visualizers/types/lightning.js`, `black-hole.js` (tương ứng) |
 | Vòng lặp render chính, thêm visual mới vào bảng dispatch | `js/visualizers/draw-visualizer.js` (object `VISUALIZER_DRAWERS`) |
 | Hàm vẽ dùng chung (giọt nước, khung kính, nốt nhạc bay lên) | `js/visualizers/draw-helpers.js` |
-| Logic phát nhạc, next/prev, shuffle | `js/core/playlist.js`, `js/core/player-controls.js` |
+| Logic phát nhạc, next/prev, shuffle | `js/playlist/actions.js` (playSong), `js/playlist/order.js` (hàng đợi/shuffle), `js/core/player-controls.js` (next/prev) |
 | Lưu trữ IndexedDB (nhạc/tag/cover/sub/ảnh-video nền), slugify/resolve key | `js/core/db.js` |
 | Che màn hình khi xử lý (nạp nhạc/chuyển bài/lưu ảnh nền...) | `js/core/loading-shield-util.js` (hàm `withLoadingShield`) |
-| Sửa tag/info/export gắn tag mới của 1 bài | `js/core/playlist.js` (modal sửa/info), `js/core/id3-export.js` (export) |
+| Sửa tag/info/export gắn tag mới của 1 bài | `js/playlist/actions.js` (modal sửa/info — info hiện số lần nghe + giờ nghe), `js/core/id3-export.js` (export) |
+| Sắp xếp danh sách / ô tìm kiếm / tách danh-sách-hiển-thị khỏi hàng-đợi-phát | `js/playlist/order.js` (sort + lọc), `js/playlist/render.js` (vẽ + trạng thái rỗng), `js/playlist/main.js` (gắn menu sort + ô tìm kiếm) |
+| Số lần nghe / thời gian nghe riêng từng bài | `js/core/listen-stats.js` (lưu `meta.songStats`), cộng dồn ở `js/core/player-controls.js` (timeupdate) |
+| Giữ màn hình sáng (wake lock) / cố giữ nhạc chạy nền | `js/core/wakelock.js` (gate theo `vizConfig.keepScreenOn`, resume AudioContext khi quay lại tab), toggle UI ở `js/components/settings-drawer.js` |
 | Thống kê "Về trình phát" (About Drawer) | `js/core/about-stats.js`, `js/components/about-drawer.js` |
 | Hiện/ẩn các khối setting theo kiểu visualizer/kiểu Bar đang chọn | `js/core/player-controls.js` (hàm `updateTypeUI`, `updateBarStyleUI`) |
 | Equalizer, cấu hình lưu localStorage | `js/core/equalizer-settings.js` |
@@ -159,3 +180,28 @@ khi thiết bị thiếu dung lượng. Xem mục "Cảnh báo" trong About Draw
 | Thêm trường cấu hình mới (lưu vào `vizConfig`) | `js/core/config.js` (giá trị mặc định) + `js/core/equalizer-settings.js` (nạp lúc `loadConfig`) |
 | Màu sắc, nền | `js/core/color-utils.js` |
 | Toàn bộ màu sắc/giao diện CSS | `css/styles.css` |
+## Quy ước BẮT BUỘC khi viết / sửa một Visual (★★★★★★ ver 6)
+
+Mọi visual trong `js/visualizers/types/*.js` PHẢI hỗ trợ đầy đủ 4 nhóm cấu hình
+chung dưới đây. Đây là hợp đồng chung — visual nào bỏ sót sẽ bị coi là lỗi:
+
+1. **Video nền (`vizConfig.videoBgEnabled`)** — khi BẬT, visual KHÔNG được tô
+   một lớp nền đục phủ kín canvas (sky/background fill) đè lên video. Hãy bọc
+   mọi lệnh `fillRect(0,0,canvas.width,canvas.height)` mang tính "nền" trong
+   `if (!vizConfig.videoBgEnabled) { ... }` để video hiện xuyên qua (mẫu: cả
+   `drawRainGlass` lẫn `drawRainStreet` trong `rain.js`). Các phần tử tiền cảnh
+   (thanh, hạt, đèn, mặt đất...) vẫn vẽ đè bình thường lên trên video.
+2. **Màu nền (`vizConfig.bgColor`)** — khi KHÔNG dùng video, nền phải theo
+   `bgColor` người dùng chọn (qua `updateDOMBackground()` cho body, và/hoặc lệnh
+   fill nền trong chính visual).
+3. **Chế độ màu (`vizConfig.mode` = `solid` | `dynamic` | `rainbow/auto`)** —
+   màu của các phần tử vẽ phải lấy từ helper màu chung (`getComputedColor()` /
+   `interpolateColor()` / `vizConfig.solidColor` / `dynA`-`dynB`) thay vì hard-code,
+   để nhất quán với lựa chọn của người dùng.
+4. **Hiệu năng (`vizConfig.quality` + `PERFORMANCE_PROFILES`)** — số lượng phần
+   tử (hạt, thanh, tia...) phải co giãn theo `perf` được truyền vào hàm vẽ, để
+   máy yếu vẫn chạy mượt.
+
+Khi thêm visual mới: đăng ký hàm vẽ vào `VISUALIZER_DRAWERS` trong
+`draw-visualizer.js`, thêm tên `type` vào `MODES` (`config.js`), và tự kiểm 4
+mục trên trước khi coi là hoàn tất.
