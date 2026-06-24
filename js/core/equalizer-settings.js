@@ -37,6 +37,8 @@
             if (vizConfig.type === 'synthesia') { vizConfig.type = 'bar'; vizConfig.barStyle = 'cascade'; }
             if (vizConfig.type === 'firefly_forest' || vizConfig.type === 'seasons' || vizConfig.type === 'wave') vizConfig.type = 'bar';
             if (!vizConfig.barStyle) vizConfig.barStyle = 'mirror';
+            if (vizConfig.mirrorBarCount == null) vizConfig.mirrorBarCount = 32;
+            if (vizConfig.mirrorCircleSize == null) vizConfig.mirrorCircleSize = 1.8;
 
             qualitySelect.value = vizConfig.quality; bgColorPicker.value = vizConfig.bgColor;
             bgBlurSlider.value = vizConfig.bgBlur; valBgBlurDisplay.textContent = vizConfig.bgBlur + 'px';
@@ -49,6 +51,8 @@
             dynColorA.value = vizConfig.dynA; dynColorB.value = vizConfig.dynB;
             maxHeightSlider.value = vizConfig.maxH; valMaxDisplay.textContent = vizConfig.maxH;
             barWidthSlider.value = vizConfig.barWidth; valWidthDisplay.textContent = vizConfig.barWidth;
+            mirrorCountSlider.value = vizConfig.mirrorBarCount; valMirrorCountDisplay.textContent = vizConfig.mirrorBarCount;
+            mirrorCircleSlider.value = vizConfig.mirrorCircleSize; valMirrorCircleDisplay.textContent = vizConfig.mirrorCircleSize + '%';
             vortexStyleSelect.value = vizConfig.vortexStyle;
             barStyleSelect.value = vizConfig.barStyle;
             rainStyleSelect.value = vizConfig.rainStyle;
@@ -66,4 +70,3 @@
         btnSubtitle.addEventListener('click', () => { subtitleModal.classList.remove('translate-y-full'); renderSubList(); });
         btnCloseSubModal.addEventListener('click', () => { resetAutoSub(); subtitleModal.classList.add('translate-y-full'); });
         btnToggleSub.addEventListener('click', () => { isSubtitlesEnabled = !isSubtitlesEnabled; updateSubToggleUI(); });
-
