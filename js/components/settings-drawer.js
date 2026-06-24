@@ -108,17 +108,6 @@ const TPL_SETTINGS_DRAWER = `
                                     <div class="w-9 h-5 bg-slate-600 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-500 shadow-inner"></div>
                                 </label>
                             </div>
-                            <div id="rain-street-options" class="hidden flex-col">
-                                <div class="flex justify-between items-center p-4 hover:bg-white/5 transition-colors border-t border-blue-500/10">
-                                    <div><div class="text-sm font-medium text-blue-300">Người đứng dưới đèn</div></div>
-                                    <select id="setting-street-standing" class="bg-black/60 border border-blue-500/30 rounded-lg px-2 py-1.5 text-xs text-white outline-none w-36 text-right">
-                                        <option value="0">Không có ai</option>
-                                        <option value="1">1 người</option>
-                                        <option value="2">2 người</option>
-                                        <option value="3">3 người</option>
-                                    </select>
-                                </div>
-                            </div>
                         </div>
 
                     </div>
