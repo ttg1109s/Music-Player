@@ -11,10 +11,9 @@ const TPL_VISUALIZER_OVERLAY = `
         </div>
 
         <div class="flex-grow relative">
-            <div id="subtitle-display" class="absolute bottom-[20%] w-full px-4 sm:px-10 flex flex-col items-center justify-center pointer-events-none transition-opacity duration-300 opacity-0 z-[60]">
-                <div class="bg-black/40 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/10 text-center max-w-4xl shadow-2xl">
-                    <p id="sub-line-1" class="text-xl sm:text-3xl font-bold text-white sub-text-glow leading-snug transition-all duration-200 empty:hidden"></p>
-                    <p id="sub-line-2" class="text-lg sm:text-2xl font-medium text-sky-200 sub-text-glow leading-snug mt-1 transition-all duration-200 empty:hidden"></p>
+            <div id="subtitle-display" class="absolute bottom-[20%] w-full px-4 sm:px-10 flex flex-col items-center justify-center pointer-events-none z-[60]">
+                <div class="bg-black/40 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/10 text-center max-w-4xl shadow-2xl flex flex-col items-center gap-1.5">
+                    <div id="sub-active-lines" class="flex flex-col items-center gap-1.5"></div>
                 </div>
             </div>
 
