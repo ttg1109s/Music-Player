@@ -1,21 +1,60 @@
 /**
- * Visual RUBIK — khối Rubik 3x3x3 chiếu phối cảnh thủ công (không dùng Three.js), tự xoay theo
- * nhạc và thực hiện các lượt xoay lớp ngẫu nhiên khi năng lượng nhạc đủ cao. Logic gốc giữ
- * nguyên 1:1 (chiếu 3D, sắp xếp theo z, tô màu mặt + viền glow).
+ * Visual RUBIK — khối Rubik 3x3x3 chiếu phối cảnh thủ công (không dùng Three.js).
+ *
+ * Mỗi mảnh (rubikCubes[i]) phóng to/thu nhỏ NGAY TẠI TÂM CỦA RIÊNG NÓ (không lệch khối) theo
+ * biên độ bin tần số đại diện của mảnh đó CỘNG với cú đập beat chung (beatScale) — mỗi mảnh vẫn
+ * phản ánh âm thanh riêng nhưng cùng "thở" theo nhịp nhạc.
+ *
+ * XOAY THEO NHẠC (không còn ngẫu nhiên) — 2 kiểu xoay áp dụng đồng thời, dựa vào pitch (nốt nhạc
+ * YIN phát hiện được ở js/core/audio-analysis.js):
+ *   - Kiểu 1 (xoay TỰ THÂN, rubikRotX/rubikRotY) : lấy "pha" = nốt MIDI trung bình động gần đây
+ *     (rubikPitchAvg) làm mốc trung bình. Nốt hiện tại THẤP hơn pha -> xoay CHẬM lại; nốt hiện tại
+ *     CAO hơn pha -> xoay NHANH lên. Hướng xoay tự thân của mỗi trục (rubikSelfSpinDirX/Y) chọn
+ *     ngẫu nhiên một lần khi khởi động rồi giữ cố định — chỉ tốc độ đổi theo nhạc, hướng không bị
+ *     đảo liên tục gây cảm giác giật.
+ *   - Kiểu 2 (xoay MẶT/LỚP, rubikAnim)         : mỗi 1 trong 12 nốt (C..B, xem
+ *     RUBIK_NOTE_TO_TURN ở js/core/dom-refs.js) map CỐ ĐỊNH ra một cặp (trục x/y/z, lớp -1/0/1).
+ *     Khi nốt hiện tại đổi khác nốt vừa kích hoạt lượt xoay gần nhất VÀ năng lượng nhạc đủ cao,
+ *     kích hoạt lượt xoay lớp tương ứng — không còn chọn random như bản cũ.
  */
         function drawRubik(ctx, perf, isPlaying) {
-            rubikRotY += (isPlaying ? 0.01 + smoothedEnergy * 0.05 : 0.005); rubikRotX += (isPlaying ? 0.005 + smoothedEnergy * 0.02 : 0.002);
-            if (!rubikAnim.active && smoothedEnergy > 0.4 && isPlaying && Math.random() > 0.9) {
-                const axes = ['x', 'y', 'z']; rubikAnim.axis = axes[Math.floor(Math.random() * 3)];
-                rubikAnim.layer = Math.floor(Math.random() * 3) - 1; rubikAnim.dir = Math.random() > 0.5 ? 1 : -1; rubikAnim.angle = 0; rubikAnim.active = true;
+            // ----- Kiểu 1: xoay tự thân theo pitch (nhanh/chậm so với pha trung bình động) -----
+            const currentMidi = window.lastValidMidiNote;
+            // Hệ số tốc độ: 1.0 = trung bình (giống tốc độ gốc); >1 khi nốt cao hơn pha, <1 khi thấp
+            // hơn pha. Lệch tối đa quy về ±12 nửa cung (1 quãng tám) để hệ số không vọt quá đà.
+            let pitchSpeedFactor = 1;
+            if (isPlaying && currentMidi != null && rubikPitchAvg > 0) {
+                const semitoneDiff = Math.max(-12, Math.min(12, currentMidi - rubikPitchAvg));
+                pitchSpeedFactor = 1 + (semitoneDiff / 12) * 0.9; // dao động khoảng 0.25x .. 1.75x
+            }
+            const selfSpinBase = isPlaying ? (0.01 + smoothedEnergy * 0.025) * pitchSpeedFactor : 0.003;
+            rubikRotY += selfSpinBase * rubikSelfSpinDirY;
+            rubikRotX += selfSpinBase * 0.6 * rubikSelfSpinDirX;
+
+            // ----- Kiểu 2: xoay lớp theo nốt cụ thể (map cố định, không random) -----
+            if (!rubikAnim.active && isPlaying && smoothedEnergy > 0.35 && currentMidi != null) {
+                const noteIdx = ((currentMidi % 12) + 12) % 12;
+                if (noteIdx !== rubikLastTurnNote) {
+                    const turn = RUBIK_NOTE_TO_TURN[noteIdx];
+                    rubikAnim.axis = turn.axis; rubikAnim.layer = turn.layer;
+                    // Hướng xoay theo nốt cao hơn hay thấp hơn pha — nốt cao quay 1 chiều, thấp quay chiều ngược.
+                    rubikAnim.dir = (currentMidi >= rubikPitchAvg) ? 1 : -1;
+                    rubikAnim.angle = 0; rubikAnim.active = true; rubikLastTurnNote = noteIdx;
+                }
             }
             if (rubikAnim.active) { rubikAnim.angle += 0.08 * (1 + smoothedEnergy * 2); if (rubikAnim.angle >= Math.PI / 2) { rubikAnim.angle = Math.PI / 2; rotateRubikIndices(rubikAnim.axis, rubikAnim.layer, rubikAnim.dir); rubikAnim.active = false; rubikAnim.angle = 0; } }
+
             const cubeSize = Math.min(canvas.width, canvas.height) * 0.08; const spacing = cubeSize * 1.05; const viewDist = cubeSize * 25; const fov = cubeSize * 18; 
             const unitVertices = [{x:-0.5,y:-0.5,z:-0.5}, {x:0.5,y:-0.5,z:-0.5}, {x:0.5,y:0.5,z:-0.5}, {x:-0.5,y:0.5,z:-0.5}, {x:-0.5,y:-0.5,z:0.5}, {x:0.5,y:-0.5,z:0.5}, {x:0.5,y:0.5,z:0.5}, {x:-0.5,y:0.5,z:0.5}];
             const faces = [ [0,1,2,3], [1,5,6,2], [5,4,7,6], [4,0,3,7], [3,2,6,7], [4,5,1,0] ]; let drawnCubes = [];
             const centerX = canvas.width / 2, centerY = canvas.height / 2;
             for(let i=0; i<rubikCubes.length; i++) {
-                let rc = rubikCubes[i]; let val = vizDataArray[rc.binIdx * 4] || 0; let scaleBounce = 1 + (val / 255) * 0.4; let extraDist = (val / 255) * cubeSize * 1.2 * (isPlaying ? 1 : 0); 
+                let rc = rubikCubes[i]; let val = vizDataArray[rc.binIdx * 4] || 0;
+                // Phóng to/thu nhỏ NGAY TẠI TÂM RIÊNG của mảnh: kết hợp biên độ tần số riêng (val,
+                // mỗi mảnh một bin khác nhau -> phản ứng khác nhau) VỚI cú đập beat chung
+                // (beatScale) để toàn khối vẫn "thở" đồng bộ theo nhịp, không chỉ lắc lư rời rạc.
+                let scaleBounce = 1 + (val / 255) * 0.4 + (isPlaying ? beatScale * 0.25 : 0);
+                let extraDist = (val / 255) * cubeSize * 1.2 * (isPlaying ? 1 : 0); 
                 let lx = rc.cx * spacing + Math.sign(rc.cx) * extraDist; let ly = rc.cy * spacing + Math.sign(rc.cy) * extraDist; let lz = rc.cz * spacing + Math.sign(rc.cz) * extraDist; let pos = {x: lx, y: ly, z: lz};
                 if (rubikAnim.active && rc['c' + rubikAnim.axis] === rubikAnim.layer) {
                     let currentRot = rubikAnim.angle * rubikAnim.dir;
