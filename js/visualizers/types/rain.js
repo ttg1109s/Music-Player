@@ -113,17 +113,21 @@
         function drawRainStreet(ctx, perf, isPlaying) {
             // Nền: theo chế độ màu đã chọn (đơn sắc/pha trộn/gradient) thay vì cố định 1 tông xanh đêm,
             // để visual luôn nhất quán với màu người dùng đã chọn ở Cài đặt.
-            const nightColors = getComputedColor(0, 1, 60);
-            let skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            if (vizConfig.mode === 'solid') {
-                skyGrad.addColorStop(0, '#05070d'); skyGrad.addColorStop(1, interpolateColor('#05070d', vizConfig.solidColor, 0.12));
-            } else if (vizConfig.mode === 'dynamic') {
-                skyGrad.addColorStop(0, interpolateColor('#05070d', vizConfig.dynA, 0.18));
-                skyGrad.addColorStop(1, interpolateColor('#05070d', vizConfig.dynB, 0.18));
-            } else {
-                skyGrad.addColorStop(0, '#05070d'); skyGrad.addColorStop(1, interpolateColor('#05070d', nightColors.fill, 0.15));
+            // Nền trời: chỉ tô khi KHÔNG bật video nền. Khi có video nền, để trống cho video
+            // hiện xuyên qua (giống drawRainGlass) — cảnh công viên (đất, đèn, mưa) vẫn vẽ đè lên.
+            if (!vizConfig.videoBgEnabled) {
+                const nightColors = getComputedColor(0, 1, 60);
+                let skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                if (vizConfig.mode === 'solid') {
+                    skyGrad.addColorStop(0, '#05070d'); skyGrad.addColorStop(1, interpolateColor('#05070d', vizConfig.solidColor, 0.12));
+                } else if (vizConfig.mode === 'dynamic') {
+                    skyGrad.addColorStop(0, interpolateColor('#05070d', vizConfig.dynA, 0.18));
+                    skyGrad.addColorStop(1, interpolateColor('#05070d', vizConfig.dynB, 0.18));
+                } else {
+                    skyGrad.addColorStop(0, '#05070d'); skyGrad.addColorStop(1, interpolateColor('#05070d', nightColors.fill, 0.15));
+                }
+                ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
-            ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             drawRainFlash(ctx, isPlaying, (a) => `rgba(220, 225, 255, ${a * 0.8})`);
 
