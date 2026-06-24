@@ -22,15 +22,31 @@
 
         /**
          * Đọc duration của 1 file qua thẻ Audio() tạm (event loadedmetadata) — mục 3.1 bước 2.
+         * Có timeout an toàn: một số trình duyệt (đặc biệt Safari iOS) đôi khi không bắn cả
+         * 'loadedmetadata' lẫn 'error' cho blob: URL trong vài trường hợp hiếm — không có timeout
+         * thì Promise treo vĩnh viễn, kéo theo toàn bộ vòng lặp nạp file bị "đứng hình".
          */
         function readAudioDuration(file) {
             return new Promise((resolve) => {
-                const tempUrl = URL.createObjectURL(file);
+                let settled = false;
+                const safeResolve = (val) => { if (!settled) { settled = true; resolve(val); } };
+                let tempUrl;
+                try {
+                    tempUrl = URL.createObjectURL(file);
+                } catch (err) {
+                    console.error('[playlist] Không tạo được object URL để đọc duration:', err);
+                    return safeResolve(0);
+                }
                 const tempAudio = new Audio();
-                const cleanup = () => URL.revokeObjectURL(tempUrl);
-                tempAudio.addEventListener('loadedmetadata', () => { const d = tempAudio.duration; cleanup(); resolve(isFinite(d) ? d : 0); });
-                tempAudio.addEventListener('error', () => { cleanup(); resolve(0); });
-                tempAudio.src = tempUrl;
+                const cleanup = () => { try { URL.revokeObjectURL(tempUrl); } catch (e) {} };
+                const timeoutId = setTimeout(() => { cleanup(); safeResolve(0); }, 8000);
+                tempAudio.addEventListener('loadedmetadata', () => { clearTimeout(timeoutId); const d = tempAudio.duration; cleanup(); safeResolve(isFinite(d) ? d : 0); });
+                tempAudio.addEventListener('error', () => { clearTimeout(timeoutId); cleanup(); safeResolve(0); });
+                try {
+                    tempAudio.src = tempUrl;
+                } catch (err) {
+                    clearTimeout(timeoutId); cleanup(); safeResolve(0);
+                }
             });
         }
 
@@ -39,54 +55,91 @@
             e.target.value = ''; // cho phép chọn lại đúng file cũ ở lần sau (đổi tag rồi nạp lại)
             playlistEmpty.classList.add('hidden');
 
+            const failedFiles = []; // tên các file lỗi giữa đường, báo cho người dùng sau khi xong (mục vá lỗi treo im lặng)
+
             await withLoadingShield(`Đang nạp 1 / ${files.length}...`, async () => {
                 for (let i = 0; i < files.length; i++) {
                     const file = files[i];
                     loadingText.textContent = `Đang nạp ${i + 1} / ${files.length}...`;
 
-                    let tag = { title: file.name.replace(/\.[^/.]+$/, ""), artist: "Không rõ nghệ sĩ", album: "" };
-                    let cover = null;
+                    try {
+                        let tag = { title: file.name.replace(/\.[^/.]+$/, ""), artist: "Không rõ nghệ sĩ", album: "" };
+                        let cover = null;
 
-                    await new Promise(resolve => {
-                        if (window.jsmediatags) {
-                            jsmediatags.read(file, {
-                                onSuccess: function(tagResult) {
-                                    if (tagResult.tags.title) tag.title = tagResult.tags.title;
-                                    if (tagResult.tags.artist) tag.artist = tagResult.tags.artist;
-                                    if (tagResult.tags.album) tag.album = tagResult.tags.album;
-                                    if (tagResult.tags.picture) {
-                                        const data = tagResult.tags.picture.data;
-                                        const format = tagResult.tags.picture.format;
-                                        cover = new Blob([new Uint8Array(data)], { type: format });
-                                    }
-                                    resolve();
-                                },
-                                onError: function() { resolve(); }
-                            });
-                        } else { resolve(); }
-                    });
+                        // jsmediatags.read không tự bắt lỗi trong onSuccess: nếu picture.data hỏng/định
+                        // dạng lạ, việc tạo Blob ở đây có thể throw đồng bộ TRƯỚC khi gọi resolve(), khiến
+                        // Promise treo vĩnh viễn và "đứng hình" cả vòng lặp (không bài nào hiện ra danh
+                        // sách nữa) — bọc try/catch + timeout an toàn để LUÔN resolve, dù tag lỗi.
+                        await new Promise(resolve => {
+                            let settled = false;
+                            const safeResolve = () => { if (!settled) { settled = true; resolve(); } };
+                            // Phòng trường hợp jsmediatags không gọi cả onSuccess/onError (treo im lặng
+                            // trên một số file/trình duyệt) — không chờ quá 5s, vẫn nạp bài với tag mặc định.
+                            const timeoutId = setTimeout(safeResolve, 5000);
 
-                    const duration = await readAudioDuration(file);
-                    const key = await resolveSongKey(file.name);
-                    const isOverwrite = playlistOrder.includes(key);
+                            if (window.jsmediatags) {
+                                try {
+                                    jsmediatags.read(file, {
+                                        onSuccess: function(tagResult) {
+                                            try {
+                                                if (tagResult.tags.title) tag.title = tagResult.tags.title;
+                                                if (tagResult.tags.artist) tag.artist = tagResult.tags.artist;
+                                                if (tagResult.tags.album) tag.album = tagResult.tags.album;
+                                                if (tagResult.tags.picture && tagResult.tags.picture.data) {
+                                                    const data = tagResult.tags.picture.data;
+                                                    const format = tagResult.tags.picture.format;
+                                                    cover = new Blob([new Uint8Array(data)], { type: format });
+                                                }
+                                            } catch (tagErr) {
+                                                console.error(`[playlist] Lỗi đọc cover/tag của "${file.name}", bỏ qua cover, vẫn nạp bài:`, tagErr);
+                                                cover = null;
+                                            }
+                                            clearTimeout(timeoutId); safeResolve();
+                                        },
+                                        onError: function(err) {
+                                            console.warn(`[playlist] jsmediatags không đọc được tag của "${file.name}":`, err);
+                                            clearTimeout(timeoutId); safeResolve();
+                                        }
+                                    });
+                                } catch (readErr) {
+                                    console.error(`[playlist] jsmediatags.read lỗi đồng bộ với "${file.name}":`, readErr);
+                                    clearTimeout(timeoutId); safeResolve();
+                                }
+                            } else { clearTimeout(timeoutId); safeResolve(); }
+                        });
 
-                    const record = { filename: file.name, blob: file, tag, cover, subtitles: [], duration, addedAt: Date.now() };
-                    // Ghi đè đúng bài cũ: giữ lại phụ đề đã có trước đó (không mất phụ đề khi nạp lại file trùng).
-                    if (isOverwrite) {
-                        const old = await getSongRecord(key);
-                        if (old && old.subtitles) record.subtitles = old.subtitles;
+                        const duration = await readAudioDuration(file);
+                        const key = await resolveSongKey(file.name);
+                        const isOverwrite = playlistOrder.includes(key);
+
+                        const record = { filename: file.name, blob: file, tag, cover, subtitles: [], duration, addedAt: Date.now() };
+                        // Ghi đè đúng bài cũ: giữ lại phụ đề đã có trước đó (không mất phụ đề khi nạp lại file trùng).
+                        if (isOverwrite) {
+                            const old = await getSongRecord(key);
+                            if (old && old.subtitles) record.subtitles = old.subtitles;
+                        }
+                        await setSongRecord(key, record);
+
+                        if (!isOverwrite) playlistOrder.push(key);
+                        playlistCache.set(key, { filename: record.filename, tag: record.tag, cover: record.cover, duration: record.duration });
+                        brokenKeys.delete(key);
+                    } catch (err) {
+                        // Lỗi IndexedDB (quota/transaction abort trên Safari, v.v.) hoặc bất kỳ lỗi nào khác
+                        // ở 1 file: không để nó chặn các file còn lại trong hàng đợi hoặc "nuốt" mất
+                        // renderPlaylist() phía dưới — ghi log rõ + nhớ tên file để báo cuối cùng.
+                        console.error(`[playlist] Không nạp được "${file.name}":`, err);
+                        failedFiles.push(file.name);
                     }
-                    await setSongRecord(key, record);
-
-                    if (!isOverwrite) playlistOrder.push(key);
-                    playlistCache.set(key, { filename: record.filename, tag: record.tag, cover: record.cover, duration: record.duration });
-                    brokenKeys.delete(key);
 
                     if (i % 10 === 0 || i === files.length - 1) { renderPlaylist(); await new Promise(r => setTimeout(r, 10)); }
                 }
                 await setPlaylistOrder(playlistOrder);
                 updateShuffleArray();
             });
+
+            if (failedFiles.length > 0) {
+                alert(`Không nạp được ${failedFiles.length} file:\n${failedFiles.join('\n')}\n\nXem Console (F12) để biết chi tiết lỗi.`);
+            }
         });
 
         function updateShuffleArray() {

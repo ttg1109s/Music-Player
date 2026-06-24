@@ -23,6 +23,14 @@
                 // Chờ fade-out kết thúc HẲN rồi mới mở khoá — không cho thao tác tiếp trong lúc
                 // đang còn mờ dần, chỉ mở khi đã tắt hoàn toàn.
                 await new Promise(resolve => setTimeout(resolve, SHIELD_FADE_MS));
+                // QUAN TRỌNG: phải remove 'pointer-events-auto' ở đây — nếu không, class này tồn tại
+                // song song với 'pointer-events-none' vừa thêm. Vì cả 2 đều là utility class của
+                // Tailwind CDN với cùng độ ưu tiên CSS, trình duyệt áp dụng class nào đứng SAU trong
+                // stylesheet đã generate (không nhất định theo thứ tự gọi classList.add ở đây) — có
+                // thể khiến 'pointer-events-auto' thắng, làm #loading-shield (phủ kín toàn màn hình,
+                // z-[200]) tiếp tục chặn MỌI click/chạm dù đã mờ hẳn (opacity-0), tức "treo, không
+                // thao tác được gì" dù dữ liệu đã lưu xong (chỉ thấy đúng lại sau khi reload trang).
+                loadingShield.classList.remove('pointer-events-auto');
                 loadingShield.classList.add('pointer-events-none');
                 isShieldBusy = false;
             }
