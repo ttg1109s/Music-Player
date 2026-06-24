@@ -24,12 +24,16 @@
         function drawVisualizer() {
             animationId = requestAnimationFrame(drawVisualizer);
 
-            if (vizConfig.videoBgEnabled && vizConfig.videoBgUrl && vizConfig.videoHideVisual) {
+            // Video nền đang "phủ kín, tạm dừng Visual": vẫn phải tính toán phân tích âm thanh
+            // (BPM/Pitch/Energy ở stats-panel dùng chung các biến này) mỗi khung hình — CHỈ bỏ
+            // qua phần vẽ canvas (2D + WebGL) vì nó đang bị ẩn phía sau video nên vẽ ra cũng vô ích.
+            const isVideoHidingVisual = vizConfig.videoBgEnabled && vizConfig.videoBgUrl && vizConfig.videoHideVisual;
+
+            if (isVideoHidingVisual) {
                 if (canvas.style.visibility !== 'hidden') {
                     canvas.style.visibility = 'hidden';
                     document.getElementById('webgl-canvas').style.visibility = 'hidden';
                 }
-                return;
             } else if (canvas.style.visibility === 'hidden') {
                 canvas.style.visibility = '';
                 document.getElementById('webgl-canvas').style.visibility = '';
@@ -49,6 +53,10 @@
             if (isPlaying) globalHueOffset = (globalHueOffset + 0.5 + (beatScale * 5)) % 360;
             
             updateStatsDashboard(bufferLength);
+
+            // Mọi phần dưới đây CHỈ liên quan tới việc VẼ ra canvas (note bay, Vortex WebGL, các
+            // visual 2D) — bỏ qua khi video đang phủ kín & ẩn visual, vì canvas đang invisible.
+            if (isVideoHidingVisual) return;
 
             if (isPlaying && (vizConfig.quality === 'high' || vizConfig.quality === 'medium') && smoothedEnergy > 0.3 && Math.random() > 0.6) spawnFlyingNote();
 
