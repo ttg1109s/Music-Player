@@ -71,4 +71,12 @@
             if (drawFn) drawFn(ctx, perf, isPlaying, beatScale);
         }
 
-        document.addEventListener('DOMContentLoaded', () => { loadConfig(); updateSubToggleUI(); });
+        // Điểm khởi động thực sự của toàn bộ app. loadConfig() giờ là async (đọc ảnh/video nền
+        // từ IndexedDB — mục 6 PLAN_INDEXEDDB.md). initPlaylistFromDB() đọc meta.playlistOrder +
+        // tag/cover từng bài (KHÔNG đọc blob) để render danh sách ban đầu — thay cho playlist
+        // luôn rỗng lúc load trang như bản cũ (mục 3.2).
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadConfig();
+            updateSubToggleUI();
+            await initPlaylistFromDB();
+        });
