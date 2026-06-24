@@ -29,5 +29,6 @@
         TPL_SUBTITLE_MODAL +
         TPL_BOTTOM_PLAYER +
         TPL_SETTINGS_DRAWER +
-        TPL_ABOUT_DRAWER;
+        TPL_ABOUT_DRAWER +
+        TPL_STORAGE_DRAWER;
 })();
