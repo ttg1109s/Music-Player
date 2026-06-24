@@ -45,10 +45,16 @@
                     let frequency = detectPitchYIN(pitchTimeDomainArray, audioContext.sampleRate);
                     if (frequency > 0) {
                         let midiNote = Math.round(12 * Math.log2(frequency / 440)) + 69;
-                        if (midiNote > 0 && midiNote < 128) { window.lastValidNoteStr = `${noteNames[midiNote % 12]}${Math.floor(midiNote / 12) - 1}`; window.lastValidNoteTime = now; statNote.textContent = window.lastValidNoteStr; }
+                        if (midiNote > 0 && midiNote < 128) {
+                            window.lastValidNoteStr = `${noteNames[midiNote % 12]}${Math.floor(midiNote / 12) - 1}`; window.lastValidNoteTime = now; statNote.textContent = window.lastValidNoteStr;
+                            window.lastValidMidiNote = midiNote;
+                            // Cập nhật pha tham chiếu (nốt trung bình động) cho visual Rubik — xoay tự
+                            // thân sẽ so nốt hiện tại với pha này để quyết định nhanh/chậm.
+                            rubikPitchHistory.push(midiNote); if (rubikPitchHistory.length > 30) rubikPitchHistory.shift();
+                            rubikPitchAvg = rubikPitchHistory.reduce((a, b) => a + b, 0) / rubikPitchHistory.length;
+                        }
                     } else if (window.lastValidNoteStr && (now - window.lastValidNoteTime < 250)) { statNote.textContent = window.lastValidNoteStr;
                     } else { statNote.textContent = "---"; }
                 } else { statNote.textContent = "---"; }
             } else { currentCalculatedBpm = "---"; statBpm.textContent = "---"; statNote.textContent = "---"; }
         }
-
