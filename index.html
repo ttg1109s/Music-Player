@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Audio Visualizer - Master Edition (ver 2 - Vortex Mượt & Rừng Đom Đóm)</title>
+    <title>Audio Visualizer - Master Edition (ver 4 - Bar Cánh Bướm &amp; Mưa Phố)</title>
 
     <!-- Thư viện bên thứ 3 (CDN) - giữ nguyên như bản gốc -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -68,9 +68,18 @@
     <script src="js/core/rubik-math.js"></script>
 
     <!-- =====================================================================
-         4) VISUALIZERS: các hàm vẽ canvas dùng chung + vòng lặp render chính.
+         4) VISUALIZERS: hàm vẽ canvas dùng chung (draw-helpers.js), từng visual riêng theo
+            file trong types/, rồi cuối cùng vòng lặp render chính (draw-visualizer.js) — file
+            này phải nạp SAU CÙNG vì nó tham chiếu tới các hàm draw* định nghĩa ở các file trên.
          ===================================================================== -->
     <script src="js/visualizers/draw-helpers.js"></script>
+    <script src="js/visualizers/types/bar.js"></script>
+    <script src="js/visualizers/types/wave.js"></script>
+    <script src="js/visualizers/types/lightning.js"></script>
+    <script src="js/visualizers/types/rubik.js"></script>
+    <script src="js/visualizers/types/vortex.js"></script>
+    <script src="js/visualizers/types/black-hole.js"></script>
+    <script src="js/visualizers/types/rain.js"></script>
     <script src="js/visualizers/draw-visualizer.js"></script>
 
 </body>
