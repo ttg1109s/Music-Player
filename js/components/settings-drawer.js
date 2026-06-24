@@ -216,9 +216,17 @@ const TPL_SETTINGS_DRAWER = `
                             <span class="text-sm font-medium">Màu chữ phụ đề</span>
                             <div class="w-8 h-8 rounded-full border border-white/20 overflow-hidden shrink-0"><input type="color" id="setting-sub-text-color" class="w-10 h-10 -m-1 cursor-pointer"></div>
                         </div>
+                        <div class="flex flex-col p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
+                            <div class="flex justify-between items-center mb-2"><span class="text-sm font-medium">Cỡ chữ (px)</span><span id="val-sub-font-size" class="text-xs text-yellow-400 font-mono">8</span></div>
+                            <input type="range" id="setting-sub-font-size" min="8" max="16" step="1" class="setting-slider">
+                        </div>
+                        <div class="flex flex-col p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
+                            <div class="flex justify-between items-center mb-2"><span class="text-sm font-medium">Giãn dòng (Line height)</span><span id="val-sub-line-height" class="text-xs text-yellow-400 font-mono">1.3</span></div>
+                            <input type="range" id="setting-sub-line-height" min="1" max="2.5" step="0.1" class="setting-slider">
+                        </div>
                         <div class="flex flex-col p-4 hover:bg-white/5 transition-colors">
-                            <div class="flex justify-between items-center mb-2"><span class="text-sm font-medium">Cỡ chữ (px)</span><span id="val-sub-font-size" class="text-xs text-yellow-400 font-mono">24</span></div>
-                            <input type="range" id="setting-sub-font-size" min="14" max="48" step="1" class="setting-slider">
+                            <div class="flex justify-between items-center mb-2"><span class="text-sm font-medium">Giãn chữ (Letter spacing, px)</span><span id="val-sub-letter-spacing" class="text-xs text-yellow-400 font-mono">0</span></div>
+                            <input type="range" id="setting-sub-letter-spacing" min="-1" max="5" step="0.5" class="setting-slider">
                         </div>
                     </div>
                 </div>
