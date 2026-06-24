@@ -102,11 +102,6 @@ const TPL_SETTINGS_DRAWER = `
                                     <div class="flex justify-between items-center mb-2"><span class="text-sm font-medium text-emerald-300">Số lượng thanh (mỗi bên)</span><span id="val-mirror-count" class="text-xs text-emerald-400 font-mono">32</span></div>
                                     <input type="range" id="setting-mirror-count" min="10" max="32" step="1" class="setting-slider">
                                 </div>
-                                <div class="flex flex-col p-4 border-b border-emerald-500/10 hover:bg-white/5 transition-colors">
-                                    <div class="flex justify-between items-center mb-2"><span class="text-sm font-medium text-emerald-300">Độ to vòng tròn tâm</span><span id="val-mirror-circle" class="text-xs text-emerald-400 font-mono">1.8%</span></div>
-                                    <input type="range" id="setting-mirror-circle" min="1" max="25" step="0.5" class="setting-slider">
-                                    <div class="text-[11px] text-slate-400 mt-1">Vòng tròn to có thể chồng lấn lên các thanh gần tâm — các dải không co giãn theo.</div>
-                                </div>
                             </div>
                         </div>
                         <div id="block-rain" class="hidden flex-col bg-blue-900/10 border-b border-blue-500/20">
