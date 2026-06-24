@@ -188,7 +188,6 @@
         maxHeightSlider.addEventListener('input', (e) => { vizConfig.maxH = parseInt(e.target.value); valMaxDisplay.textContent = vizConfig.maxH; saveConfig(); });
         barWidthSlider.addEventListener('input', (e) => { vizConfig.barWidth = parseInt(e.target.value); valWidthDisplay.textContent = vizConfig.barWidth; saveConfig(); });
         mirrorCountSlider.addEventListener('input', (e) => { vizConfig.mirrorBarCount = parseInt(e.target.value); valMirrorCountDisplay.textContent = vizConfig.mirrorBarCount; saveConfig(); });
-        mirrorCircleSlider.addEventListener('input', (e) => { vizConfig.mirrorCircleSize = parseFloat(e.target.value); valMirrorCircleDisplay.textContent = vizConfig.mirrorCircleSize + '%'; saveConfig(); });
 
         volumeSlider.addEventListener('input', (e) => { 
             vizConfig.volume = parseInt(e.target.value); valVolumeDisplay.textContent = vizConfig.volume + '%'; 
