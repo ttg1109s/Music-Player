@@ -110,7 +110,8 @@
 
         function updateTypeUI() {
             vizConfig.type = MODES[currentModeIndex]; modeBadge.textContent = `${currentModeIndex + 1}/${MODES.length}`;
-            blockGeometry.classList.add('hidden'); blockVortex.classList.add('hidden'); blockRain.classList.add('hidden'); blockBarStyle.classList.add('hidden');
+            blockMaxHeight.classList.add('hidden'); blockBarWidth.classList.add('hidden');
+            blockVortex.classList.add('hidden'); blockRain.classList.add('hidden'); blockBarStyle.classList.add('hidden');
             
             if (vizConfig.type === 'vortex') {
                 if(!tInitialized) initThreeJS();
@@ -121,14 +122,29 @@
             if (vizConfig.type === 'vortex') { blockVortex.classList.remove('hidden'); blockVortex.classList.add('flex'); }
             else if (vizConfig.type === 'rain') { blockRain.classList.remove('hidden'); blockRain.classList.add('flex'); }
             else if (vizConfig.type === 'bar') {
-                blockGeometry.classList.remove('hidden'); blockGeometry.classList.add('flex');
+                // "Độ cao tối đa" vẫn dùng chung cho Bar (cả mirror/cascade); "Độ dày thanh" KHÔNG
+                // áp dụng cho Bar nữa (chỉ Black Hole) — xem updateBarStyleUI cho 2 setting riêng
+                // của kiểu Phản chiếu (số lượng thanh, độ to vòng tròn).
+                blockMaxHeight.classList.remove('hidden'); blockMaxHeight.classList.add('flex');
                 blockBarStyle.classList.remove('hidden'); blockBarStyle.classList.add('flex');
+                updateBarStyleUI();
+            }
+            else if (vizConfig.type === 'black hole') {
+                // Black Hole là visual DUY NHẤT còn dùng "Độ dày thanh".
+                blockMaxHeight.classList.remove('hidden'); blockMaxHeight.classList.add('flex');
+                blockBarWidth.classList.remove('hidden'); blockBarWidth.classList.add('flex');
             }
             else if (vizConfig.type !== 'rubik' && vizConfig.type !== 'lightning') { 
-                blockGeometry.classList.remove('hidden'); blockGeometry.classList.add('flex'); 
+                blockMaxHeight.classList.remove('hidden'); blockMaxHeight.classList.add('flex'); 
             }
 
             if(analyser) { analyser.fftSize = (vizConfig.type === 'vortex' || vizConfig.type === 'lightning') ? APP_CONFIG.fftSizeHighRes : APP_CONFIG.fftSizeStandard; allocateBuffers(); }
+        }
+
+        function updateBarStyleUI() {
+            const isMirror = vizConfig.barStyle === 'mirror';
+            barMirrorOptions.classList.toggle('hidden', !isMirror);
+            barMirrorOptions.classList.toggle('flex', isMirror);
         }
 
         function updateColorMenuUI() {
@@ -166,15 +182,16 @@
         dynColorA.addEventListener('input', (e) => { vizConfig.dynA = e.target.value; saveConfig(); }); 
         dynColorB.addEventListener('input', (e) => { vizConfig.dynB = e.target.value; updateProgressBarCSS(); saveConfig(); });
         vortexStyleSelect.addEventListener('change', (e) => { vizConfig.vortexStyle = e.target.value; updateVortexVisibility(); saveConfig(); });
-        barStyleSelect.addEventListener('change', (e) => { vizConfig.barStyle = e.target.value; saveConfig(); });
+        barStyleSelect.addEventListener('change', (e) => { vizConfig.barStyle = e.target.value; updateBarStyleUI(); saveConfig(); });
         rainStyleSelect.addEventListener('change', (e) => { vizConfig.rainStyle = e.target.value; resizeCanvas(); saveConfig(); });
         glassFlashToggle.addEventListener('change', (e) => { vizConfig.glassFlash = e.target.checked; saveConfig(); });
         maxHeightSlider.addEventListener('input', (e) => { vizConfig.maxH = parseInt(e.target.value); valMaxDisplay.textContent = vizConfig.maxH; saveConfig(); });
         barWidthSlider.addEventListener('input', (e) => { vizConfig.barWidth = parseInt(e.target.value); valWidthDisplay.textContent = vizConfig.barWidth; saveConfig(); });
+        mirrorCountSlider.addEventListener('input', (e) => { vizConfig.mirrorBarCount = parseInt(e.target.value); valMirrorCountDisplay.textContent = vizConfig.mirrorBarCount; saveConfig(); });
+        mirrorCircleSlider.addEventListener('input', (e) => { vizConfig.mirrorCircleSize = parseFloat(e.target.value); valMirrorCircleDisplay.textContent = vizConfig.mirrorCircleSize + '%'; saveConfig(); });
 
         volumeSlider.addEventListener('input', (e) => { 
             vizConfig.volume = parseInt(e.target.value); valVolumeDisplay.textContent = vizConfig.volume + '%'; 
             if(masterGainNode) masterGainNode.gain.value = vizConfig.volume / 100; saveConfig();
         });
         eqSelect.addEventListener('change', (e) => { vizConfig.eqMode = e.target.value; updateEQSlidersUI(vizConfig.eqMode); applyEQPreset(vizConfig.eqMode); saveConfig(); });
-
