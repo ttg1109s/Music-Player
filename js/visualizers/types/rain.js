@@ -2,10 +2,11 @@
  * Visual RAIN — 2 kiểu (rainStyle):
  *   - 'glass'  : mưa trôi trên ô cửa kính nhìn ra thành phố ban đêm, có trăng. Logic gốc giữ
  *     nguyên 1:1 (chỉ tách hàm flash chớp ra dùng chung với 'street').
- *   - 'street' : mưa phố & công viên về đêm — đèn đường + người đứng dưới đèn (thay ghế công
- *     viên cũ). Mặt đất luôn cao hơn vùng thanh điều khiển dưới cùng. Đèn/nền tô theo
- *     vizConfig.mode (đơn sắc/pha trộn/gradient) thay vì màu cố định, nhấp nháy rõ hơn, và mật
- *     độ mưa/hiệu ứng glow co giãn theo PERFORMANCE_PROFILES.
+ *   - 'street' : mưa phố & công viên về đêm — đèn đường (3 cột, đều chạm mặt đất) + hàng rào
+ *     công viên (cọc sắt tĩnh) chạy dọc mặt đất ngay sau lưng các cột đèn. Mặt đất luôn cao hơn
+ *     vùng thanh điều khiển dưới cùng. Đèn/nền tô theo vizConfig.mode (đơn sắc/pha trộn/gradient)
+ *     thay vì màu cố định, nhấp nháy rõ hơn, và mật độ mưa/hiệu ứng glow co giãn theo
+ *     PERFORMANCE_PROFILES.
  *
  * Chớp sáng (vizConfig.glassFlash) dùng CHUNG một hàm cho cả 2 kiểu — bật/tắt một nơi, áp dụng
  * đồng thời cho ô kính ("chớp sáng ngoài ô kính") và đèn đường ("chớp xa" mô phỏng sấm chớp ở
@@ -80,6 +81,35 @@
             ctx.fillStyle = glassGradient; ctx.fillRect(0, 0, canvas.width, canvas.height); drawWindowFrame(ctx);
         }
 
+        // Hàng rào kiểu cổng/rào công viên cổ điển — một dãy cọc thẳng đứng nối bằng 2 thanh
+        // ngang, chạy dọc suốt chiều ngang màn hình ngay trên mặt đất (groundY). Vẽ tĩnh, màu tối
+        // gần với màu nền/cột đèn để gợi cảm giác hàng rào sắt cũ đứng yên trong mưa, không cướp
+        // sự chú ý khỏi đèn đường hay mưa.
+        function drawParkFence(ctx, groundY) {
+            const postSpacing = 26 * dpr;
+            const postH = 34 * dpr;
+            const postW = 2 * dpr;
+            const fenceColor = '#0a0c11';
+            const railTopY = groundY - postH * 0.78;
+            const railBottomY = groundY - postH * 0.22;
+
+            ctx.fillStyle = fenceColor;
+            // 2 thanh ngang nối các cọc
+            ctx.fillRect(0, railTopY - dpr, canvas.width, 2 * dpr);
+            ctx.fillRect(0, railBottomY - dpr, canvas.width, 2 * dpr);
+
+            // Cọc đứng + đầu cọc nhọn (mác giáo nhỏ) kiểu rào sắt công viên
+            for (let x = postSpacing * 0.5; x < canvas.width; x += postSpacing) {
+                ctx.fillRect(x - postW / 2, groundY - postH, postW, postH);
+                ctx.beginPath();
+                ctx.moveTo(x - postW * 1.3, groundY - postH);
+                ctx.lineTo(x, groundY - postH - postW * 2.4);
+                ctx.lineTo(x + postW * 1.3, groundY - postH);
+                ctx.closePath();
+                ctx.fill();
+            }
+        }
+
         function drawRainStreet(ctx, perf, isPlaying) {
             // Nền: theo chế độ màu đã chọn (đơn sắc/pha trộn/gradient) thay vì cố định 1 tông xanh đêm,
             // để visual luôn nhất quán với màu người dùng đã chọn ở Cài đặt.
@@ -127,6 +157,10 @@
             }
             ctx.fillStyle = groundGrad; ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
 
+            // Hàng rào công viên — chạy dọc theo mặt đất, NGAY SAU lưng các cột đèn (vẽ trước đèn
+            // để đèn/quầng sáng luôn nổi lên trên, không bị hàng rào che mất).
+            drawParkFence(ctx, groundY);
+
             // Đèn đường — đèn chính nhấp nháy theo beat/bass, đèn phụ mờ phía xa ổn định hơn.
             // Màu ánh đèn theo vizConfig.mode (đơn sắc/pha trộn/gradient theo nhạc) thay vì vàng cam cố định.
             streetLamps.forEach((lamp, lampIdx) => {
@@ -172,12 +206,6 @@
                 ctx.beginPath(); ctx.arc(lamp.x, postTopY + 6*dpr, (lamp.main ? 5 : 3.5) * dpr, 0, Math.PI*2); ctx.fill();
                 ctx.globalAlpha = 1.0;
                 ctx.restore();
-            });
-
-            // Người đứng dưới đèn chính (thay cho ghế công viên cũ)
-            streetStandees.forEach(p => {
-                p.swayPhase += 0.01 + smoothedEnergy * 0.01;
-                drawStandingSilhouette(ctx, p.x, p.groundY, p.h, p.gender, p.swayPhase);
             });
 
             // Vũng nước lăn tăn dưới chân đèn chính khi nhạc dồn (gợn sóng nhẹ phản chiếu ánh đèn)
