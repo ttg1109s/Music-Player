@@ -8,22 +8,13 @@ không cần server, không cần build step.
 
 Ngoài việc chia module, project đã qua nhiều lượt cải tiến tính năng/visual.
 Lịch sử chi tiết từng lượt cũ nằm ở các file changelog riêng (CHANGELOG_v1
-đến v4) — bản hiện tại đã cập nhật thêm so với CHANGELOG_v4:
+đến v4). Bản hiện tại (ver 5) là thay đổi lớn nhất từ trước tới nay — toàn bộ
+playlist (nhạc, tag, cover, phụ đề, ảnh/video nền) giờ persist qua
+**IndexedDB**, reload trang không còn mất playlist như trước. Xem chi tiết ở
+[CHANGELOG_v5.md](./CHANGELOG_v5.md) (và `PLAN_INDEXEDDB.md` cho tài liệu
+thiết kế gốc).
 
-- Bỏ hẳn visual "Wave"; bỏ người đứng dưới đèn ở Mưa Phố (đèn đường giờ chỉ
-  còn 3 cột, đều chạm mặt đất) và bổ sung hàng rào công viên chạy dọc mặt đất
-  ngay sau lưng các cột đèn.
-- Visual "Bar" kiểu Phản chiếu cánh bướm: hai bên trái/phải KHÔNG còn đối
-  xứng gương về xu hướng độ cao (trái: xa tâm cao → gần tâm thấp; phải: gần
-  tâm thấp → xa tâm cao); số lượng thanh mỗi bên và độ to vòng tròn tâm giờ
-  TÙY CHỈNH được qua setting riêng (10-32 thanh; vòng tròn có thể chồng lấn
-  lên các thanh khi để to, dải bar không co giãn theo). Setting "Độ dày
-  thanh" đã bỏ khỏi cả 2 kiểu của Bar — giờ chỉ còn áp dụng cho Black Hole.
-- Visual "Rubik": mỗi mảnh phóng to/thu nhỏ ngay tại tâm riêng theo biên độ
-  tần số của mảnh đó cộng với cú đập beat chung. Xoay không còn ngẫu nhiên —
-  xoay tự thân nhanh/chậm theo nốt nhạc so với pha trung bình động, và xoay
-  từng lớp theo nốt cụ thể (mỗi 1 trong 12 nốt map cố định ra 1 trục+lớp).
-
+- [CHANGELOG_v5.md](./CHANGELOG_v5.md)
 - [CHANGELOG_v4.md](./CHANGELOG_v4.md)
 - [CHANGELOG_v3.md](./CHANGELOG_v3.md)
 - [CHANGELOG_v2.md](./CHANGELOG_v2.md)
@@ -46,38 +37,45 @@ visual-master/
 ├── CHANGELOG_v2.md
 ├── CHANGELOG_v3.md
 ├── CHANGELOG_v4.md
+├── CHANGELOG_v5.md
+├── PLAN_INDEXEDDB.md         ← tài liệu thiết kế gốc của ver 5
 ├── index.html                  ← Mở file này để chạy ứng dụng
 ├── css/
 │   └── styles.css               (toàn bộ CSS gốc, không đổi)
 └── js/
     ├── components/
-    │   ├── loading-shield.js
-    │   ├── playlist-view.js
+    │   ├── loading-shield.js    (★★★★★ ver 5 — đổi cơ chế ẩn/hiện sang opacity)
+    │   ├── playlist-view.js     (★★★★★ ver 5 — data-key, 3 icon mới, modal sửa/info)
     │   ├── visualizer-overlay.js
     │   ├── subtitle-modal.js
     │   ├── bottom-player.js
-    │   └── settings-drawer.js   (★ ver 1, ★★★ ver 3, ★★★★ ver 4)
-    ├── main.js
+    │   ├── settings-drawer.js   (★ ver 1, ★★★ ver 3, ★★★★ ver 4, ★★★★★ ver 5 — toggle ảnh nền, mục Về trình phát)
+    │   └── about-drawer.js      (★★★★★ mới ở ver 5 — thống kê, giới thiệu, cảnh báo IndexedDB)
+    ├── main.js                  (★★★★★ ver 5 — ghép thêm TPL_ABOUT_DRAWER)
     ├── core/
-    │   ├── config.js            (★ ver 1, ★★★ ver 3, ★★★★ ver 4)
-    │   ├── dom-refs.js          (★ ver 1, ★★★ ver 3, ★★★★ ver 4)
+    │   ├── config.js            (★ ver 1, ★★★ ver 3, ★★★★ ver 4, ★★★★★ ver 5)
+    │   ├── dom-refs.js          (★ ver 1, ★★★ ver 3, ★★★★ ver 4, ★★★★★ ver 5)
+    │   ├── db.js                (★★★★★ mới ở ver 5 — IndexedDB: slugify/resolveKey/CRUD)
+    │   ├── loading-shield-util.js (★★★★★ mới ở ver 5 — withLoadingShield dùng chung)
     │   ├── three-vortex.js      (★ ver 1, ★★ ver 2)
-    │   ├── state-and-video-bg.js
-    │   ├── subtitles.js
-    │   ├── equalizer-settings.js (★ ver 1, ★★★ ver 3, ★★★★ ver 4)
+    │   ├── state-and-video-bg.js (★★★★★ ver 5 — video nền qua IndexedDB)
+    │   ├── subtitles.js         (★★★★★ ver 5 — persist subtitles khi Apply)
+    │   ├── equalizer-settings.js (★ ver 1, ★★★ ver 3, ★★★★ ver 4, ★★★★★ ver 5 — loadConfig async)
     │   ├── subtitle-display.js
-    │   ├── wakelock.js
+    │   ├── wakelock.js          (★★★★★ ver 5 — flush totalListenSeconds, revoke cover URL)
     │   ├── color-utils.js
     │   ├── canvas-scene-setup.js (★ ver 1, ★★ ver 2, ★★★ ver 3, ★★★★ ver 4)
-    │   ├── playlist.js
-    │   ├── player-controls.js   (★★★ ver 3, ★★★★ ver 4)
+    │   ├── playlist.js          (★★★★★ ver 5 — viết lại hoàn toàn dùng IndexedDB)
+    │   ├── player-controls.js   (★★★ ver 3, ★★★★ ver 4, ★★★★★ ver 5 — playNext/Prev theo key)
     │   ├── audio-engine.js
     │   ├── audio-analysis.js
-    │   └── rubik-math.js
+    │   ├── rubik-math.js
+    │   ├── about-stats.js       (★★★★★ mới ở ver 5 — computeStats() cho About Drawer)
+    │   └── id3-export.js        (★★★★★ mới ở ver 5 — export/restore gắn tag mới qua ID3Writer)
     └── visualizers/
         ├── draw-helpers.js      (★★★ ver 3, ★★★★ ver 4)
-        ├── draw-visualizer.js   (★ ver 1, ★★ ver 2, ★★★ ver 3, ★★★★ ver 4 — viết lại
-        │                          hoàn toàn thành vòng lặp điều phối, logic vẽ chuyển ra types/)
+        ├── draw-visualizer.js   (★ ver 1, ★★ ver 2, ★★★ ver 3, ★★★★ ver 4, ★★★★★ ver 5 — điểm
+        │                          khởi động giờ gọi loadConfig() async + initPlaylistFromDB())
         └── types/               (★★★★ mới ở ver 4 — mỗi visual một file riêng)
             ├── bar.js              (visual "Bar": kiểu Phản chiếu cánh bướm + kiểu Thác đổ)
             ├── lightning.js
@@ -87,14 +85,17 @@ visual-master/
             └── rain.js             (visual "Rain": kiểu Trôi cửa kính + kiểu Mưa phố)
 ```
 
-(★ = có thay đổi ở ver 1, ★★ = có thay đổi thêm ở ver 2, ★★★ = có thay đổi
-thêm ở ver 3, ★★★★ = có thay đổi thêm ở ver 4; file không đánh dấu giữ
-nguyên 100% so với bản chia module gốc.)
+(★ = có thay đổi ở ver 1, ★★ = thêm ở ver 2, ★★★ = thêm ở ver 3, ★★★★ = thêm
+ở ver 4, ★★★★★ = thêm ở ver 5; file không đánh dấu giữ nguyên 100% so với
+bản chia module gốc.)
 
 ## Thứ tự nạp script — QUAN TRỌNG, không thay đổi
 
 `index.html` nạp script theo đúng 4 bước, không được đảo:
 
+0. **CDN trong `<head>`**: Tailwind, jsmediatags, NoSleep.js, Three.js (như cũ)
+   + **idb-keyval** (wrapper IndexedDB) và **browser-id3-writer** (ghi ID3 tag
+   mới lúc Export) — thêm ở ver 5.
 1. **components/*.js** — chỉ định nghĩa biến `TPL_...` (chuỗi HTML), chưa
    đụng vào DOM.
 2. **main.js** — chèn toàn bộ `TPL_...` vào `<div id="app-root">`. Sau bước
@@ -102,20 +103,35 @@ nguyên 100% so với bản chia module gốc.)
 3. **core/*.js** — các file này gọi `document.getElementById(...)` ngay khi
    được nạp, nên phải chạy sau bước 2. Thứ tự giữa các file trong `core/`
    cũng giữ nguyên như trong file gốc vì có phụ thuộc biến/hàm giữa chúng.
+   Từ ver 5: `db.js` và `loading-shield-util.js` nạp ngay sau `dom-refs.js` —
+   cần `#loading-shield`/`#loading-text` đã có trong DOM, và phải có mặt
+   TRƯỚC `playlist.js`/`equalizer-settings.js`/`subtitles.js`/
+   `state-and-video-bg.js`/`about-stats.js`/`id3-export.js` vì các file đó
+   gọi hàm helper định nghĩa trong 2 file này.
 4. **visualizers/draw-helpers.js**, rồi **visualizers/types/\*.js** (mỗi
    visual một file, không phụ thuộc thứ tự lẫn nhau), rồi cuối cùng
    **visualizers/draw-visualizer.js** — file này gọi tới các hàm `draw*`
    định nghĩa trong `types/`, nên phải nạp sau cùng. Nó cũng còn chứa dòng
-   `document.addEventListener('DOMContentLoaded', () => { loadConfig(); ... })`
-   ở cuối cùng — đây là điểm khởi động thực sự của toàn bộ app, giữ nguyên
-   vị trí như bản gốc.
+   `document.addEventListener('DOMContentLoaded', async () => { await
+   loadConfig(); updateSubToggleUI(); await initPlaylistFromDB(); })` ở cuối
+   cùng — đây là điểm khởi động thực sự của toàn bộ app. Từ ver 5,
+   `loadConfig()` là `async` (đọc ảnh/video nền từ IndexedDB) và có thêm
+   `initPlaylistFromDB()` (đọc lại playlist đã lưu, render danh sách ngay
+   khi mở trang — thay cho playlist luôn rỗng lúc load như các bản trước).
 
 ## Cách dùng
 
-Mở `index.html` bằng double-click (hoặc kéo vào trình duyệt). Ứng dụng cần
-kết nối Internet ở lần mở đầu để tải 4 thư viện ngoài qua CDN (Tailwind,
-jsmediatags, NoSleep.js, Three.js) — đây là giới hạn từ bản gốc, không phải
-do việc chia file hay các thay đổi visual.
+Mở `index.html` bằng double-click (hoặc kéo vào trình duyệt), hoặc deploy
+lên GitHub Pages / bất kỳ static host nào (khuyến nghị từ ver 5 vì IndexedDB
+hoạt động ổn định hơn theo origin `https://` so với `file://`). Ứng dụng cần
+kết nối Internet ở lần mở đầu để tải các thư viện qua CDN (Tailwind,
+jsmediatags, NoSleep.js, Three.js, idb-keyval, browser-id3-writer).
+
+**Lưu ý quan trọng (ver 5):** nhạc/tag/cover/phụ đề/ảnh-video nền giờ lưu
+trong IndexedDB của trình duyệt — gắn theo từng trình duyệt + thiết bị cụ
+thể, không tự đồng bộ qua thiết bị khác, và có thể bị hệ điều hành tự dọn
+khi thiết bị thiếu dung lượng. Xem mục "Cảnh báo" trong About Drawer
+(Cài đặt → Về trình phát) để biết chi tiết.
 
 ## Muốn sửa gì thì sửa ở đâu?
 
@@ -130,6 +146,10 @@ do việc chia file hay các thay đổi visual.
 | Vòng lặp render chính, thêm visual mới vào bảng dispatch | `js/visualizers/draw-visualizer.js` (object `VISUALIZER_DRAWERS`) |
 | Hàm vẽ dùng chung (giọt nước, khung kính, nốt nhạc bay lên) | `js/visualizers/draw-helpers.js` |
 | Logic phát nhạc, next/prev, shuffle | `js/core/playlist.js`, `js/core/player-controls.js` |
+| Lưu trữ IndexedDB (nhạc/tag/cover/sub/ảnh-video nền), slugify/resolve key | `js/core/db.js` |
+| Che màn hình khi xử lý (nạp nhạc/chuyển bài/lưu ảnh nền...) | `js/core/loading-shield-util.js` (hàm `withLoadingShield`) |
+| Sửa tag/info/export gắn tag mới của 1 bài | `js/core/playlist.js` (modal sửa/info), `js/core/id3-export.js` (export) |
+| Thống kê "Về trình phát" (About Drawer) | `js/core/about-stats.js`, `js/components/about-drawer.js` |
 | Hiện/ẩn các khối setting theo kiểu visualizer/kiểu Bar đang chọn | `js/core/player-controls.js` (hàm `updateTypeUI`, `updateBarStyleUI`) |
 | Equalizer, cấu hình lưu localStorage | `js/core/equalizer-settings.js` |
 | Phụ đề (.srt) | `js/core/subtitles.js`, `js/core/subtitle-display.js` |
