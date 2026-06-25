@@ -125,17 +125,50 @@
         let lastStoppedKey = null;
         let lastStoppedTime = 0;
 
+        /**
+         * Đưa UI về màn Playlist, ẩn Visualizer/player-container — TÁCH RA dùng chung giữa
+         * resetPlayerToIdle() (tab/app bị ẩn) và clearAllStoredData() (Clear All trong Quản lý
+         * dung lượng, xem storage-manager.js): cả 2 trường hợp đều "không còn gì đang phát" sau
+         * khi gọi, nên UI phải bị ép về đúng màn Playlist NGAY, không chờ người dùng tự bấm Back —
+         * tránh đúng bug "Clear All xong vẫn thấy current/next/prev trên màn Visualizer" (UI cũ
+         * đứng yên dù currentKey đã bị xoá khỏi RAM).
+         *
+         * KHÔNG đụng tới currentKey/audioPlayer/RAM khác — chỉ lo phần hiển thị (class CSS, panel
+         * Control Center). Nơi gọi PHẢI tự reset RAM (currentKey=null, audioPlayer.pause()...)
+         * TRƯỚC khi gọi hàm này, đúng như resetPlayerToIdle()/clearAllStoredData() đang làm.
+         */
+        function forceBackToPlaylistUI() {
+            visualizerUI.classList.remove('fade-enter-active');
+            canvas.classList.add('opacity-0');
+            const webglCanvasEl = document.getElementById('webgl-canvas');
+            if (webglCanvasEl) webglCanvasEl.classList.add('opacity-0');
+            playlistView.classList.remove('-translate-y-full');
+            if (typeof closeControlCenter === 'function') closeControlCenter(); // phòng panel còn mở sót
+            taskManager.once(() => { visualizerUI.classList.add('hidden'); playerContainer.classList.add('hidden'); renderPlaylistDiff(); }, 300, 'hideVisualizerUiAfterFade');
+        }
+
         let _resetPlayerToIdleInProgress = false;
         function resetPlayerToIdle() {
             if (_resetPlayerToIdleInProgress) return; // chặn gọi chồng (vd. 'visibilitychange' + 'pagehide' cùng bắn)
             _resetPlayerToIdleInProgress = true;
             try {
-                // (2) Giải phóng cứng — không để 1 lượt withLoadingShield() bị OS treo giữa chừng
+                // (2) Giải phóng cứng — KHÔNG để 1 lượt withLoadingShield() bị OS treo giữa chừng
                 // (lúc tab vừa ẩn) khoá im lặng MỌI lượt playSong() sau khi người dùng quay lại tab.
-                isShieldBusy = false;
-                if (typeof loadingShield !== 'undefined' && loadingShield) {
-                    loadingShield.classList.remove('opacity-100', 'pointer-events-auto');
-                    loadingShield.classList.add('opacity-0', 'pointer-events-none');
+                //
+                // FIX (sau bug Clear All): trước đây dòng này set CỨNG isShieldBusy = false vô điều
+                // kiện — nếu resetPlayerToIdle() bị gọi (tab ẩn) ĐÚNG LÚC clearAllStoredData() đang
+                // chạy giữa loop xoá bài (cũng nằm trong withLoadingShield()), khoá bị mở sớm trong
+                // khi tác vụ xoá vẫn còn dở — 1 hành động khác gọi withLoadingShield() ngay sau đó
+                // (hiếm nhưng có thể) sẽ chạy CHỒNG lên lượt xoá đang chạy. Giờ chỉ giải phóng cứng
+                // khi CHẮC CHẮN không có tác vụ "phá hủy không hoàn tác" nào đang dở — cờ
+                // isDestructiveTaskInProgress (xem storage-manager.js, bật trong suốt
+                // clearAllStoredData()) là tín hiệu DUY NHẤT cho việc đó.
+                if (typeof isDestructiveTaskInProgress === 'undefined' || !isDestructiveTaskInProgress) {
+                    isShieldBusy = false;
+                    if (typeof loadingShield !== 'undefined' && loadingShield) {
+                        loadingShield.classList.remove('opacity-100', 'pointer-events-auto');
+                        loadingShield.classList.add('opacity-0', 'pointer-events-none');
+                    }
                 }
 
                 // Cache LẠI key + vị trí đang phát TRƯỚC khi mọi thứ dưới đây bị reset về 0/null —
@@ -159,16 +192,10 @@
                 btnReturnVisual.classList.add('hidden');
                 if (previousKey) refreshSongNode(previousKey); // bỏ trạng thái "đang phát" (chấm xanh/EQ icon) khỏi bài vừa dừng trong danh sách
 
-                // (3) Đưa UI về màn Playlist — cùng chuỗi hiệu ứng/đóng panel với nút "Quay lại"
-                // (btnBackPlaylist) để nhất quán, tránh người dùng quay lại tab vẫn thấy màn
-                // Visualizer trống không còn gì đang phát.
-                visualizerUI.classList.remove('fade-enter-active');
-                canvas.classList.add('opacity-0');
-                const webglCanvasEl = document.getElementById('webgl-canvas');
-                if (webglCanvasEl) webglCanvasEl.classList.add('opacity-0');
-                playlistView.classList.remove('-translate-y-full');
-                if (typeof closeControlCenter === 'function') closeControlCenter(); // phòng panel còn mở sót
-                taskManager.once(() => { visualizerUI.classList.add('hidden'); playerContainer.classList.add('hidden'); renderPlaylistDiff(); }, 300, 'hideVisualizerUiAfterFade');
+                // (3) Đưa UI về màn Playlist — xem forceBackToPlaylistUI() ở trên, dùng CHUNG với
+                // clearAllStoredData() (storage-manager.js) để tránh người dùng quay lại tab vẫn
+                // thấy màn Visualizer trống không còn gì đang phát.
+                forceBackToPlaylistUI();
             } finally {
                 _resetPlayerToIdleInProgress = false;
             }
@@ -258,11 +285,8 @@
         }
 
         btnBackPlaylist.addEventListener('click', () => {
-            visualizerUI.classList.remove('fade-enter-active'); canvas.classList.add('opacity-0'); document.getElementById('webgl-canvas').classList.add('opacity-0');
-            playlistView.classList.remove('-translate-y-full');
-            closeControlCenter(); // tránh trạng thái panel còn mở sót khi quay lại Visualizer lần sau
             // KHÔNG dừng/ẩn video ở đây nữa: Playlist (z-[60]) tự che video, video vẫn chạy theo nhạc.
-            taskManager.once(() => { visualizerUI.classList.add('hidden'); playerContainer.classList.add('hidden'); renderPlaylistDiff(); }, 300, 'hideVisualizerUiAfterFade');
+            forceBackToPlaylistUI(); // dùng chung với resetPlayerToIdle()/clearAllStoredData() — xem định nghĩa ở trên
         });
 
         playPauseBtn.addEventListener('click', () => {
