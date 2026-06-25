@@ -71,6 +71,10 @@
                 if (!domNodesByKey.has(key)) renderPlaylistDiff();
                 if (currentKey) btnReturnVisual.classList.remove('hidden');
                 beatTimes = []; fluxHistory = []; currentCalculatedBpm = "---"; statBpm.textContent = "---"; statNote.textContent = "---";
+                // Reset trạng thái pitch worker — tránh hiện sót nốt nhạc của bài VỪA đổi trong vài
+                // chục ms đầu (worker là bất đồng bộ, kết quả cũ có thể vẫn đang "bay" lúc đổi bài).
+                latestPitchFrequency = -1; window.lastValidNoteStr = null; window.lastValidNoteTime = 0; window.lastValidMidiNote = null;
+                rubikPitchHistory = []; rubikPitchAvg = 0;
                 raindrops = []; ripples = []; glassStaticDrops = []; glassStreaks = []; activeLightnings = []; starFlashes = [];
                 setupAudioContext(); updateTypeUI();
 

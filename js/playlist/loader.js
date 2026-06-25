@@ -29,12 +29,33 @@
         }
 
         fileInput.addEventListener('change', async function(e) {
-            const files = Array.from(e.target.files); if (files.length === 0) return;
+            const allFiles = Array.from(e.target.files); if (allFiles.length === 0) return;
             e.target.value = '';
             playlistEmpty.classList.add('hidden');
 
             const failedFiles = [];
             const newlyAddedKeys = [];
+
+            // (3a) Lọc định dạng nhạc NGAY khi nhận file — accept="" của <input> chỉ là gợi ý UI,
+            // không chặn thật (xem upload-validation.js). File không hợp lệ bị loại khỏi danh sách
+            // xử lý và liệt kê chung với failedFiles, KHÔNG được đưa vào IndexedDB/playlist.
+            const files = [];
+            for (const file of allFiles) {
+                const check = validateAudioFile(file);
+                if (check.valid) files.push(file);
+                else failedFiles.push(`${file.name} — ${check.reason}`);
+            }
+            if (files.length === 0) {
+                if (failedFiles.length > 0) alert(`Không nạp được ${failedFiles.length} file:\n\n${failedFiles.join('\n\n')}`);
+                return;
+            }
+            // TỐI ƯU (v7): trước đây dùng `playlistOrder.includes(key)` NGAY TRONG vòng `for` qua
+            // từng file -> O(files.length × playlistOrder.length), O(n²) khi nạp nhiều file vào
+            // playlist đã lớn. Dựng 1 Set tra cứu O(1) trước vòng lặp, đồng bộ thêm phần tử mỗi khi
+            // push key mới (kể cả khi 2 file trùng tên trong CÙNG 1 lượt chọn — resolveSongKey() có
+            // thể trả cùng 1 key cho 2 file liên tiếp, Set phải thấy được key đó NGAY để không bị
+            // hiểu sai thành "bài mới" ở vòng lặp kế). Kết quả/logic giữ nguyên 100% so với bản cũ.
+            const playlistOrderSet = new Set(playlistOrder);
 
             await withLoadingShield(`Đang nạp 1 / ${files.length}...`, async () => {
                 for (let i = 0; i < files.length; i++) {
@@ -83,7 +104,7 @@
 
                         const duration = await readAudioDuration(file);
                         const key = await resolveSongKey(file.name);
-                        const isOverwrite = playlistOrder.includes(key);
+                        const isOverwrite = playlistOrderSet.has(key);
 
                         const record = { filename: file.name, blob: file, tag, cover, subtitles: [], duration, addedAt: Date.now() };
                         if (isOverwrite) {
@@ -92,7 +113,7 @@
                         }
                         await setSongRecord(key, record);
 
-                        if (!isOverwrite) { playlistOrder.push(key); newlyAddedKeys.push(key); }
+                        if (!isOverwrite) { playlistOrder.push(key); playlistOrderSet.add(key); newlyAddedKeys.push(key); }
                         playlistCache.set(key, { filename: record.filename, tag: record.tag, cover: record.cover, duration: record.duration });
                         songNameIndex.set(key, normalizeSongName(record.tag.title));
                         confirmedBrokenKeys.delete(key);

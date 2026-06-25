@@ -51,6 +51,12 @@
          *   - Không đang phát gì -> resort hàng đợi ngay (mạch phát chưa bắt đầu, sắp lại vô hại).
          *   - Đang phát -> nối vào CUỐI hàng đợi + ghi nhận pending (chỉ resort khi chạm biên),
          *     để không làm gãy thứ tự đang nghe. (Phần này KHÔNG ảnh hưởng renderOrder/UI.)
+         *
+         * TỐI ƯU (v7): trước đây dùng `displayOrder.includes(k)` NGAY TRONG vòng `for` qua
+         * `newKeys` -> O(newKeys.length × displayOrder.length), tức O(n²) khi nạp nhiều file vào
+         * playlist đã lớn (vài nghìn bài). Đổi sang tra cứu qua `Set` (O(1)/lần) dựng 1 lần TRƯỚC
+         * vòng lặp -> tổng chi phí còn O(newKeys.length + displayOrder.length). Logic kết quả
+         * (thứ tự nối vào cuối displayOrder, tập pendingResortKeys) giữ nguyên 100% so với bản cũ.
          */
         function applyNewSongsToDisplayOrder(newKeys) {
             if (newKeys.length === 0) {
@@ -58,8 +64,9 @@
                 return;
             }
             if (!currentKey) { recomputeDisplayOrder(); return; }
+            const displaySet = new Set(displayOrder); // tra cứu O(1) thay cho .includes() O(n)
             for (const k of newKeys) {
-                if (!displayOrder.includes(k)) displayOrder.push(k);
+                if (!displaySet.has(k)) { displayOrder.push(k); displaySet.add(k); }
                 pendingResortKeys.add(k);
             }
         }
