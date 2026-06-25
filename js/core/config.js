@@ -22,29 +22,28 @@
                 } catch (alertErr) { /* alert có thể bị chặn ở 1 số trình duyệt — bỏ qua, log vẫn còn ở console */ }
             }
         }
-        window.addEventListener("error", e => {
+        document.addEventListener("DOMContentLoaded", async () => {
 
-    alert(JSON.stringify({
+    try {
+        await loadConfig();
+    } catch (e) {
+        alert("loadConfig\n" + (e?.stack || e));
+        throw e;
+    }
 
-        message: e.message,
+    try {
+        await loadSongStats();
+    } catch (e) {
+        alert("loadSongStats\n" + (e?.stack || e));
+        throw e;
+    }
 
-        filename: e.filename,
-
-        lineno: e.lineno,
-
-        colno: e.colno,
-
-        error: String(e.error),
-
-        target: e.target?.tagName,
-
-        currentTarget: e.currentTarget === window ? "window" : "other",
-
-        type: e.type,
-
-        isTrusted: e.isTrusted
-
-    }, null, 2));
+    try {
+        await initPlaylistFromDB();
+    } catch (e) {
+        alert("initPlaylistFromDB\n" + (e?.stack || e));
+        throw e;
+    }
 
 });
         window.addEventListener('unhandledrejection', (e) => {
