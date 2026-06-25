@@ -76,6 +76,7 @@
         btnBackPlaylist.addEventListener('click', () => {
             visualizerUI.classList.remove('fade-enter-active'); canvas.classList.add('opacity-0'); document.getElementById('webgl-canvas').classList.add('opacity-0');
             playlistView.classList.remove('-translate-y-full');
+            closeControlCenter(); // tránh trạng thái panel còn mở sót khi quay lại Visualizer lần sau
             // KHÔNG dừng/ẩn video ở đây nữa: Playlist (z-[60]) tự che video, video vẫn chạy theo nhạc.
             setTimeout(() => { visualizerUI.classList.add('hidden'); playerContainer.classList.add('hidden'); renderPlaylistDiff(); }, 300);
         });

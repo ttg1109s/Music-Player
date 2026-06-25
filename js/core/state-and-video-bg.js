@@ -27,6 +27,32 @@
 
         btnReturnVisual.addEventListener('click', () => { if(currentKey) switchToVisualizer(); });
 
+        // ===================== "Control Center" của màn Visualizer (ver 8 refine) =====================
+        // Thay cho dải dọc 6 nút cũ — 1 nút mở ở góc trái, panel grid icon trượt từ trên xuống full
+        // chiều rộng (kiểu Control Center điện thoại). Đóng bằng 3 cách: bấm lại nút mở, bấm overlay
+        // mờ phía dưới panel, hoặc bấm 1 icon bên trong grid (data-cc-action — tự đóng sau khi chọn,
+        // vì hành động đó thường là điểm kết của tương tác, ví dụ đổi hiệu ứng/mở Settings).
+        function openControlCenter() {
+            visualizerControlCenter.classList.remove('-translate-y-full');
+            controlCenterOverlay.classList.remove('hidden');
+            iconControlCenterDown.classList.add('rotate-180');
+        }
+        function closeControlCenter() {
+            visualizerControlCenter.classList.add('-translate-y-full');
+            controlCenterOverlay.classList.add('hidden');
+            iconControlCenterDown.classList.remove('rotate-180');
+        }
+        btnOpenControlCenter.addEventListener('click', () => {
+            const isOpen = !visualizerControlCenter.classList.contains('-translate-y-full');
+            if (isOpen) closeControlCenter(); else openControlCenter();
+        });
+        controlCenterOverlay.addEventListener('click', closeControlCenter);
+        // Bấm bất kỳ icon nào trong grid (data-cc-action) -> đóng panel ngay (không đợi animation
+        // của hành động đó, ví dụ chuyển màn Settings) để không che mất phần UI vừa mở ra.
+        visualizerControlCenter.addEventListener('click', (e) => {
+            if (e.target.closest('[data-cc-action]')) closeControlCenter();
+        });
+
         // Khi đóng drawer Cài đặt: nếu người dùng đã bật "Sử dụng Video Background" nhưng CHƯA
         // chọn video nào (vizConfig.videoBgUrl rỗng) thì tự tắt lại — tránh trạng thái "on" ảo
         // không có video thật phía sau. "Tắt Visual" (ver 8 refine) KHÔNG còn phụ thuộc video bg

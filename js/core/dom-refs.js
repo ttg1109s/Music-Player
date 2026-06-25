@@ -17,6 +17,12 @@
         const playlistEmpty = document.getElementById('playlist-empty'), playlistContainer = document.getElementById('playlist-container');
         const btnBackPlaylist = document.getElementById('btn-back-playlist'), loadingShield = document.getElementById('loading-shield'), loadingText = document.getElementById('loading-text');
         const btnReturnVisual = document.getElementById('btn-return-visual');
+        // "Control Center" của màn Visualizer (ver 8 refine) — thay cho dải dọc 6 nút cũ. Nút mở
+        // ở góc trái, panel trượt từ trên xuống chứa grid icon; overlay mờ để bấm ra ngoài là đóng.
+        const btnOpenControlCenter = document.getElementById('btn-open-control-center');
+        const iconControlCenterDown = document.getElementById('icon-control-center-down');
+        const controlCenterOverlay = document.getElementById('control-center-overlay');
+        const visualizerControlCenter = document.getElementById('visualizer-control-center');
         
         const playPauseBtn = document.getElementById('play-pause-btn'), iconPlay = document.getElementById('icon-play'), iconPause = document.getElementById('icon-pause');
         const btnPrev = document.getElementById('btn-prev'), btnNext = document.getElementById('btn-next');
