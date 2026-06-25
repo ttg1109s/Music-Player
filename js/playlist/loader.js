@@ -36,6 +36,7 @@
          * file không phải nhạc, y hệt cách input file rời lọc file sai định dạng cố tình chọn.
          */
         async function handleAudioFiles(fileList) {
+          try {
             const allFiles = Array.from(fileList); if (allFiles.length === 0) return;
             playlistEmpty.classList.add('hidden');
 
@@ -63,7 +64,15 @@
             // hiểu sai thành "bài mới" ở vòng lặp kế). Kết quả/logic giữ nguyên 100% so với bản cũ.
             const playlistOrderSet = new Set(playlistOrder);
 
+            // FIX (ver 8 refine #2): withLoadingShield() im lặng return (không làm gì, không throw)
+            // nếu đã có 1 tác vụ khác đang dùng shield (isShieldBusy = true) — ví dụ người dùng bấm
+            // "Thêm nhạc" 2 lần liên tiếp quá nhanh, hoặc 1 tác vụ nền (xóa bài, lưu ảnh nền...) còn
+            // đang chạy. Trước đây trường hợp này HOÀN TOÀN im lặng: người dùng chọn file/thư mục
+            // xong, không thấy gì xảy ra, không có lỗi nào để biết nguyên nhân. Theo dõi qua biến cờ
+            // riêng để log + alert rõ ràng thay vì im lặng bỏ qua.
+            let shieldRan = false;
             await withLoadingShield(`Đang nạp 1 / ${files.length}...`, async () => {
+                shieldRan = true;
                 for (let i = 0; i < files.length; i++) {
                     const file = files[i];
                     loadingText.textContent = `Đang nạp ${i + 1} / ${files.length}...`;
@@ -149,21 +158,66 @@
                 renderPlaylistDiff();
             });
 
+            if (!shieldRan) {
+                // withLoadingShield() đã bỏ qua lệnh gọi này vì đang bận tác vụ khác — KHÔNG có file
+                // nào được xử lý dù người dùng đã chọn xong. Báo rõ thay vì im lặng.
+                console.warn('[upload] handleAudioFiles bị bỏ qua: đang có 1 tác vụ khác dùng loading shield (isShieldBusy=true). Hãy thử lại sau khi tác vụ hiện tại xong.');
+                alert('Đang xử lý 1 tác vụ khác, vui lòng đợi rồi thử thêm nhạc lại.');
+                return;
+            }
+
             if (failedFiles.length > 0) {
                 alert(`Không nạp được ${failedFiles.length} file:\n\n${failedFiles.join('\n\n')}`);
             }
+          } catch (err) {
+              console.error('[upload] Lỗi không xác định trong handleAudioFiles:', err);
+              alert(`Đã xảy ra lỗi không xác định khi nạp nhạc:\n\n${err && err.message ? err.message : err}`);
+          }
         }
 
+        // FIX (ver 8 refine #2 — lỗi "chọn file/thư mục xong không nạp được gì, không báo lỗi"):
+        // `e.target.files` là 1 FileList SỐNG (live reference) gắn trực tiếp với chính <input>.
+        // Một số trình duyệt/WebView (đặc biệt qua `file://`, hoặc Android WebView cũ) làm RỖNG
+        // luôn FileList đó NGAY khi `input.value` bị set lại — vì đây là CÙNG 1 object, không phải
+        // bản sao, hành vi "reset value" ở các engine không chuẩn có thể dọn sạch nội dung FileList
+        // luôn (kể cả đồng bộ, trước khi Array.from() bên trong handleAudioFiles() kịp đọc). Hậu
+        // quả: handleAudioFiles() nhận về 1 danh sách rỗng -> `allFiles.length === 0` -> return im
+        // lặng (xem dòng `if (allFiles.length === 0) return;` ở trên) — KHÔNG throw lỗi gì, KHÔNG
+        // alert gì, người dùng chỉ thấy "chọn xong, không có gì xảy ra".
+        // SỬA: chốt danh sách file ra 1 Array THẬT (Array.from) NGAY khi vào listener, TRƯỚC khi
+        // đụng tới `e.target.value` — Array.from tạo bản sao độc lập, không còn bị ảnh hưởng bởi
+        // bất kỳ thay đổi nào lên input sau đó.
         fileInput.addEventListener('change', async function(e) {
-            const fileList = e.target.files;
-            e.target.value = '';
-            await handleAudioFiles(fileList);
+            try {
+                const fileList = Array.from(e.target.files || []);
+                e.target.value = '';
+                console.log(`[upload] #audio-upload change: ${fileList.length} file được chọn.`);
+                if (fileList.length === 0) {
+                    console.warn('[upload] #audio-upload: FileList rỗng sau khi chọn — trình duyệt không trả về file nào.');
+                    return;
+                }
+                await handleAudioFiles(fileList);
+            } catch (err) {
+                console.error('[upload] Lỗi không xác định khi xử lý file đã chọn (#audio-upload):', err);
+                alert(`Đã xảy ra lỗi khi nạp file nhạc:\n\n${err && err.message ? err.message : err}`);
+            }
         });
 
         folderInput.addEventListener('change', async function(e) {
-            const fileList = e.target.files;
-            e.target.value = '';
-            await handleAudioFiles(fileList);
+            try {
+                const fileList = Array.from(e.target.files || []);
+                e.target.value = '';
+                console.log(`[upload] #audio-upload-folder change: ${fileList.length} file được chọn (toàn bộ thư mục + thư mục con).`);
+                if (fileList.length === 0) {
+                    console.warn('[upload] #audio-upload-folder: FileList rỗng sau khi chọn thư mục — trình duyệt không trả về file nào (thư mục trống, hoặc bị chặn quyền đọc thư mục).');
+                    alert('Không đọc được file nào trong thư mục đã chọn. Thư mục có thể trống, hoặc trình duyệt/thiết bị chặn quyền đọc thư mục này.');
+                    return;
+                }
+                await handleAudioFiles(fileList);
+            } catch (err) {
+                console.error('[upload] Lỗi không xác định khi xử lý thư mục đã chọn (#audio-upload-folder):', err);
+                alert(`Đã xảy ra lỗi khi nạp thư mục nhạc:\n\n${err && err.message ? err.message : err}`);
+            }
         });
 
         // ===================== Menu nhỏ cho nút "Thêm nhạc": Chọn file / Chọn cả thư mục =====================
