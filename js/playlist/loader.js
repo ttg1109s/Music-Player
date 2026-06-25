@@ -117,11 +117,14 @@
          * Quét NHANH store `songs` (KHÔNG decode duration) — record hợp lệ (blob + tag + MIME đúng)
          * thì nạp vào playlist; không hợp lệ thì bỏ qua (sẽ hiện ở Quản lý dung lượng khi quét sâu).
          */
-        async function scanValidSongsFromDB() {
+        async function scanValidSongsFromDB(onProgress) {
             const keys = await getAllSongKeys();
             const validKeys = [];
             playlistCache.clear(); songNameIndex.clear();
+            let processed = 0;
             for (const key of keys) {
+                processed++;
+                if (typeof onProgress === 'function') onProgress(processed, keys.length);
                 if (confirmedBrokenKeys.has(key)) continue;
                 const record = await getSongRecord(key);
                 if (!record || !record.blob || !record.tag) continue;
@@ -135,10 +138,26 @@
 
         /** Khởi động app / quét lại: store `songs` là chân lý duy nhất — quét nhanh rồi dựng cả 2 thứ tự. */
         async function initPlaylistFromDB() {
-            playlistOrder = await scanValidSongsFromDB();
+            // Quyết định hiển thị TRƯỚC khi đọc sâu (yêu cầu: if key<=0 -> "chưa có bài"; else -> loading list):
+            const rawKeys = await getAllSongKeys();
+            if (rawKeys.length <= 0) {
+                // Thực sự rỗng -> hiện luôn trạng thái "chưa có bài nào", KHÔNG nháy lớp loading.
+                playlistOrder = [];
+                updateShuffleArray();
+                recomputeDisplayOrder();
+                recomputeRenderOrder();
+                renderPlaylistDiff();
+                updateEmptyState();
+                return;
+            }
+            // Có dữ liệu -> phủ lớp "đang nạp danh sách x / y bài" trong lúc đọc từng record, tránh nháy
+            // "chưa có bài nào". Lớp này sẽ tự fade out khi DOM list dựng xong (updateEmptyState).
+            showPlaylistLoading(0, rawKeys.length);
+            playlistOrder = await scanValidSongsFromDB((done, total) => updatePlaylistLoading(done, total));
             updateShuffleArray();
             recomputeDisplayOrder();   // hàng đợi phát
             recomputeRenderOrder();    // danh sách hiển thị
             renderPlaylistDiff();
-            updateEmptyState();
+            updateEmptyState();        // dựng xong -> fade out lớp loading (hoặc hiện empty nếu mọi record hỏng)
+            hidePlaylistLoading();     // chốt fade out (an toàn kể cả khi tất cả record lỗi -> renderOrder rỗng)
         }

@@ -54,11 +54,37 @@
             return wrapper;
         }
 
+        /** Hiện lớp "đang nạp danh sách" (phủ vùng list). total để hiển thị "x / y bài". */
+        function showPlaylistLoading(done, total) {
+            const el = document.getElementById('playlist-loading-list');
+            if (!el) return;
+            playlistEmpty.classList.add('hidden');
+            const se = document.getElementById('playlist-search-empty'); if (se) se.classList.add('hidden');
+            updatePlaylistLoading(done, total);
+            el.classList.remove('hidden');
+            // ép reflow trước khi tăng opacity để transition fade-in chạy mượt
+            void el.offsetWidth;
+            el.style.opacity = '1';
+        }
+        function updatePlaylistLoading(done, total) {
+            const txt = document.getElementById('playlist-loading-text');
+            if (txt) txt.textContent = total ? `Đang nạp dữ liệu ${done} / ${total} bài...` : 'Đang nạp dữ liệu...';
+        }
+        function hidePlaylistLoading() {
+            const el = document.getElementById('playlist-loading-list');
+            if (!el || el.classList.contains('hidden')) return;
+            el.style.opacity = '0';
+            setTimeout(() => el.classList.add('hidden'), 320); // khớp transition-opacity duration-300
+        }
+
         /** Cập nhật trạng thái rỗng/không-kết-quả thuần từ dữ liệu (không liên quan hàng đợi phát). */
         function updateEmptyState() {
             const totalSongs = liveKeys().length;
             const emptyEl = playlistEmpty;
             const searchEmptyEl = document.getElementById('playlist-search-empty');
+            // Khi đã có dữ liệu thật để dựng list (renderOrder > 0) thì lớp "đang nạp" không còn cần
+            // -> fade out (an toàn nếu nó đang hiện; no-op nếu đã ẩn).
+            if (renderOrder.length > 0) hidePlaylistLoading();
             if (totalSongs === 0) {
                 emptyEl.classList.remove('hidden');
                 if (searchEmptyEl) searchEmptyEl.classList.add('hidden');
