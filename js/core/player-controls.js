@@ -69,93 +69,24 @@
          * "pause tạm, giữ nguyên bài đang chọn, không tự resume". Khác removeKeyFromDisplay() (xoá
          * 1 bài khỏi playlist): hàm này KHÔNG đụng tới playlistOrder/displayOrder/IndexedDB, chỉ
          * dừng playback + reset UI player + giải phóng currentKey, playlist vẫn còn nguyên y hệt.
-         *
-         * FIX (log 7->8, mục "chuyển tab/ẩn trình duyệt trên iOS"): bản trước có 3 lỗi liên quan
-         * lẫn nhau, đều bắt nguồn từ việc CHỈ trông cậy vào sự kiện 'visibilitychange' (xem
-         * wakelock.js) — sự kiện này được WebKit/Safari trên iOS xác nhận là KHÔNG đáng tin cậy khi
-         * chuyển app/khoá màn hình (có thể bắn trễ, bắn không đầy đủ, hoặc không bắn — trình duyệt
-         * có thể đã ngưng chạy JS đúng lúc đó). Khi điều đó xảy ra, hàm này có thể chỉ chạy được MỘT
-         * PHẦN hoặc chạy NHIỀU LẦN chồng nhau (gọi từ cả 'visibilitychange' VÀ 'pagehide' làm tín
-         * hiệu dự phòng — xem wakelock.js), gây ra:
-         *   (a) "Thanh tiến trình không bị reset": nếu hàm không chạy/chạy nửa chừng,
-         *       audioPlayer.pause() có thể chưa kịp thực thi -> audio vẫn phát ở dưới (iOS cho phép
-         *       <audio> tiếp tục phát khi tab ẩn), 'timeupdate' vẫn bắn liên tục -> thanh tiến trình
-         *       (và biến isSeeking=false) tiếp tục nhảy theo currentTime thật, trông như "không bị
-         *       reset" dù logic reset có gọi.
-         *   (b) "Không tự chuyển UI Playlist": bản trước CHỈ reset dữ liệu (currentKey, text, ảnh...)
-         *       mà KHÔNG đụng tới class hiển thị của #playlist-view/#visualizer-ui — nếu người dùng
-         *       đang ở màn Visualizer lúc bị ẩn, quay lại vẫn thấy màn Visualizer (trống, không có
-         *       gì để xem) thay vì được đưa về Playlist — đúng tinh thần "như chưa chọn bài nào,
-         *       app nên hiện đúng màn ban đầu (Playlist)".
-         *   (c) "Nút phát không chuyển/nhạc không phát/BPM-Pitch-Energy không hoạt động khi bấm lại":
-         *       nếu hàm reset bị NGẮT GIỮA CHỪNG bởi việc trang bị treo (browser suspend JS), hoặc
-         *       nếu MỘT LƯỢT playSong() trước đó (chạy trong withLoadingShield, xem actions.js) đang
-         *       "bay" đúng lúc tab bị ẩn và promise của nó không bao giờ settle lại được, biến khoá
-         *       isShieldBusy (loading-shield-util.js) có thể bị "kẹt" mãi ở true. Mọi lượt
-         *       playSong()/withLoadingShield() gọi SAU đó (kể cả lúc người dùng bấm lại Play) sẽ bị
-         *       chặn IM LẶNG ngay dòng đầu (`if (isShieldBusy) return;`) — nút Play không đổi icon,
-         *       không có gì phát, các thống kê (BPM/Pitch/Energy) không cập nhật vì playSong() chưa
-         *       từng thực sự chạy lại — ĐÚNG triệu chứng quan sát được, dù thumb thanh trượt vẫn nhảy
-         *       (xem (a) — đó là audio CŨ vẫn đang phát ở dưới, không liên quan tới lượt playSong()
-         *       mới bị chặn).
-         *
-         * Giải pháp — 3 phần, áp dụng NGAY ĐẦU hàm trước khi làm bất cứ gì khác:
-         *   1. Cờ `_resetPlayerToIdleInProgress` chặn việc hàm tự gọi chồng lên chính nó (do cả
-         *      'visibilitychange' VÀ 'pagehide' có thể cùng kích hoạt nó) — KHÔNG chặn việc gọi
-         *      hàm nhiều lần liên tiếp (mỗi lần đều phải làm xong việc của nó), chỉ chặn đè lên nhau
-         *      trong cùng 1 lượt xử lý đồng bộ.
-         *   2. Giải phóng cứng `isShieldBusy = false` — đảm bảo dù lượt playSong()/loadingShield
-         *      nào đó có bị "treo" do trang bị OS suspend, lần phát lại sau khi quay lại tab LUÔN
-         *      được phép chạy, không bị khoá im lặng vĩnh viễn. An toàn vì resetPlayerToIdle() chỉ
-         *      chạy khi tab vừa ẨN/quay lại — không có tác vụ shield nào còn "hợp lệ" để bảo vệ vào
-         *      đúng thời điểm này (nhạc đã được lệnh dừng).
-         *   3. Đưa luôn UI về màn Playlist (gọi đúng chuỗi class đã dùng ở nút "Quay lại" sẵn có –
-         *      btnBackPlaylist – để nhất quán 100% hiệu ứng) + closeControlCenter() phòng panel đó
-         *      còn mở sót.
          */
-        let _resetPlayerToIdleInProgress = false;
         function resetPlayerToIdle() {
-            if (_resetPlayerToIdleInProgress) return; // chặn gọi chồng (vd. 'visibilitychange' + 'pagehide' cùng bắn)
-            _resetPlayerToIdleInProgress = true;
-            try {
-                // (2) Giải phóng cứng — không để 1 lượt withLoadingShield() bị OS treo giữa chừng
-                // (lúc tab vừa ẩn) khoá im lặng MỌI lượt playSong() sau khi người dùng quay lại tab.
-                isShieldBusy = false;
-                if (typeof loadingShield !== 'undefined' && loadingShield) {
-                    loadingShield.classList.remove('opacity-100', 'pointer-events-auto');
-                    loadingShield.classList.add('opacity-0', 'pointer-events-none');
-                }
-
-                audioPlayer.pause();
-                audioPlayer.currentTime = 0;
-                if (currentObjectURL) { URL.revokeObjectURL(currentObjectURL); currentObjectURL = null; }
-                if (currentCoverObjectURL) { URL.revokeObjectURL(currentCoverObjectURL); currentCoverObjectURL = null; }
-                audioPlayer.removeAttribute('src'); audioPlayer.src = '';
-                const previousKey = currentKey;
-                currentKey = null;
-                // Reset UI player về ĐÚNG trạng thái ban đầu — xem bottom-player.js (TPL_BOTTOM_PLAYER)
-                // để biết giá trị gốc lúc chưa chọn bài nào.
-                playerTitle.textContent = 'Chưa chọn bài'; playerArtist.textContent = '---';
-                recordContainer.innerHTML = `<img id="record-art" src="" class="w-full h-full rounded-full object-cover shadow-lg relative z-20" alt="Record"><div class="absolute inset-0 m-auto w-3 h-3 bg-slate-900 rounded-full border border-slate-700 z-30"></div>`;
-                progressBar.value = 0;
-                currentTimeDisplay.textContent = '0:00'; durationTimeDisplay.textContent = '0:00';
-                if ('mediaSession' in navigator) { navigator.mediaSession.metadata = null; navigator.mediaSession.playbackState = 'none'; }
-                btnReturnVisual.classList.add('hidden');
-                if (previousKey) refreshSongNode(previousKey); // bỏ trạng thái "đang phát" (chấm xanh/EQ icon) khỏi bài vừa dừng trong danh sách
-
-                // (3) Đưa UI về màn Playlist — cùng chuỗi hiệu ứng/đóng panel với nút "Quay lại"
-                // (btnBackPlaylist) để nhất quán, tránh người dùng quay lại tab vẫn thấy màn
-                // Visualizer trống không còn gì đang phát.
-                visualizerUI.classList.remove('fade-enter-active');
-                canvas.classList.add('opacity-0');
-                const webglCanvasEl = document.getElementById('webgl-canvas');
-                if (webglCanvasEl) webglCanvasEl.classList.add('opacity-0');
-                playlistView.classList.remove('-translate-y-full');
-                if (typeof closeControlCenter === 'function') closeControlCenter(); // phòng panel còn mở sót
-                setTimeout(() => { visualizerUI.classList.add('hidden'); playerContainer.classList.add('hidden'); renderPlaylistDiff(); }, 300);
-            } finally {
-                _resetPlayerToIdleInProgress = false;
-            }
+            audioPlayer.pause();
+            audioPlayer.currentTime = 0;
+            if (currentObjectURL) { URL.revokeObjectURL(currentObjectURL); currentObjectURL = null; }
+            if (currentCoverObjectURL) { URL.revokeObjectURL(currentCoverObjectURL); currentCoverObjectURL = null; }
+            audioPlayer.removeAttribute('src'); audioPlayer.src = '';
+            const previousKey = currentKey;
+            currentKey = null;
+            // Reset UI player về ĐÚNG trạng thái ban đầu — xem bottom-player.js (TPL_BOTTOM_PLAYER)
+            // để biết giá trị gốc lúc chưa chọn bài nào.
+            playerTitle.textContent = 'Chưa chọn bài'; playerArtist.textContent = '---';
+            recordContainer.innerHTML = `<img id="record-art" src="" class="w-full h-full rounded-full object-cover shadow-lg relative z-20" alt="Record"><div class="absolute inset-0 m-auto w-3 h-3 bg-slate-900 rounded-full border border-slate-700 z-30"></div>`;
+            progressBar.value = 0;
+            currentTimeDisplay.textContent = '0:00'; durationTimeDisplay.textContent = '0:00';
+            if ('mediaSession' in navigator) { navigator.mediaSession.metadata = null; navigator.mediaSession.playbackState = 'none'; }
+            btnReturnVisual.classList.add('hidden');
+            if (previousKey) refreshSongNode(previousKey); // bỏ trạng thái "đang phát" (chấm xanh/EQ icon) khỏi bài vừa dừng trong danh sách
         }
 
         function switchToVisualizer() {
@@ -179,11 +110,7 @@
         playPauseBtn.addEventListener('click', () => {
             requestWakeLock(); if (playlistOrder.length === 0) return;
             if (currentKey === null) { window.playSong(displayOrder[0] || playlistOrder[0]); return; }
-            // FIX (log 9->10): 'interrupted' là trạng thái RIÊNG của iOS Safari khi audio bị hệ điều
-            // hành "ngắt" lúc tab/app bị ẩn (khác 'suspended' — xem giải thích đầy đủ ở
-            // setupAudioContext(), audio-engine.js). Thiếu check này thì audioContext.resume() không
-            // được gọi, dù audioPlayer.play() có chạy thì vẫn không nghe được tiếng gì.
-            if (audioPlayer.paused) { audioPlayer.play(); if (audioContext && (audioContext.state === 'suspended' || audioContext.state === 'interrupted')) audioContext.resume(); } else { audioPlayer.pause(); }
+            if (audioPlayer.paused) { audioPlayer.play(); if (audioContext && audioContext.state === 'suspended') audioContext.resume(); } else { audioPlayer.pause(); }
         });
 
         btnNext.addEventListener('click', () => playNext(true)); btnPrev.addEventListener('click', () => playPrev());
@@ -232,19 +159,7 @@
             if (currentKey && typeof addSongListenTime === 'function') addSongListenTime(currentKey, delta);
             if (pendingListenSeconds >= 5) {
                 const toFlush = pendingListenSeconds; pendingListenSeconds = 0;
-                // FIX (log 9->10, mục "Promise bị reject nhưng không ai .catch()"): hàm này chạy mỗi
-                // GIÂY qua setInterval (xem startListenClock()) SUỐT lúc nhạc đang phát — nếu tab bị
-                // ẩn trên iOS và connection IndexedDB bị hệ điều hành đóng/treo giữa lúc transaction
-                // đang mở (db.transaction() throw đồng bộ một DOMException khi connection đã chết —
-                // xem db.js, makeStoreAccessor), exception đó tự biến thành promise reject vì nằm
-                // trong .then() callback. Thiếu .catch() ở đây khiến nó thoát ra dưới dạng
-                // "unhandled promise rejection" — có thể lặp lại MỖI GIÂY nếu trạng thái lỗi kéo dài,
-                // đúng log "[FATAL] Promise bị reject nhưng không ai .catch(): TypeError {}" người
-                // dùng báo lại qua console-log tool. Best-effort — bỏ qua lỗi (log để dò), không để
-                // 1 lượt ghi thống kê lỗi làm crash/spam lỗi ra ngoài.
-                getMeta('totalListenSeconds')
-                    .then(v => setMeta('totalListenSeconds', (v || 0) + toFlush))
-                    .catch(err => console.warn('[player-controls] Không ghi được totalListenSeconds (best-effort, bỏ qua):', err));
+                getMeta('totalListenSeconds').then(v => setMeta('totalListenSeconds', (v || 0) + toFlush));
             }
         }
         function startListenClock() {

@@ -2,54 +2,6 @@
  * Hằng số cấu hình toàn cục: APP_CONFIG, PERFORMANCE_PROFILES, danh sách EQ, MODES, DEFAULT_VIZ_CONFIG.
  * (Trích từ file gốc, dòng 1-25 trong khối <script>)
  */
-        // FIX (ver 8 refine #2 — yêu cầu "đặt console.log/alert nếu có lỗi"): bắt TOÀN BỘ lỗi
-        // runtime không được try/catch ở bất kỳ đâu khác trong app — kể cả lỗi xảy ra ngay lúc
-        // nạp script (ví dụ 1 phần tử DOM bị thiếu id khiến dom-refs.js trả về null, rồi 1 file
-        // core/playlist nào đó gọi .addEventListener trên null) — những lỗi NHƯ VẬY trước đây làm
-        // TOÀN BỘ script phía sau dừng nạp HOÀN TOÀN và im lặng (không alert, không log gì hiện ra
-        // màn hình), đúng kiểu "không tải được file/thư mục" mà người dùng gặp (mọi tính năng phía
-        // sau điểm lỗi, kể cả nạp nhạc, ngừng hoạt động mà không có dấu hiệu gì). Đặt SỚM NHẤT có
-        // thể (đầu file core đầu tiên, NGAY SAU components/main.js) để bắt được lỗi của chính các
-        // file core/playlist/visualizer nạp SAU nó. Chỉ alert 1 LẦN DUY NHẤT (qua cờ `_hasShownFatalErrorAlert`)
-        // để tránh spam nhiều hộp thoại liên tiếp khi 1 lỗi gốc kéo theo nhiều lỗi phụ.
-        let _hasShownFatalErrorAlert = false;
-        function _reportFatalError(context, err) {
-            console.error(`[FATAL] ${context}:`, err);
-            if (!_hasShownFatalErrorAlert) {
-                _hasShownFatalErrorAlert = true;
-                try {
-                    alert(`Đã xảy ra lỗi không mong muốn (${context}). Vui lòng tải lại trang (F5).\n\nChi tiết: ${err && err.message ? err.message : err}`);
-                } catch (alertErr) { /* alert có thể bị chặn ở 1 số trình duyệt — bỏ qua, log vẫn còn ở console */ }
-            }
-        }
-        document.addEventListener("DOMContentLoaded", async () => {
-
-    try {
-        await loadConfig();
-    } catch (e) {
-        alert("loadConfig\n" + (e?.stack || e));
-        throw e;
-    }
-
-    try {
-        await loadSongStats();
-    } catch (e) {
-        alert("loadSongStats\n" + (e?.stack || e));
-        throw e;
-    }
-
-    try {
-        await initPlaylistFromDB();
-    } catch (e) {
-        alert("initPlaylistFromDB\n" + (e?.stack || e));
-        throw e;
-    }
-
-});
-        window.addEventListener('unhandledrejection', (e) => {
-            _reportFatalError('Promise bị reject nhưng không ai .catch()', e.reason);
-        });
-
         const APP_CONFIG = { fftSizeStandard: 256, fftSizeHighRes: 2048, fftSizePitch: 2048, bpmMinWaitTime: 250 };
         const PERFORMANCE_PROFILES = {
             high: { stars: 200, tunnelRings: 60, glassDrops: 250, bldMult: 1.0, streakProb: 0.8, blurMult: 1.0, streetRain: 220 },

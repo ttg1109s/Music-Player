@@ -14,17 +14,6 @@
         // động). Cùng xử lý chung qua handleAudioFiles() ở playlist/loader.js.
         const folderInput = document.getElementById('audio-upload-folder');
         const btnUploadAudio = document.getElementById('btn-upload-audio'), uploadActionMenu = document.getElementById('upload-action-menu');
-        // FIX (ver 8 refine #2): nếu 1 trong các id trên không khớp với template HTML thật (lỗi gõ
-        // nhầm id, hoặc component nạp sai thứ tự khiến #app-root chưa có nội dung lúc dom-refs.js
-        // chạy), getElementById trả về null — gọi .addEventListener trên null ở loader.js sẽ throw
-        // ngay, dừng TOÀN BỘ script phía sau (kể cả core/playlist/visualizer chưa kịp nạp), đúng
-        // triệu chứng "không tải được file/thư mục" (và mọi thứ khác) mà không rõ nguyên nhân. Log
-        // rõ NGAY TẠI ĐÂY (đúng phần tử nào bị thiếu) trước khi lỗi mơ hồ xảy ra ở file khác.
-        [['fileInput', fileInput, 'audio-upload'], ['folderInput', folderInput, 'audio-upload-folder'],
-         ['btnUploadAudio', btnUploadAudio, 'btn-upload-audio'], ['uploadActionMenu', uploadActionMenu, 'upload-action-menu']]
-            .forEach(([varName, el, id]) => {
-                if (!el) console.error(`[dom-refs] KHÔNG tìm thấy #${id} trong DOM (biến ${varName} = null) — chức năng nạp nhạc sẽ lỗi ngay khi loader.js gắn event listener.`);
-            });
         const canvas = document.getElementById('visualizer'), ctx = canvas.getContext('2d');
         const playlistView = document.getElementById('playlist-view'), visualizerUI = document.getElementById('visualizer-ui'), playerContainer = document.getElementById('player-container');
         const playlistBg = document.getElementById('playlist-bg');

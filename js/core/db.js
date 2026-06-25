@@ -26,97 +26,29 @@
  * PHẢI nạp SỚM trong index.html (đầu nhóm core/), TRƯỚC playlist.js, player-controls.js,
  * equalizer-settings.js, subtitles.js, about-stats.js, id3-export.js — các file đó gọi
  * hàm helper định nghĩa ở đây.
- *
- * FIX (log 9->10, nguyên nhân gốc rễ THẬT của "không ra tiếng dù vẫn next/prev/cache list bình
- * thường" — phát hiện qua phân tích log unhandled-rejection + xác nhận bằng tài liệu IndexedDB):
- * `dbReadyPromise` (bản trước) là 1 `new Promise(...)` resolve/reject ĐÚNG 1 LẦN trong đời app —
- * mọi `makeStoreAccessor()` sau đó `.then((db) => ...)` lại CHÍNH connection `db` đã cache từ
- * lần resolve đầu tiên đó, vĩnh viễn, không bao giờ mở lại. Trên iOS Safari, khi tab/app bị ẩn đủ
- * lâu, trình duyệt có thể tự ĐÓNG connection IndexedDB đang mở để giải phóng tài nguyên (xem
- * IDBDatabase: 'close' event — MDN; cũng được xác nhận là hành vi thật gặp trên Chromium/WebKit
- * khi switch app rồi quay lại) — đây KHÔNG phải app tự gọi `db.close()`, mà do hệ điều hành/trình
- * duyệt áp đặt từ ngoài, đúng kiểu với việc AudioContext bị chuyển 'interrupted' (đã sửa ở mục 3).
- * Biến `db` trong closure của `makeStoreAccessor` vẫn TỒN TẠI trong RAM (không bị xoá), nhưng MỌI
- * lệnh `db.transaction(...)` gọi trên nó sau khi đã đóng đều THROW `InvalidStateError` — và vì
- * không có cơ chế phát hiện việc này + mở lại connection mới, MỌI truy vấn IndexedDB sau đó
- * (đọc bài hát, đọc/ghi thống kê...) vĩnh viễn thất bại cho tới khi reload trang.
- *
- * Đây giải thích ĐÚNG NGUYÊN VĂN hành vi quan sát được: playlist (đã load vào RAM —
- * `playlistCache`/`songNameIndex` — từ lúc mở app, KHÔNG cần đọc lại IndexedDB) vẫn hiển thị và
- * Next/Prev vẫn "chạy" được (chỉ tính index trong RAM, xem playNext()/playPrev()) — nhưng
- * `playSong()` cần `await getSongRecord(key)` (đọc blob THẬT từ IndexedDB) để có dữ liệu tạo
- * `audioPlayer.src` — lệnh đó throw, hàm `playSong()` dừng đột ngột tại dòng đó, KHÔNG BAO GIỜ
- * chạy tới `audioPlayer.src = ...`/`audioPlayer.play()` — audio element vẫn được tạo bình thường
- * (không crash gì), chỉ là không có dữ liệu thật nào được gán vào để phát, nên hoàn toàn im lặng.
- *
- * Giải pháp — 2 lớp bảo vệ, không phụ thuộc lẫn nhau (đề phòng lớp 1 bị bỏ lỡ):
- *   1. Gắn `db.onclose` ngay khi connection mở thành công — khi trình duyệt tự đóng connection,
- *      lập tức thay `dbReadyPromise` bằng 1 lượt `openDatabase()` MỚI, để lần `.then()` kế tiếp tự
- *      nhận được connection mới, không cần ai gọi gì thêm.
- *   2. PHÒNG TRƯỜNG HỢP `onclose` không bắn kịp/bị bỏ lỡ (đã ghi nhận thực tế là có thể xảy ra —
- *      xem báo cáo Chromium): `makeStoreAccessor()` tự bắt lỗi `db.transaction()` throw vì
- *      connection chết (`InvalidStateError`, hoặc message chứa "closing"/"closed"), TỰ mở 1
- *      connection mới (gọi `openDatabase()` trực tiếp, không chờ `dbReadyPromise` cũ) và RETRY
- *      đúng 1 lần trên connection mới đó trước khi để lỗi propagate ra ngoài — không retry vô hạn
- *      (tránh loop nếu lỗi thật là do dữ liệu/quyền, không phải do connection chết).
  */
         const DB_NAME = 'musicPlayerDB';
         const DB_VERSION = 2; // tăng lên 2 để buộc onupgradeneeded chạy lại cho DB cũ (v1) bị thiếu store
 
-        /** Mở 1 connection IndexedDB mới — tách hàm riêng để có thể gọi lại khi connection cũ chết. */
-        function openDatabase() {
-            return new Promise((resolve, reject) => {
-                const request = indexedDB.open(DB_NAME, DB_VERSION);
-                request.onupgradeneeded = () => {
-                    const db = request.result;
-                    if (!db.objectStoreNames.contains('songs')) db.createObjectStore('songs');
-                    if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta');
-                };
-                request.onsuccess = () => {
-                    const db = request.result;
-                    // (1) Phát hiện việc trình duyệt tự đóng connection (tab/app bị ẩn lâu trên iOS,
-                    // v.v.) — mở sẵn 1 connection MỚI ngay lập tức để lần truy vấn kế tiếp dùng được
-                    // luôn, không phải đợi tới khi truy vấn đó thất bại rồi mới biết để mở lại.
-                    db.onclose = () => {
-                        console.warn('[db] Connection IndexedDB bị đóng ngoài ý muốn (có thể do tab/app vừa bị ẩn lâu) — tự mở lại connection mới.');
-                        dbReadyPromise = openDatabase();
-                    };
-                    resolve(db);
-                };
-                request.onerror = () => reject(request.error);
-                request.onblocked = () => console.warn('[db] Mở IndexedDB bị "blocked" — có tab/cửa sổ khác đang giữ kết nối DB phiên bản cũ. Đóng các tab khác của trang này rồi tải lại.');
-            });
-        }
-
-        let dbReadyPromise = openDatabase();
-
-        /** true nếu lỗi rõ ràng là do connection IndexedDB đã chết (không phải lỗi dữ liệu/quyền khác). */
-        function isDeadConnectionError(err) {
-            const name = err && err.name;
-            const msg = (err && err.message || '').toLowerCase();
-            return name === 'InvalidStateError' || msg.includes('closing') || msg.includes('closed') || msg.includes('connection is closing');
-        }
+        const dbReadyPromise = new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, DB_VERSION);
+            request.onupgradeneeded = () => {
+                const db = request.result;
+                if (!db.objectStoreNames.contains('songs')) db.createObjectStore('songs');
+                if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta');
+            };
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+            request.onblocked = () => console.warn('[db] Mở IndexedDB bị "blocked" — có tab/cửa sổ khác đang giữ kết nối DB phiên bản cũ. Đóng các tab khác của trang này rồi tải lại.');
+        });
 
         /**
          * Tạo 1 "store accessor" tương thích đúng signature mà idb-keyval cần
          * ((txMode, callback) => Promise), dùng chung 1 connection DB đã mở sẵn ở trên — thay cho
          * idbKeyval.createStore() (nguồn gốc lỗi race condition ở trên).
-         *
-         * (2) Lớp bảo vệ thứ hai: nếu db.transaction() throw vì connection đã chết (phòng trường
-         * hợp onclose ở openDatabase() không bắn kịp/bị bỏ lỡ), tự mở 1 connection MỚI và retry
-         * đúng 1 lần trên đó trước khi để lỗi bay ra ngoài.
          */
         function makeStoreAccessor(storeName) {
-            return (txMode, callback) => dbReadyPromise.then((db) => {
-                try {
-                    return callback(db.transaction(storeName, txMode).objectStore(storeName));
-                } catch (err) {
-                    if (!isDeadConnectionError(err)) throw err; // lỗi khác (không liên quan connection chết) — không retry, để nguyên lỗi gốc
-                    console.warn(`[db] Connection IndexedDB đã chết lúc mở transaction (store "${storeName}") — tự mở connection mới và thử lại 1 lần.`, err);
-                    dbReadyPromise = openDatabase();
-                    return dbReadyPromise.then((freshDb) => callback(freshDb.transaction(storeName, txMode).objectStore(storeName)));
-                }
-            });
+            return (txMode, callback) => dbReadyPromise.then((db) => callback(db.transaction(storeName, txMode).objectStore(storeName)));
         }
 
         const songsStore = makeStoreAccessor('songs');
