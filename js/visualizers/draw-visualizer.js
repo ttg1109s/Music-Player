@@ -29,10 +29,10 @@
             // nếu không) phía dưới. Vẫn phải tính toán phân tích âm thanh (BPM/Pitch/Energy ở
             // stats-panel dùng chung các biến này) mỗi khung hình — CHỈ bỏ qua phần vẽ canvas.
             //
-            // isVisualForceHiddenByTab (ver 8 refine, xem wakelock.js): ẩn CƯỠNG CHẾ thêm khi tab/
-            // app đang ở nền — KHÔNG đụng tới vizConfig.visualEnabled (lựa chọn người dùng), chỉ là
-            // 1 lớp che tạm thời tự gỡ ngay khi tab hiện lại.
-            const isVisualOff = vizConfig.visualEnabled === false || isVisualForceHiddenByTab;
+            // (Ver 8 refine — lần 2: đã BỎ cờ isVisualForceHiddenByTab — khi tab/app bị ẩn giờ
+            // resetPlayerToIdle() dừng hẳn nhạc + currentKey = null, không cần ẩn cưỡng chế visual
+            // riêng nữa, vì không còn gì đang phát để mà vẽ. Xem wakelock.js.)
+            const isVisualOff = vizConfig.visualEnabled === false;
 
             if (isVisualOff) {
                 if (canvas.style.visibility !== 'hidden') {
