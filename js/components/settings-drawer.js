@@ -28,7 +28,7 @@ const TPL_SETTINGS_DRAWER = `
                                 <div><div class="text-xs text-slate-400">Thay thế mọi hình nền bằng Video</div></div>
                                 <label class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-bold cursor-pointer transition-colors shadow">
                                     Chọn Video
-                                    <input type="file" id="setting-video-upload" accept="video/*" class="hidden">
+                                    <input type="file" id="setting-video-upload" accept=".mp4,.webm,.ogv,.mov,video/mp4,video/webm,video/ogg,video/quicktime" class="hidden">
                                 </label>
                             </div>
                             <div class="flex justify-between items-center p-4 pt-0 border-t border-white/5">
@@ -44,7 +44,7 @@ const TPL_SETTINGS_DRAWER = `
                             <div><div class="text-sm font-medium">Ảnh nền Playlist</div></div>
                             <label class="px-3 py-1.5 bg-sky-500 hover:bg-sky-400 text-white rounded-lg text-xs font-bold cursor-pointer transition-colors shadow">
                                 Đổi ảnh
-                                <input type="file" id="setting-bg-upload" accept="image/*" class="hidden">
+                                <input type="file" id="setting-bg-upload" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" class="hidden">
                             </label>
                         </div>
                         <div class="flex justify-between items-center p-4 border-b border-white/5">
