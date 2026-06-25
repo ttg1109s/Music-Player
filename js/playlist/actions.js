@@ -203,12 +203,13 @@
             songEditTabCover.classList.toggle('flex', isCover);
             songEditTabButtons.forEach(btn => {
                 const active = btn.dataset.editTab === tab;
-                btn.classList.toggle('bg-sky-500/20', active);
-                btn.classList.toggle('text-sky-300', active);
-                btn.classList.toggle('border-sky-500/40', active);
-                btn.classList.toggle('bg-white/5', !active);
+                // Pill style (ver 8 refine): tab active nổi lên nền sáng + chữ trắng + shadow nhẹ;
+                // tab inactive chỉ còn chữ mờ, không nền/viền riêng (rãnh nền tối bao quanh đã đủ
+                // tạo ngữ cảnh "đây là switcher", không cần viền màu trên từng nút như bản trước).
+                btn.classList.toggle('bg-white/10', active);
+                btn.classList.toggle('text-white', active);
+                btn.classList.toggle('shadow', active);
                 btn.classList.toggle('text-slate-400', !active);
-                btn.classList.toggle('border-white/10', !active);
             });
         }
         songEditTabButtons.forEach(btn => btn.addEventListener('click', () => setSongEditTab(btn.dataset.editTab)));
@@ -306,18 +307,33 @@
         const songInfoBody = document.getElementById('song-info-body');
         let songInfoCurrentKey = null;
 
+        /**
+         * Dựng 1 dòng thông tin dạng "card" nhỏ (icon tròn màu + label + giá trị) — thay cho
+         * <div class="flex justify-between"> trần trước đây, để 6 dòng dữ liệu dễ quét mắt hơn,
+         * đồng bộ phong cách icon-tròn-màu đã dùng ở header 2 modal (Sửa thông tin/Thông tin).
+         */
+        function songInfoRowHtml(iconPath, accentClass, label, value) {
+            return `
+                <div class="flex items-center gap-3 bg-black/25 border border-white/5 rounded-xl px-3 py-2.5">
+                    <div class="w-7 h-7 rounded-full ${accentClass} flex items-center justify-center shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${iconPath}" /></svg>
+                    </div>
+                    <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide shrink-0 w-[88px]">${label}</span>
+                    <span class="text-sm text-white text-right flex-1 break-all">${value}</span>
+                </div>`;
+        }
+
         function openSongInfoModal(key) {
             const cached = playlistCache.get(key); if (!cached) return;
             songInfoCurrentKey = key;
             const stats = getSongStats(key); // { count, totalTime }
-            songInfoBody.innerHTML = `
-                <div class="flex justify-between"><span class="text-slate-500">Tên bài</span><span class="text-right break-all max-w-[60%]">${cached.tag.title || '—'}</span></div>
-                <div class="flex justify-between"><span class="text-slate-500">Nghệ sĩ</span><span>${cached.tag.artist || '—'}</span></div>
-                <div class="flex justify-between"><span class="text-slate-500">Album</span><span>${cached.tag.album || '—'}</span></div>
-                <div class="flex justify-between"><span class="text-slate-500">Thời lượng</span><span>${formatTime(cached.duration)}</span></div>
-                <div class="flex justify-between"><span class="text-slate-500">Số lần nghe</span><span>${stats.count} lần</span></div>
-                <div class="flex justify-between"><span class="text-slate-500">Thời gian đã nghe</span><span>${formatListenTime(stats.totalTime)}</span></div>
-            `;
+            songInfoBody.innerHTML =
+                songInfoRowHtml('M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM3 9a9 9 0 0118 0', 'bg-sky-500/15 text-sky-400', 'Tên bài', cached.tag.title || '—') +
+                songInfoRowHtml('M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z', 'bg-violet-500/15 text-violet-400', 'Nghệ sĩ', cached.tag.artist || '—') +
+                songInfoRowHtml('M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM3 9a9 9 0 0118 0', 'bg-emerald-500/15 text-emerald-400', 'Album', cached.tag.album || '—') +
+                songInfoRowHtml('M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', 'bg-amber-500/15 text-amber-400', 'Thời lượng', formatTime(cached.duration)) +
+                songInfoRowHtml('M9 19V6l12-3v13M5 21a2 2 0 100-4 2 2 0 000 4zm12-2a2 2 0 100-4 2 2 0 000 4z', 'bg-rose-500/15 text-rose-400', 'Số lần nghe', `${stats.count} lần`) +
+                songInfoRowHtml('M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', 'bg-indigo-500/15 text-indigo-400', 'Đã nghe', formatListenTime(stats.totalTime));
             songInfoModal.classList.remove('hidden');
         }
         document.getElementById('song-info-close').addEventListener('click', () => songInfoModal.classList.add('hidden'));

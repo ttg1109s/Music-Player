@@ -28,9 +28,15 @@
             });
         }
 
-        fileInput.addEventListener('change', async function(e) {
-            const allFiles = Array.from(e.target.files); if (allFiles.length === 0) return;
-            e.target.value = '';
+        /**
+         * Xử lý 1 FileList bất kỳ (từ input chọn file rời HOẶC input "Chọn cả thư mục") — TÁCH
+         * RA thành hàm riêng (ver 8 refine) để 2 input dùng chung 100% logic, không lặp code.
+         * webkitdirectory trả về FileList chứa MỌI file trong thư mục + thư mục con (ảnh, txt,
+         * .DS_Store, v.v., không chỉ nhạc) — validateAudioFile() ở vòng lọc bên dưới tự loại các
+         * file không phải nhạc, y hệt cách input file rời lọc file sai định dạng cố tình chọn.
+         */
+        async function handleAudioFiles(fileList) {
+            const allFiles = Array.from(fileList); if (allFiles.length === 0) return;
             playlistEmpty.classList.add('hidden');
 
             const failedFiles = [];
@@ -132,6 +138,51 @@
             if (failedFiles.length > 0) {
                 alert(`Không nạp được ${failedFiles.length} file:\n\n${failedFiles.join('\n\n')}`);
             }
+        }
+
+        fileInput.addEventListener('change', async function(e) {
+            const fileList = e.target.files;
+            e.target.value = '';
+            await handleAudioFiles(fileList);
+        });
+
+        folderInput.addEventListener('change', async function(e) {
+            const fileList = e.target.files;
+            e.target.value = '';
+            await handleAudioFiles(fileList);
+        });
+
+        // ===================== Menu nhỏ cho nút "Thêm nhạc": Chọn file / Chọn cả thư mục =====================
+        // Dùng CHUNG #song-action-overlay (đã có sẵn ở playlist/actions.js) để đóng khi bấm ra
+        // ngoài — tại 1 thời điểm chỉ 1 trong 2 menu (#song-action-menu / #upload-action-menu)
+        // hiện, không xung đột. Cùng công thức định vị "rect.bottom + 6, lật lên nếu tràn đáy màn
+        // hình" như openSongActionMenu() để 2 menu có cảm giác nhất quán.
+        const songActionOverlayForUpload = document.getElementById('song-action-overlay');
+        function closeUploadActionMenu() {
+            uploadActionMenu.classList.add('hidden');
+            songActionOverlayForUpload.classList.add('hidden');
+        }
+        btnUploadAudio.addEventListener('click', () => {
+            const rect = btnUploadAudio.getBoundingClientRect();
+            const menuWidth = 208;
+            let left = rect.right - menuWidth;
+            if (left < 8) left = 8;
+            let top = rect.bottom + 8;
+            const viewportH = window.innerHeight || 800;
+            if (top + 110 > viewportH) top = rect.top - 110 - 8;
+            uploadActionMenu.style.left = `${left}px`;
+            uploadActionMenu.style.top = `${top}px`;
+            uploadActionMenu.classList.remove('hidden');
+            songActionOverlayForUpload.classList.remove('hidden');
+        });
+        songActionOverlayForUpload.addEventListener('click', closeUploadActionMenu);
+        uploadActionMenu.addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-upload-action]');
+            if (!btn) return;
+            const action = btn.dataset.uploadAction;
+            closeUploadActionMenu();
+            if (action === 'files') fileInput.click();
+            else if (action === 'folder') folderInput.click();
         });
 
         /**
