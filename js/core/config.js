@@ -24,13 +24,13 @@
         }
         window.addEventListener("error", e => {
 
-    console.log(e);
+    alert(console.log(e));
 
-    console.log(e.target);
+    alet(console.log(e.target));
 
-    console.log(e.currentTarget);
+    alert(console.log(e.currentTarget));
 
-    console.log(e.error);
+    alert(console.log(e.error));
 
 });
         window.addEventListener('unhandledrejection', (e) => {
