@@ -203,7 +203,7 @@
             songInfoCurrentKey = key;
             const stats = getSongStats(key); // { count, totalTime }
             songInfoBody.innerHTML = `
-                <div class="flex justify-between"><span class="text-slate-500">Tên file gốc</span><span class="text-right break-all max-w-[60%]">${cached.filename}</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">Tên bài</span><span class="text-right break-all max-w-[60%]">${cached.tag.title || '—'}</span></div>
                 <div class="flex justify-between"><span class="text-slate-500">Nghệ sĩ</span><span>${cached.tag.artist || '—'}</span></div>
                 <div class="flex justify-between"><span class="text-slate-500">Album</span><span>${cached.tag.album || '—'}</span></div>
                 <div class="flex justify-between"><span class="text-slate-500">Thời lượng</span><span>${formatTime(cached.duration)}</span></div>
