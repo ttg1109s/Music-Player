@@ -35,10 +35,8 @@ const TPL_PLAYLIST_VIEW = `
                 <button id="btn-settings-playlist" class="hover:text-sky-400 transition-colors" title="Cài đặt">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                 </button>
-                <button id="btn-toggle-view" class="hover:text-sky-400 transition-colors" title="Đổi giao diện">
-                    <svg id="icon-grid-view" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
-                    <svg id="icon-list-view" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
-                </button>
+                <!-- "Đổi giao diện" (Grid/List) đã dồn vào Settings (section "Danh sách phát &
+                     Nền") — không còn icon riêng ở header, theo yêu cầu dọn header gọn lại. -->
                 </div>
             </div>
 
@@ -54,7 +52,9 @@ const TPL_PLAYLIST_VIEW = `
                 </div>
             </div>
 
-            <!-- Hàng 3: Phát | Trộn bài | Sắp xếp -->
+            <!-- Hàng 3: Phát | Trộn bài. "Sắp xếp" + "Kiểu xem" (Grid/List) đã dồn vào Settings
+                 (section "Danh sách phát & Nền", xem js/components/settings/playlist-background.js)
+                 — không còn icon riêng ở đây, theo yêu cầu dọn header gọn lại. -->
             <div class="flex gap-3">
                 <button onclick="if(displayOrder.length > 0) playSong(currentKey || displayOrder[0]);" class="flex-1 min-w-0 bg-white/10 hover:bg-white/20 backdrop-blur-md active:scale-95 transition-all py-3 rounded-2xl flex items-center justify-center gap-1.5 font-semibold text-[14px] text-white">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>
@@ -64,16 +64,6 @@ const TPL_PLAYLIST_VIEW = `
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
                     Trộn bài
                 </button>
-                <div class="relative shrink-0">
-                    <button id="btn-sort-display" class="h-11 w-11 bg-white/10 hover:bg-white/20 backdrop-blur-md active:scale-95 transition-all rounded-2xl flex items-center justify-center text-white" title="Sắp xếp danh sách hiển thị">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9M3 12h9m-9 4h9m5-8v12m0 0l-3-3m3 3l3-3" /></svg>
-                    </button>
-                    <div id="sort-display-menu" class="hidden absolute right-0 top-full mt-2 w-48 bg-[#171c2b] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
-                        <button data-sort="default" class="sort-display-option flex justify-between items-center w-full px-4 py-2.5 text-sm text-left hover:bg-white/10 transition-colors">Mặc định (mới thêm)<svg class="sort-check h-4 w-4 text-sky-400 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg></button>
-                        <button data-sort="az" class="sort-display-option flex justify-between items-center w-full px-4 py-2.5 text-sm text-left hover:bg-white/10 transition-colors border-t border-white/5">Tên A → Z<svg class="sort-check h-4 w-4 text-sky-400 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg></button>
-                        <button data-sort="za" class="sort-display-option flex justify-between items-center w-full px-4 py-2.5 text-sm text-left hover:bg-white/10 transition-colors border-t border-white/5">Tên Z → A<svg class="sort-check h-4 w-4 text-sky-400 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg></button>
-                    </div>
-                </div>
             </div>
         </div>
 
