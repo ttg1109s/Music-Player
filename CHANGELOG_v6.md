@@ -206,3 +206,8 @@ Một số chỉnh sửa nhỏ tiếp theo trong cùng vòng ver 6:
    bằng một bộ đếm `performance.now()` chạy mỗi giây CHỈ khi nhạc thực sự phát,
    có chặn delta bất thường (tab nền/máy ngủ). Nhờ vậy thống kê "đã nghe bao lâu"
    độc lập hoàn toàn với thanh tiến trình và chính xác hơn.
+6. **Loading shield có tham số `display` (on/off).** `withLoadingShield(text, fn,
+   display=true)`: khi `display=false` vẫn chạy logic + khoá chồng lệnh nhưng
+   KHÔNG hiện lớp che. **Chuyển bài (Next/Prev) giờ dùng `display=false`** nên bỏ
+   hẳn cú nháy lớp đen `bg-black/80` mỗi lần đổi bài — kết hợp với sửa video ở
+   mục 1, việc chuyển bài giờ mượt hoàn toàn, không chớp.
