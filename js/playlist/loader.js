@@ -285,6 +285,25 @@
 
         /** Khởi động app / quét lại: store `songs` là chân lý duy nhất — quét nhanh rồi dựng cả 2 thứ tự. */
         async function initPlaylistFromDB() {
+            // PHÒNG THỦ "Clear All bị gián đoạn" (đóng tab/crash giữa lúc đang xoá — xem comment
+            // đầy đủ ở clearAllStoredData(), storage-manager.js): nếu cờ này còn `true` từ phiên
+            // trước, nghĩa là lượt xoá đó CHƯA xoá xong hoàn toàn. Dọn tiếp NGAY TỪ ĐÂY, dưới lớp
+            // loading shield, TRƯỚC khi load playlist — tránh người dùng mở app thấy vài bài "sống
+            // sót" lẫn trong danh sách dù nghĩ đã xoá hết (zip/confirm đã chạy ở phiên trước).
+            // clearAllStoredData() AN TOÀN để gọi lại (idempotent) dù phiên trước đã xoá hết/xoá dở/
+            // chưa xoá gì — kết quả cuối luôn đúng là "đã xoá sạch", không phụ thuộc xoá dở ở đâu.
+            // LƯU Ý thứ tự nạp: storage-manager.js (định nghĩa clearAllStoredData) nạp SAU file
+            // này trong index.html — nhưng AN TOÀN, vì initPlaylistFromDB() chỉ được GỌI lúc
+            // 'DOMContentLoaded' (xem draw-visualizer.js), tức SAU KHI toàn bộ <script> (kể cả
+            // storage-manager.js) đã thực thi xong; clearAllStoredData đã tồn tại trên global tại
+            // thời điểm gọi, dù được ĐỊNH NGHĨA ở file nạp sau file này.
+            const wasClearing = await getMeta('clearingInProgress');
+            if (wasClearing) {
+                await withLoadingShield('Đang dọn dữ liệu dở từ lần trước...', async () => {
+                    await clearAllStoredData();
+                });
+            }
+
             // Quyết định hiển thị TRƯỚC khi đọc sâu (yêu cầu: if key<=0 -> "chưa có bài"; else -> loading list):
             const rawKeys = await getAllSongKeys();
             if (rawKeys.length <= 0) {
