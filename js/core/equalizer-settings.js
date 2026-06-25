@@ -24,7 +24,36 @@
             for(let i=0; i<10; i++) { if(sliders[i]) { sliders[i].value = gains[i]; document.getElementById(`eq-val-${i}`).textContent = gains[i] > 0 ? `+${gains[i]}` : gains[i]; } }
         }
 
-        function saveConfig() { localStorage.setItem('visualMasterConfigV21', JSON.stringify(vizConfig)); }
+        /**
+         * LƯU CONFIG (v7) — 2 lớp:
+         *   (1) localStorage — NGUỒN GHI CHÍNH, đồng bộ, tức thì. saveConfig() được gọi RẤT dày
+         *       (mỗi lần kéo 1 slider màu/EQ/sub-style...) nên phải giữ đồng bộ & rẻ, không thể đổi
+         *       thẳng sang IndexedDB (async) cho lớp này — sẽ tạo hàng trăm transaction/giây lúc kéo.
+         *   (2) IndexedDB (meta.configBackup) — BẢN SAO LƯU, ghi DEBOUNCE (giống cơ chế đã có ở
+         *       listen-stats.js: gom nhiều thay đổi liên tiếp thành 1 lần ghi sau 2s yên tĩnh).
+         *       Mục đích DUY NHẤT: phòng trường hợp browser tự xoá localStorage (ví dụ Safari iOS
+         *       xoá dữ liệu site ít dùng để nhường chỗ, hoặc người dùng xoá "Clear browsing data"
+         *       nhưng không đụng IndexedDB) — xem loadConfig() để biết luồng phục hồi.
+         *
+         * KHÔNG backup `bgImage`/`videoBgUrl`: đây là blob: URL chỉ sống trong 1 session (tạo lại
+         * mỗi lần loadBackgroundAssets() chạy), lưu vào bản backup là vô nghĩa và có thể trỏ tới
+         * blob: URL đã chết ở session sau.
+         */
+        function saveConfig() {
+            localStorage.setItem('visualMasterConfigV21', JSON.stringify(vizConfig));
+            scheduleConfigBackup();
+        }
+
+        let _configBackupTimer = null;
+        function scheduleConfigBackup() {
+            if (_configBackupTimer) clearTimeout(_configBackupTimer);
+            _configBackupTimer = setTimeout(flushConfigBackup, 2000);
+        }
+        function flushConfigBackup() {
+            if (_configBackupTimer) { clearTimeout(_configBackupTimer); _configBackupTimer = null; }
+            const { bgImage, videoBgUrl, ...persistable } = vizConfig; // loại trừ blob: URL runtime
+            setMeta('configBackup', persistable).catch(e => console.warn('[equalizer-settings] Lưu configBackup (IndexedDB) lỗi:', e));
+        }
 
         /**
          * Đọc lại ảnh nền & video nền từ IndexedDB (meta.bgImage / meta.videoBg), tự sửa trạng thái
@@ -56,7 +85,21 @@
         }
 
         async function loadConfig() {
-            const saved = localStorage.getItem('visualMasterConfigV21') || localStorage.getItem('visualMasterConfigV20');
+            let saved = localStorage.getItem('visualMasterConfigV21') || localStorage.getItem('visualMasterConfigV20');
+            // FALLBACK (v7): localStorage rỗng (lần đầu mở MÁY THẬT MỚI, hoặc browser đã tự xoá
+            // localStorage để nhường chỗ cho dữ liệu khác) NHƯNG IndexedDB còn bản backup -> đây là
+            // dấu hiệu mất localStorage ngoài ý muốn (không phải người dùng mới thật), phục hồi lại
+            // NGAY vào localStorage rồi nạp tiếp như thường — người dùng không mất cấu hình đã chỉnh.
+            if (!saved) {
+                try {
+                    const backup = await getMeta('configBackup');
+                    if (backup && typeof backup === 'object') {
+                        saved = JSON.stringify(backup);
+                        localStorage.setItem('visualMasterConfigV21', saved);
+                        console.warn('[equalizer-settings] localStorage rỗng — đã phục hồi cấu hình từ bản backup IndexedDB.');
+                    }
+                } catch (e) { console.warn('[equalizer-settings] Không đọc được configBackup (IndexedDB):', e); }
+            }
             if (saved) { try { vizConfig = { ...vizConfig, ...JSON.parse(saved) }; } catch(e) {} }
             if(!vizConfig.manualEq) vizConfig.manualEq = [0,0,0,0,0,0,0,0,0,0];
             if(vizConfig.vortexStyle === 'tardis' || vizConfig.vortexStyle === 'classic' || vizConfig.vortexStyle === 'dust') vizConfig.vortexStyle = 'rings';

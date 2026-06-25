@@ -42,7 +42,12 @@
 
                 if (energyPercent > 1) { 
                     analyserPitch.getFloatTimeDomainData(pitchTimeDomainArray);
-                    let frequency = detectPitchYIN(pitchTimeDomainArray, audioContext.sampleRate);
+                    // v7: YIN chạy trên Worker riêng (xem audio-engine.js) — gửi buffer đi (không
+                    // chờ), rồi dùng NGAY kết quả mới nhất worker đã trả (latestPitchFrequency, có
+                    // thể trễ vài khung hình so với buffer vừa gửi). Độ trễ này cộng dồn trên nền trễ
+                    // vốn có của YIN (cần buffer ~46ms mới phân tích được) nên không cảm nhận được.
+                    requestPitchDetection(pitchTimeDomainArray, audioContext.sampleRate);
+                    let frequency = latestPitchFrequency;
                     if (frequency > 0) {
                         let midiNote = Math.round(12 * Math.log2(frequency / 440)) + 69;
                         if (midiNote > 0 && midiNote < 128) {

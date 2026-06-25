@@ -103,6 +103,10 @@
         videoUploadInput.addEventListener('change', (e) => {
             const file = e.target.files[0]; if (!file) return;
             e.target.value = '';
+            // (3c) Chỉ chấp nhận định dạng video phổ biến (mp4/webm/ogg/mov) — xem
+            // upload-validation.js. Chặn TRƯỚC khi đụng tới IndexedDB/blob URL.
+            const check = validateVideoFile(file);
+            if (!check.valid) { alert(check.reason); return; }
             withLoadingShield("Đang lưu video nền...", async () => {
                 await setMeta('videoBg', file);
                 if (vizConfig.videoBgUrl && vizConfig.videoBgUrl.startsWith('blob:')) URL.revokeObjectURL(vizConfig.videoBgUrl);

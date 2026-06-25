@@ -244,6 +244,10 @@
         bgUploadInput.addEventListener('change', (e) => {
             const file = e.target.files[0]; if (!file) return;
             e.target.value = '';
+            // (3b) Chỉ chấp nhận PNG/JPG/WEBP — xem upload-validation.js. Chặn TRƯỚC khi đụng tới
+            // IndexedDB/blob URL, không đổi gì khác trong luồng cũ nếu file hợp lệ.
+            const check = validateImageFile(file);
+            if (!check.valid) { alert(check.reason); return; }
             withLoadingShield("Đang lưu ảnh nền...", async () => {
                 await setMeta('bgImage', file);
                 if (vizConfig.bgImage && vizConfig.bgImage.startsWith('blob:')) URL.revokeObjectURL(vizConfig.bgImage);
