@@ -8,6 +8,23 @@ const TPL_PLAYLIST_VIEW = `
         <div class="absolute inset-0 bg-black/40 pointer-events-none z-0"></div>
 
         <div class="px-5 pt-12 pb-4 z-20 relative shrink-0">
+            <!-- Hàng TÌM KIẾM trên cùng (v6.1): nút Thêm nhạc bên trái — ô tìm kiếm ở giữa — nút Cài đặt bên phải. -->
+            <div class="flex items-center gap-3 mb-5">
+                <label for="audio-upload" class="shrink-0 h-12 w-12 flex items-center justify-center bg-white/10 hover:bg-white/20 active:scale-95 transition-all rounded-2xl text-white cursor-pointer backdrop-blur-md" title="Thêm nhạc">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                </label>
+                <div class="relative flex-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    <input id="playlist-search-input" type="text" inputmode="search" autocomplete="off" placeholder="Tìm bài hát, nghệ sĩ..." class="w-full bg-white/10 focus:bg-white/15 border border-white/10 focus:border-sky-500/60 rounded-2xl pl-10 pr-10 py-3.5 text-[15px] text-white placeholder-slate-400 outline-none transition-colors backdrop-blur-md">
+                    <button id="playlist-search-clear" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors p-1" title="Xóa tìm kiếm">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+                <button id="btn-settings-playlist" class="shrink-0 h-12 w-12 flex items-center justify-center bg-white/10 hover:bg-white/20 active:scale-95 transition-all rounded-2xl text-white backdrop-blur-md" title="Cài đặt">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                </button>
+            </div>
+
             <div class="flex justify-between items-center mb-6">
                 <h1 class="text-[34px] leading-none font-bold tracking-tight text-white">Bài hát</h1>
                 <div class="flex items-center gap-5 text-white">
@@ -16,13 +33,6 @@ const TPL_PLAYLIST_VIEW = `
                             <circle cx="12" cy="12" r="10"></circle>
                             <circle cx="12" cy="12" r="3"></circle>
                         </svg>
-                    </button>
-                    
-                    <label for="audio-upload" class="cursor-pointer hover:text-sky-400 transition-colors" title="Thêm nhạc">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                    </label>
-                    <button id="btn-settings-playlist" class="hover:text-sky-400 transition-colors" title="Cài đặt">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                     </button>
                     <button id="btn-toggle-view" class="hover:text-sky-400 transition-colors" title="Đổi giao diện">
                         <svg id="icon-grid-view" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
@@ -50,15 +60,6 @@ const TPL_PLAYLIST_VIEW = `
                         <button data-sort="za" class="sort-display-option flex justify-between items-center w-full px-4 py-2.5 text-sm text-left hover:bg-white/10 transition-colors border-t border-white/5">Tên Z → A<svg class="sort-check h-4 w-4 text-sky-400 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg></button>
                     </div>
                 </div>
-            </div>
-
-            <!-- Ô tìm kiếm nhanh (v6): chỉ LỌC danh sách hiển thị, không ảnh hưởng thứ tự phát. -->
-            <div class="relative mt-4">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                <input id="playlist-search-input" type="text" inputmode="search" autocomplete="off" placeholder="Tìm bài hát, nghệ sĩ..." class="w-full bg-white/10 focus:bg-white/15 border border-white/10 focus:border-sky-500/60 rounded-2xl pl-10 pr-10 py-3 text-[15px] text-white placeholder-slate-400 outline-none transition-colors backdrop-blur-md">
-                <button id="playlist-search-clear" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors p-1" title="Xóa tìm kiếm">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
             </div>
         </div>
 
@@ -106,7 +107,7 @@ const TPL_PLAYLIST_VIEW = `
             <h3 class="text-base font-bold text-sky-400">Thông tin bài hát</h3>
             <div id="song-info-body" class="flex flex-col gap-2 text-sm text-slate-300"></div>
             <div class="flex gap-3 mt-1">
-                <button id="song-info-export" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold transition-colors">Xuất file (gắn tag mới)</button>
+                <button id="song-info-export" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold transition-colors">Xuất tệp</button>
                 <button id="song-info-close" class="flex-1 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-sm font-semibold transition-colors">Đóng</button>
             </div>
         </div>
@@ -128,7 +129,7 @@ const TPL_PLAYLIST_VIEW = `
         </button>
         <button data-menu-action="restore" class="flex items-center gap-3 w-full px-4 py-3 text-sm text-left hover:bg-white/10 transition-colors text-slate-200 border-t border-white/5">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-8-4V4m0 0L8 8m4-4l4 4" /></svg>
-            Xuất file (gắn tag mới)
+            Xuất tệp
         </button>
         <button data-menu-action="delete" class="flex items-center gap-3 w-full px-4 py-3 text-sm text-left hover:bg-rose-500/10 transition-colors text-rose-400 border-t border-white/5">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
