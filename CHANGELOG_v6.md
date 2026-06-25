@@ -183,3 +183,26 @@ phổ cho visual. Đây chính là chỗ vướng:
 
 **Xoá:**
 - `js/core/playlist.js` (đã tách hết sang `js/playlist/`)
+
+---
+
+## Cập nhật bổ sung ver 6 (đợt 2)
+
+Một số chỉnh sửa nhỏ tiếp theo trong cùng vòng ver 6:
+
+1. **Video nền: fade chỉ xảy ra ĐÚNG MỘT LẦN.** Tách `handleVideoBackground()`
+   thành hai phần: `setupVideoBgSource()` (gán nguồn + fade nền-đen→hiện-video,
+   chỉ chạy khi URL video đổi) và `syncVideoBgToAudio()` (chỉ play/pause video
+   theo nhạc, KHÔNG đụng opacity). Sự kiện `play`/`pause` của nhạc giờ chỉ gọi
+   `syncVideoBgToAudio()` → **Next/Prev không còn lặp lại cú "nền đen rồi fade
+   video"** như trước; fade chỉ diễn ra lần đầu nạp video vào trình phát.
+2. **Bố cục đầu Playlist.** Đưa ô tìm kiếm lên hàng trên cùng (cố định), nút
+   **Thêm nhạc** nằm sát bên trái, nút **Cài đặt** nằm sát bên phải ô tìm kiếm.
+3. **Đổi nhãn "Xuất file (gắn tag mới)" → "Xuất tệp"** (cả trong menu 3 chấm lẫn
+   modal Thông tin bài hát).
+4. **Thông tin bài hát:** bỏ dòng "Tên file gốc" (thay bằng "Tên bài").
+5. **Thời gian đã nghe đo bằng đồng hồ thực.** Thay cách cộng dồn cũ (dựa trên
+   delta `currentTime` của thanh tiến trình — nhảy khi seek, khựng khi buffer)
+   bằng một bộ đếm `performance.now()` chạy mỗi giây CHỈ khi nhạc thực sự phát,
+   có chặn delta bất thường (tab nền/máy ngủ). Nhờ vậy thống kê "đã nghe bao lâu"
+   độc lập hoàn toàn với thanh tiến trình và chính xác hơn.
