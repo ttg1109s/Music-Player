@@ -71,7 +71,12 @@
             // Không có gì đảm bảo IndexedDB write này hoàn tất trước khi tab đóng hẳn, nhưng vẫn
             // tốt hơn là bỏ qua hoàn toàn.
             if (typeof pendingListenSeconds !== 'undefined' && pendingListenSeconds > 0) {
-                getMeta('totalListenSeconds').then(v => setMeta('totalListenSeconds', (v || 0) + pendingListenSeconds));
+                // FIX (log 9->10): cùng lý do với chỗ tương tự ở player-controls.js — thêm .catch()
+                // vì IndexedDB connection có thể đã bị đóng/treo đúng lúc trang đang unload, khiến
+                // db.transaction() throw -> promise reject không ai bắt. best-effort nên bỏ qua lỗi.
+                getMeta('totalListenSeconds')
+                    .then(v => setMeta('totalListenSeconds', (v || 0) + pendingListenSeconds))
+                    .catch(err => console.warn('[wakelock] Không ghi được totalListenSeconds lúc unload (best-effort, bỏ qua):', err));
             }
             // Ghi nốt thống kê nghe theo từng bài còn đang debounce (best-effort, xem listen-stats.js).
             if (typeof flushSongStats === 'function') flushSongStats();

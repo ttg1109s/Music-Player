@@ -232,7 +232,19 @@
             if (currentKey && typeof addSongListenTime === 'function') addSongListenTime(currentKey, delta);
             if (pendingListenSeconds >= 5) {
                 const toFlush = pendingListenSeconds; pendingListenSeconds = 0;
-                getMeta('totalListenSeconds').then(v => setMeta('totalListenSeconds', (v || 0) + toFlush));
+                // FIX (log 9->10, mục "Promise bị reject nhưng không ai .catch()"): hàm này chạy mỗi
+                // GIÂY qua setInterval (xem startListenClock()) SUỐT lúc nhạc đang phát — nếu tab bị
+                // ẩn trên iOS và connection IndexedDB bị hệ điều hành đóng/treo giữa lúc transaction
+                // đang mở (db.transaction() throw đồng bộ một DOMException khi connection đã chết —
+                // xem db.js, makeStoreAccessor), exception đó tự biến thành promise reject vì nằm
+                // trong .then() callback. Thiếu .catch() ở đây khiến nó thoát ra dưới dạng
+                // "unhandled promise rejection" — có thể lặp lại MỖI GIÂY nếu trạng thái lỗi kéo dài,
+                // đúng log "[FATAL] Promise bị reject nhưng không ai .catch(): TypeError {}" người
+                // dùng báo lại qua console-log tool. Best-effort — bỏ qua lỗi (log để dò), không để
+                // 1 lượt ghi thống kê lỗi làm crash/spam lỗi ra ngoài.
+                getMeta('totalListenSeconds')
+                    .then(v => setMeta('totalListenSeconds', (v || 0) + toFlush))
+                    .catch(err => console.warn('[player-controls] Không ghi được totalListenSeconds (best-effort, bỏ qua):', err));
             }
         }
         function startListenClock() {
