@@ -40,19 +40,6 @@
 
             // display=false: chuyển bài chạy logic trong shield (khoá chồng lệnh) nhưng KHÔNG hiện
             // lớp che -> bỏ cú nháy đen bg-black/80 mỗi lần Next/Prev (rõ nhất khi có video nền).
-            //
-            // FIX (log 9->10): trước đây withLoadingShield() KHÔNG có .catch() ở đây, và mọi nơi
-            // gọi window.playSong(...) (playPauseBtn, playNext/playPrev, click bài trong list) đều
-            // gọi fire-and-forget (không await, không .catch()). Nếu thân hàm bên dưới throw — ví
-            // dụ await getSongRecord(key) reject vì connection IndexedDB đã chết (xem giải thích
-            // đầy đủ ở db.js, đã sửa thêm cơ chế tự mở lại connection + retry 1 lần ở đó) — lỗi đó
-            // dừng hàm NGAY TẠI ĐÓ, audioPlayer.src/audioPlayer.play() ở các dòng sau KHÔNG BAO GIỜ
-            // chạy tới (im lặng hoàn toàn, không alert, không crash gì khác — đúng kiểu "vẫn
-            // next/prev được vì chỉ tính index trong RAM, nhưng không có tiếng vì không lấy được
-            // blob thật từ IndexedDB"), rồi thoát ra ngoài dưới dạng unhandled promise rejection.
-            // Sau khi db.js đã tự retry, trường hợp này hiếm xảy ra hơn nhiều, nhưng vẫn cần lớp
-            // bảo vệ cuối: nếu thật sự thất bại (retry cũng lỗi, hoặc lỗi khác hẳn), alert() đúng
-            // nguyên văn lỗi thay vì im lặng — cùng tinh thần đã áp dụng cho luồng upload.
             return withLoadingShield("Đang chuyển bài...", async () => {
                 if (currentObjectURL) { URL.revokeObjectURL(currentObjectURL); currentObjectURL = null; }
                 if (currentCoverObjectURL) { URL.revokeObjectURL(currentCoverObjectURL); currentCoverObjectURL = null; }
@@ -111,10 +98,7 @@
 
                 subtitles = record.subtitles ? record.subtitles.slice() : [];
                 clearAllActiveSubBlocks(); resetAutoSub(); renderSubList();
-            }, false).catch(err => {
-                console.error(`[playlist] playSong("${key}") lỗi không xác định, nhạc có thể không phát ra tiếng được:`, err);
-                alert(`Lỗi khi phát bài hát:\n\n${err && err.name ? err.name + ': ' : ''}${err && err.message ? err.message : String(err)}`);
-            });
+            }, false);
         };
 
         // ===================== Menu 3 chấm dùng chung =====================
