@@ -111,7 +111,7 @@
             const el = document.getElementById('playlist-loading-list');
             if (!el || el.classList.contains('hidden')) return;
             el.style.opacity = '0';
-            setTimeout(() => el.classList.add('hidden'), 320); // khớp transition-opacity duration-300
+            taskManager.once(() => el.classList.add('hidden'), 320); // khớp transition-opacity duration-300
         }
 
         /** Cập nhật trạng thái rỗng/không-kết-quả thuần từ dữ liệu (không liên quan hàng đợi phát). */

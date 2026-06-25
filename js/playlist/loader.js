@@ -20,11 +20,11 @@
                 catch (err) { console.error('[playlist] Không tạo được object URL để đọc duration:', err); return safeResolve(0); }
                 const tempAudio = new Audio();
                 const cleanup = () => { try { URL.revokeObjectURL(tempUrl); } catch (e) {} };
-                const timeoutId = setTimeout(() => { cleanup(); safeResolve(0); }, 8000);
-                tempAudio.addEventListener('loadedmetadata', () => { clearTimeout(timeoutId); const d = tempAudio.duration; cleanup(); safeResolve(isFinite(d) ? d : 0); });
-                tempAudio.addEventListener('error', () => { clearTimeout(timeoutId); cleanup(); safeResolve(0); });
+                const safetyTimeout = taskManager.once(() => { cleanup(); safeResolve(0); }, 8000);
+                tempAudio.addEventListener('loadedmetadata', () => { safetyTimeout.kill(); const d = tempAudio.duration; cleanup(); safeResolve(isFinite(d) ? d : 0); });
+                tempAudio.addEventListener('error', () => { safetyTimeout.kill(); cleanup(); safeResolve(0); });
                 try { tempAudio.src = tempUrl; }
-                catch (err) { clearTimeout(timeoutId); cleanup(); safeResolve(0); }
+                catch (err) { safetyTimeout.kill(); cleanup(); safeResolve(0); }
             });
         }
 
@@ -84,7 +84,7 @@
                         await new Promise(resolve => {
                             let settled = false;
                             const safeResolve = () => { if (!settled) { settled = true; resolve(); } };
-                            const timeoutId = setTimeout(safeResolve, 5000);
+                            const safetyTimeout = taskManager.once(safeResolve, 5000);
 
                             if (window.jsmediatags) {
                                 try {
@@ -117,18 +117,18 @@
                                                 console.error(`[playlist] Lỗi đọc cover/tag của "${file.name}", bỏ qua cover, vẫn nạp bài:`, tagErr);
                                                 cover = null;
                                             }
-                                            clearTimeout(timeoutId); safeResolve();
+                                            safetyTimeout.kill(); safeResolve();
                                         },
                                         onError: function(err) {
                                             console.warn(`[playlist] jsmediatags không đọc được tag của "${file.name}":`, err);
-                                            clearTimeout(timeoutId); safeResolve();
+                                            safetyTimeout.kill(); safeResolve();
                                         }
                                     });
                                 } catch (readErr) {
                                     console.error(`[playlist] jsmediatags.read lỗi đồng bộ với "${file.name}":`, readErr);
-                                    clearTimeout(timeoutId); safeResolve();
+                                    safetyTimeout.kill(); safeResolve();
                                 }
-                            } else { clearTimeout(timeoutId); safeResolve(); }
+                            } else { safetyTimeout.kill(); safeResolve(); }
                         });
 
                         const duration = await readAudioDuration(file);
@@ -251,13 +251,13 @@
             songActionOverlayForUpload.classList.remove('hidden');
         });
         songActionOverlayForUpload.addEventListener('click', closeUploadActionMenu);
-        // Đóng menu sau khi bấm vào 1 trong 2 label — dùng setTimeout(...,0) để KHÔNG ẩn menu
+        // Đóng menu sau khi bấm vào 1 trong 2 label — dùng taskManager.once(...,10) để KHÔNG ẩn menu
         // (classList.add('hidden')) NGAY trong cùng tick của sự kiện click: nếu ẩn ngay lập tức,
         // một số trình duyệt có thể chưa kịp xử lý xong việc click vào label kích hoạt input bên
         // trong nó (input đã bị display:none trước khi hộp thoại kịp mở) — đẩy việc đóng menu ra
         // sau 1 tick đảm bảo hộp thoại file picker đã được yêu cầu mở trước khi DOM bị ẩn.
         uploadActionMenu.addEventListener('click', (e) => {
-            if (e.target.closest('label')) setTimeout(closeUploadActionMenu, 0);
+            if (e.target.closest('label')) taskManager.once(closeUploadActionMenu, 10);
         });
 
         /**
