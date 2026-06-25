@@ -22,9 +22,17 @@
                 } catch (alertErr) { /* alert có thể bị chặn ở 1 số trình duyệt — bỏ qua, log vẫn còn ở console */ }
             }
         }
-        window.addEventListener('error', (e) => {
-            _reportFatalError(`${e.filename || 'script'}:${e.lineno || '?'}`, e.error || e.message);
-        });
+        window.addEventListener("error", e => {
+
+    console.log(e);
+
+    console.log(e.target);
+
+    console.log(e.currentTarget);
+
+    console.log(e.error);
+
+});
         window.addEventListener('unhandledrejection', (e) => {
             _reportFatalError('Promise bị reject nhưng không ai .catch()', e.reason);
         });
