@@ -3,6 +3,9 @@
  *   - `renderOrder` (UI): sort theo mode + lọc tìm kiếm, cập nhật NGAY mọi lúc.
  *   - `displayOrder` (hàng đợi phát): sort theo mode nhưng có "pending append" lúc đang phát.
  * Cùng dùng chung 1 hàm so sánh tên (sortKeysByMode) để 2 thứ tự nhất quán về quy tắc sắp xếp.
+ *
+ * Ver 8: matchesSearch() lọc thêm theo `tag.album` (trước đây chỉ title + artist) — gõ tên
+ * album vào ô tìm kiếm giờ cũng ra kết quả đúng.
  */
 
         /** Mảng key đã lọc bỏ bài lỗi (confirmedBrokenKeys) — nền chung cho cả render lẫn hàng đợi. */
@@ -27,7 +30,8 @@
             const cached = playlistCache.get(key);
             const title = normalizeSongName(cached ? cached.tag.title : key);
             const artist = normalizeSongName(cached ? cached.tag.artist : '');
-            return title.includes(searchQuery) || artist.includes(searchQuery);
+            const album = normalizeSongName(cached ? cached.tag.album : '');
+            return title.includes(searchQuery) || artist.includes(searchQuery) || album.includes(searchQuery);
         }
 
         // ===================== (A) DANH SÁCH HIỂN THỊ =====================

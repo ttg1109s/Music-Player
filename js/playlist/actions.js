@@ -2,6 +2,12 @@
  * playlist/actions.js — Hành động trên 1 bài: phát (playSong), xoá, menu 3 chấm, và 3 modal
  * (lỗi lúc phát / sửa thông tin / xem thông tin chi tiết). Thông tin chi tiết v6 có thêm
  * "Số lần nghe" + "Thời gian đã nghe riêng" (xem listen-stats.js — key {count, totalTime}).
+ *
+ * Ver 8: modal "Sửa thông tin" có thêm tab "Ảnh bìa" (upload/xem trước/xóa cover) cạnh tab
+ * "Thông tin" cũ. Ảnh chỉ được ÁP DỤNG THẬT (ghi vào record.cover trong IndexedDB) khi bấm
+ * "Lưu" — chọn ảnh hay bấm "Xóa ảnh bìa" chỉ cập nhật preview + biến tạm songEditPendingCover,
+ * "Hủy" sẽ bỏ hoàn toàn pending đó. Cover sau khi lưu tự động được ghi vào tag APIC lúc Xuất
+ * tệp (xem id3-export.js, không cần sửa gì thêm ở đó).
  */
 
         /**
@@ -161,12 +167,51 @@
             });
         });
 
-        // ===================== Modal: Sửa thông tin =====================
+        // ===================== Modal: Sửa thông tin (Thông tin + Ảnh bìa) =====================
         const songEditModal = document.getElementById('song-edit-modal');
         const songEditTitleInput = document.getElementById('song-edit-title');
         const songEditArtistInput = document.getElementById('song-edit-artist');
         const songEditAlbumInput = document.getElementById('song-edit-album');
+        const songEditCoverPreview = document.getElementById('song-edit-cover-preview');
+        const songEditCoverUploadInput = document.getElementById('song-edit-cover-upload');
+        const songEditCoverRemoveBtn = document.getElementById('song-edit-cover-remove');
+        const songEditTabButtons = document.querySelectorAll('.song-edit-tab-btn');
+        const songEditTabInfo = document.getElementById('song-edit-tab-info');
+        const songEditTabCover = document.getElementById('song-edit-tab-cover');
         let songEditCurrentKey = null;
+        // Ảnh bìa được áp dụng NGAY khi bấm "Lưu" (cùng 1 lượt ghi IndexedDB với title/artist/
+        // album), KHÔNG ghi DB ngay lúc chọn file — để nút "Hủy" hoàn toàn không đổi gì, giống
+        // hành vi 2 ô nhập text bên cạnh. 3 trạng thái: null (không đổi gì) | File (đặt ảnh mới)
+        // | 'remove' (xóa ảnh, dùng lại DEFAULT_VINYL).
+        let songEditPendingCover = null;
+        // object: { url: string } object URL tạm để preview ảnh MỚI chọn — phải revoke khi đóng
+        // modal hoặc chọn ảnh khác, tránh rò bộ nhớ (cùng nguyên tắc currentCoverObjectURL ở actions.js).
+        let songEditPendingCoverPreviewUrl = null;
+
+        function setSongEditCoverPreview(url) {
+            songEditCoverPreview.src = url || DEFAULT_VINYL;
+        }
+
+        function revokeSongEditPendingPreview() {
+            if (songEditPendingCoverPreviewUrl) { URL.revokeObjectURL(songEditPendingCoverPreviewUrl); songEditPendingCoverPreviewUrl = null; }
+        }
+
+        function setSongEditTab(tab) {
+            const isCover = tab === 'cover';
+            songEditTabInfo.classList.toggle('hidden', isCover);
+            songEditTabCover.classList.toggle('hidden', !isCover);
+            songEditTabCover.classList.toggle('flex', isCover);
+            songEditTabButtons.forEach(btn => {
+                const active = btn.dataset.editTab === tab;
+                btn.classList.toggle('bg-sky-500/20', active);
+                btn.classList.toggle('text-sky-300', active);
+                btn.classList.toggle('border-sky-500/40', active);
+                btn.classList.toggle('bg-white/5', !active);
+                btn.classList.toggle('text-slate-400', !active);
+                btn.classList.toggle('border-white/10', !active);
+            });
+        }
+        songEditTabButtons.forEach(btn => btn.addEventListener('click', () => setSongEditTab(btn.dataset.editTab)));
 
         async function openSongEditModal(key) {
             const cached = playlistCache.get(key); if (!cached) return;
@@ -174,25 +219,82 @@
             songEditTitleInput.value = cached.tag.title || '';
             songEditArtistInput.value = cached.tag.artist || '';
             songEditAlbumInput.value = cached.tag.album || '';
+
+            revokeSongEditPendingPreview();
+            songEditPendingCover = null;
+            setSongEditCoverPreview(cached.cover ? URL.createObjectURL(cached.cover) : DEFAULT_VINYL);
+            // Object URL trên chỉ sống trong lúc modal mở (preview ảnh HIỆN TẠI, không phải pending);
+            // gán vào songEditPendingCoverPreviewUrl để được revoke đồng bộ lúc đóng modal/đổi ảnh.
+            if (cached.cover) songEditPendingCoverPreviewUrl = songEditCoverPreview.src;
+
+            setSongEditTab('info');
             songEditModal.classList.remove('hidden');
         }
 
-        document.getElementById('song-edit-cancel').addEventListener('click', () => songEditModal.classList.add('hidden'));
+        function closeSongEditModal() {
+            revokeSongEditPendingPreview();
+            songEditPendingCover = null;
+            songEditCoverUploadInput.value = '';
+            songEditModal.classList.add('hidden');
+        }
+
+        songEditCoverUploadInput.addEventListener('change', (e) => {
+            const file = e.target.files[0]; if (!file) return;
+            e.target.value = '';
+            const check = validateImageFile(file);
+            if (!check.valid) { alert(check.reason); return; }
+            revokeSongEditPendingPreview();
+            songEditPendingCover = file;
+            songEditPendingCoverPreviewUrl = URL.createObjectURL(file);
+            setSongEditCoverPreview(songEditPendingCoverPreviewUrl);
+        });
+
+        songEditCoverRemoveBtn.addEventListener('click', () => {
+            revokeSongEditPendingPreview();
+            songEditPendingCover = 'remove';
+            setSongEditCoverPreview(DEFAULT_VINYL);
+        });
+
+        document.getElementById('song-edit-cancel').addEventListener('click', closeSongEditModal);
         document.getElementById('song-edit-save').addEventListener('click', async () => {
             const key = songEditCurrentKey; if (!key) return;
             const newTag = { title: songEditTitleInput.value.trim() || '(Không tên)', artist: songEditArtistInput.value.trim() || 'Không rõ nghệ sĩ', album: songEditAlbumInput.value.trim() };
+            const pendingCover = songEditPendingCover; // chụp lại trước khi closeSongEditModal() reset về null
 
-            const record = await getSongRecord(key);
-            if (!record) { alert("Không đọc được bài hát này, dữ liệu có thể đã lỗi."); songEditModal.classList.add('hidden'); return; }
-            record.tag = { ...record.tag, ...newTag };
-            await setSongRecord(key, record);
+            await withLoadingShield("Đang lưu thông tin...", async () => {
+                const record = await getSongRecord(key);
+                if (!record) { alert("Không đọc được bài hát này, dữ liệu có thể đã lỗi."); return; }
+                record.tag = { ...record.tag, ...newTag };
+                // Ảnh bìa: File mới -> ghi thẳng Blob (File là 1 dạng Blob, lưu IndexedDB được luôn,
+                // giống cách record.cover đã được ghi từ jsmediatags lúc nạp file ban đầu). 'remove'
+                // -> xóa hẳn field cover (record không còn cover -> các nơi đọc cover tự fallback
+                // DEFAULT_VINYL, đúng hành vi cũ khi 1 bài chưa từng có cover).
+                if (pendingCover instanceof File) record.cover = pendingCover;
+                else if (pendingCover === 'remove') delete record.cover;
+                await setSongRecord(key, record);
 
-            const cached = playlistCache.get(key);
-            if (cached) cached.tag = record.tag;
-            songNameIndex.set(key, normalizeSongName(record.tag.title));
+                const cached = playlistCache.get(key);
+                if (cached) { cached.tag = record.tag; cached.cover = record.cover || null; }
+                songNameIndex.set(key, normalizeSongName(record.tag.title));
 
-            if (key === currentKey) { playerTitle.textContent = record.tag.title; playerArtist.textContent = record.tag.artist; }
-            songEditModal.classList.add('hidden');
+                if (key === currentKey) {
+                    playerTitle.textContent = record.tag.title; playerArtist.textContent = record.tag.artist;
+                    if (currentCoverObjectURL && currentCoverObjectURL.startsWith('blob:')) URL.revokeObjectURL(currentCoverObjectURL);
+                    currentCoverObjectURL = record.cover ? URL.createObjectURL(record.cover) : DEFAULT_VINYL;
+                    const recordArtEl = document.getElementById('record-art');
+                    if (recordArtEl) recordArtEl.src = currentCoverObjectURL;
+                    if ('mediaSession' in navigator) {
+                        navigator.mediaSession.metadata = new MediaMetadata({
+                            title: record.tag.title || "Visual Master",
+                            artist: record.tag.artist || "Unknown Artist",
+                            artwork: record.cover ? [{ src: currentCoverObjectURL, sizes: '512x512', type: 'image/jpeg' }] : []
+                        });
+                    }
+                }
+            });
+
+            closeSongEditModal();
+            refreshSongNode(key); // vẽ lại ảnh/tên mới ngay trong danh sách (ảnh cũ trong DOM không tự đổi)
             // Đổi tên -> ảnh hưởng sort: cập nhật cả hàng đợi phát (nếu az/za) lẫn danh sách hiển thị.
             if (displaySortMode === 'az' || displaySortMode === 'za') recomputeDisplayOrder();
             recomputeRenderOrder();
