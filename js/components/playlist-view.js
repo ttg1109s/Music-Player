@@ -212,16 +212,25 @@ const TPL_PLAYLIST_VIEW = `
     <!-- Menu nhỏ cho nút "Thêm nhạc" (góc phải Playlist) — 2 lựa chọn: chọn từng file rời, hoặc
          chọn cả 1 thư mục (toàn bộ nhạc trong thư mục đó + thư mục con được nạp 1 lượt). Cùng
          cơ chế định vị "fixed, JS đặt lại vị trí ngay dưới nút bấm" như #song-action-menu — dùng
-         CHUNG #song-action-overlay để đóng khi bấm ra ngoài (chỉ 1 trong 2 menu hiện tại 1 lúc). -->
+         CHUNG #song-action-overlay để đóng khi bấm ra ngoài (chỉ 1 trong 2 menu hiện tại 1 lúc).
+         FIX (ver 8 refine): 2 mục giờ là <label> BỌC TRỰC TIẾP <input type="file"> ẩn bên trong —
+         giống đúng pattern đã dùng ổn định ở setting-bg-upload/setting-video-upload — THAY CHO
+         <button> gọi fileInput.click()/folderInput.click() bằng JS. Một số trình duyệt/WebView
+         (đặc biệt chạy qua file://, hoặc Android WebView cũ) CHẶN HOÀN TOÀN việc input[type=file]
+         phản hồi với .click() gọi gián tiếp qua JS (không lỗi, không event, im lặng "treo" mãi chờ
+         change không bao giờ tới) — chỉ click NATIVE thật (chuột/chạm) lên label/input mới chắc
+         chắn hoạt động trên mọi nền tảng. -->
     <div id="upload-action-menu" class="hidden fixed z-[115] w-52 bg-[#171c2b] border border-white/10 rounded-xl shadow-2xl overflow-hidden">
-        <button data-upload-action="files" class="flex items-center gap-3 w-full px-4 py-3 text-sm text-left hover:bg-white/10 transition-colors text-slate-200">
+        <label class="flex items-center gap-3 w-full px-4 py-3 text-sm text-left hover:bg-white/10 transition-colors text-slate-200 cursor-pointer">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
             Chọn file nhạc
-        </button>
-        <button data-upload-action="folder" class="flex items-center gap-3 w-full px-4 py-3 text-sm text-left hover:bg-white/10 transition-colors text-slate-200 border-t border-white/5">
+            <input type="file" id="audio-upload" accept=".mp3,.wav,.ogg,.m4a,.aac,.flac,audio/mpeg,audio/wav,audio/ogg,audio/mp4,audio/aac,audio/flac" multiple class="hidden">
+        </label>
+        <label class="flex items-center gap-3 w-full px-4 py-3 text-sm text-left hover:bg-white/10 transition-colors text-slate-200 border-t border-white/5 cursor-pointer">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
             Chọn cả thư mục
-        </button>
+            <input type="file" id="audio-upload-folder" webkitdirectory directory multiple class="hidden">
+        </label>
     </div>
 
     <!-- Menu 3 chấm dùng chung cho mọi bài hát (info / sửa / xuất file / xóa) — chỉ 1 phần tử duy
