@@ -6,6 +6,11 @@
         let isGridView = false;
 
         const fileInput = document.getElementById('audio-upload'), audioPlayer = document.getElementById('audio-player');
+        // Input "Chọn cả thư mục" (ver 8 refine) — cùng xử lý chung qua handleAudioFiles() ở
+        // playlist/loader.js, chỉ khác cách mở hộp thoại (webkitdirectory). Nút "Thêm nhạc" giờ mở
+        // 1 menu nhỏ (#upload-action-menu) cho người dùng chọn 1 trong 2 input này.
+        const folderInput = document.getElementById('audio-upload-folder');
+        const btnUploadAudio = document.getElementById('btn-upload-audio'), uploadActionMenu = document.getElementById('upload-action-menu');
         const canvas = document.getElementById('visualizer'), ctx = canvas.getContext('2d');
         const playlistView = document.getElementById('playlist-view'), visualizerUI = document.getElementById('visualizer-ui'), playerContainer = document.getElementById('player-container');
         const playlistBg = document.getElementById('playlist-bg');
