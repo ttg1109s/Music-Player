@@ -63,6 +63,32 @@
             window.playSong(prevKey);
         }
 
+        /**
+         * Ver 8 refine (mục 2): dừng hẳn phát nhạc + đưa player về ĐÚNG trạng thái đầu (như chưa
+         * từng chọn bài nào) — dùng khi tab/app bị ẩn (xem wakelock.js), THAY HẲN cho hành vi cũ
+         * "pause tạm, giữ nguyên bài đang chọn, không tự resume". Khác removeKeyFromDisplay() (xoá
+         * 1 bài khỏi playlist): hàm này KHÔNG đụng tới playlistOrder/displayOrder/IndexedDB, chỉ
+         * dừng playback + reset UI player + giải phóng currentKey, playlist vẫn còn nguyên y hệt.
+         */
+        function resetPlayerToIdle() {
+            audioPlayer.pause();
+            audioPlayer.currentTime = 0;
+            if (currentObjectURL) { URL.revokeObjectURL(currentObjectURL); currentObjectURL = null; }
+            if (currentCoverObjectURL) { URL.revokeObjectURL(currentCoverObjectURL); currentCoverObjectURL = null; }
+            audioPlayer.removeAttribute('src'); audioPlayer.src = '';
+            const previousKey = currentKey;
+            currentKey = null;
+            // Reset UI player về ĐÚNG trạng thái ban đầu — xem bottom-player.js (TPL_BOTTOM_PLAYER)
+            // để biết giá trị gốc lúc chưa chọn bài nào.
+            playerTitle.textContent = 'Chưa chọn bài'; playerArtist.textContent = '---';
+            recordContainer.innerHTML = `<img id="record-art" src="" class="w-full h-full rounded-full object-cover shadow-lg relative z-20" alt="Record"><div class="absolute inset-0 m-auto w-3 h-3 bg-slate-900 rounded-full border border-slate-700 z-30"></div>`;
+            progressBar.value = 0;
+            currentTimeDisplay.textContent = '0:00'; durationTimeDisplay.textContent = '0:00';
+            if ('mediaSession' in navigator) { navigator.mediaSession.metadata = null; navigator.mediaSession.playbackState = 'none'; }
+            btnReturnVisual.classList.add('hidden');
+            if (previousKey) refreshSongNode(previousKey); // bỏ trạng thái "đang phát" (chấm xanh/EQ icon) khỏi bài vừa dừng trong danh sách
+        }
+
         function switchToVisualizer() {
             playlistView.classList.add('-translate-y-full'); visualizerUI.classList.remove('hidden'); playerContainer.classList.remove('hidden');
             // KHÔNG gọi handleVideoBackground() ở đây nữa: chuyển màn hình KHÔNG được điều khiển video
@@ -96,12 +122,12 @@
             else if (repeatMode === 2) { btnRepeat.classList.add('!text-sky-400'); repeatBadge.classList.remove('hidden'); }
         });
 
-        if ('mediaSession' in navigator) {
-            navigator.mediaSession.setActionHandler('play', () => { requestWakeLock(); audioPlayer.play(); });
-            navigator.mediaSession.setActionHandler('pause', () => { audioPlayer.pause(); releaseWakeLock(); });
-            navigator.mediaSession.setActionHandler('previoustrack', playPrev); navigator.mediaSession.setActionHandler('nexttrack', () => playNext(true));
-            navigator.mediaSession.setActionHandler('seekto', (details) => { if (details.fastSeek && ('fastSeek' in audioPlayer)) audioPlayer.fastSeek(details.seekTime); else audioPlayer.currentTime = details.seekTime; });
-        }
+        // Ver 8 refine (mục 2 — loại bỏ can thiệp điều khiển từ ngoài app): KHÔNG còn
+        // navigator.mediaSession.setActionHandler(...) nào nữa — play/pause/next/prev/seek từ màn
+        // hình khoá, tai nghe, hoặc nút điều khiển trên thông báo hệ thống SẼ KHÔNG còn tác dụng.
+        // navigator.mediaSession.metadata (tên bài/ảnh hiển thị trên thông báo, xem playlist/
+        // actions.js) và .playbackState (trạng thái playing/paused hiển thị) VẪN GIỮ — đây chỉ là
+        // thông tin hiển thị một chiều, không phải đường điều khiển ngược lại vào app.
 
         function updateMediaPositionState() {
             if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession) {

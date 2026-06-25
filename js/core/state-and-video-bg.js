@@ -28,22 +28,23 @@
         btnReturnVisual.addEventListener('click', () => { if(currentKey) switchToVisualizer(); });
 
         // ===================== "Control Center" của màn Visualizer (ver 8 refine) =====================
-        // Thay cho dải dọc 6 nút cũ — 1 nút mở ở góc trái, panel grid icon trượt từ trên xuống full
-        // chiều rộng (kiểu Control Center điện thoại). Đóng bằng 3 cách: bấm lại nút mở, bấm overlay
+        // Thay cho dải dọc 6 nút cũ — 1 nút mở ở góc trái, panel grid icon PHÓNG RA TỪ TRUNG TÂM
+        // (scale từ vị trí nút bấm, kiểu Control Center iPhone thật — ver 8 refine lần 2, trước đó
+        // panel trượt từ trên xuống full chiều rộng). Đóng bằng 3 cách: bấm lại nút mở, bấm overlay
         // mờ phía dưới panel, hoặc bấm 1 icon bên trong grid (data-cc-action — tự đóng sau khi chọn,
         // vì hành động đó thường là điểm kết của tương tác, ví dụ đổi hiệu ứng/mở Settings).
         function openControlCenter() {
-            visualizerControlCenter.classList.remove('-translate-y-full');
+            visualizerControlCenter.classList.remove('scale-0', 'opacity-0');
             controlCenterOverlay.classList.remove('hidden');
             iconControlCenterDown.classList.add('rotate-180');
         }
         function closeControlCenter() {
-            visualizerControlCenter.classList.add('-translate-y-full');
+            visualizerControlCenter.classList.add('scale-0', 'opacity-0');
             controlCenterOverlay.classList.add('hidden');
             iconControlCenterDown.classList.remove('rotate-180');
         }
         btnOpenControlCenter.addEventListener('click', () => {
-            const isOpen = !visualizerControlCenter.classList.contains('-translate-y-full');
+            const isOpen = !visualizerControlCenter.classList.contains('scale-0');
             if (isOpen) closeControlCenter(); else openControlCenter();
         });
         controlCenterOverlay.addEventListener('click', closeControlCenter);
