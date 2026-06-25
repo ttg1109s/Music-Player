@@ -32,5 +32,5 @@
             const offsetX = Math.random() * 40 - 20; const offsetY = Math.random() * 20 - 10;
             note.style.left = `calc(50% + ${offsetX}px)`; note.style.top = `calc(50% + ${offsetY}px)`;
             note.style.color = `hsl(${globalHueOffset + Math.random()*60}, 100%, 70%)`; recordContainer.appendChild(note);
-            setTimeout(() => { if (note.parentNode) note.parentNode.removeChild(note); }, 1500);
+            taskManager.once(() => { if (note.parentNode) note.parentNode.removeChild(note); }, 1500);
         }
