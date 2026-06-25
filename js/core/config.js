@@ -18,7 +18,7 @@
             if (!_hasShownFatalErrorAlert) {
                 _hasShownFatalErrorAlert = true;
                 try {
-                    alert(`Đã xảy ra lỗi không mong muốn (${context}). Vui lòng tải lại trang (F5).\n\nChi tiết: ${err && err.message ? err.message : err}`);
+                    console.error(`Đã xảy ra lỗi không mong muốn (${context}). Vui lòng tải lại trang (F5).\n\nChi tiết: ${err && err.message ? err.message : err}`);
                 } catch (alertErr) { /* alert có thể bị chặn ở 1 số trình duyệt — bỏ qua, log vẫn còn ở console */ }
             }
         }
