@@ -32,6 +32,8 @@
             if (key === currentKey) { switchToVisualizer(); if (audioPlayer.paused) audioPlayer.play(); return; }
             requestWakeLock();
 
+            // display=false: chuyển bài chạy logic trong shield (khoá chồng lệnh) nhưng KHÔNG hiện
+            // lớp che -> bỏ cú nháy đen bg-black/80 mỗi lần Next/Prev (rõ nhất khi có video nền).
             return withLoadingShield("Đang chuyển bài...", async () => {
                 if (currentObjectURL) { URL.revokeObjectURL(currentObjectURL); currentObjectURL = null; }
                 if (currentCoverObjectURL) { URL.revokeObjectURL(currentCoverObjectURL); currentCoverObjectURL = null; }
@@ -74,7 +76,7 @@
 
                 subtitles = record.subtitles ? record.subtitles.slice() : [];
                 clearAllActiveSubBlocks(); resetAutoSub(); renderSubList();
-            });
+            }, false);
         };
 
         // ===================== Menu 3 chấm dùng chung =====================
