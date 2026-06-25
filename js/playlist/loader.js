@@ -88,7 +88,21 @@
                                                 if (tagResult.tags.picture && tagResult.tags.picture.data) {
                                                     const data = tagResult.tags.picture.data;
                                                     const format = tagResult.tags.picture.format;
-                                                    cover = new Blob([new Uint8Array(data)], { type: format });
+                                                    // Ver 8 refine (mục 4 — lỗi ảnh cover không hiển thị): jsmediatags đôi khi trả
+                                                    // `format` RỖNG hoặc KHÔNG PHẢI MIME ảnh hợp lệ (file MP3 ghi tag ID3 không
+                                                    // chuẩn, hoặc bị cắt cụt) — Blob constructor KHÔNG throw lỗi dù `type` rác,
+                                                    // nhưng <img> sau đó không decode được (hiện ảnh vỡ) vì browser không biết
+                                                    // coi nội dung đó là ảnh gì. Validate MIME bằng VALID_IMAGE_MIME_TYPES (đã
+                                                    // có sẵn ở upload-validation.js) NGAY tại nguồn — nếu sai, bỏ cover (null)
+                                                    // thay vì lưu 1 Blob chắc chắn không hiển thị được; bài hát vẫn nạp bình
+                                                    // thường, chỉ là không có ảnh bìa (fallback DEFAULT_VINYL, không phải lỗi).
+                                                    const normalizedFormat = (format || '').toLowerCase().trim();
+                                                    if (normalizedFormat && VALID_IMAGE_MIME_TYPES.has(normalizedFormat) && data && data.length > 0) {
+                                                        cover = new Blob([new Uint8Array(data)], { type: normalizedFormat });
+                                                    } else {
+                                                        console.warn(`[playlist] Cover ID3 của "${file.name}" có định dạng không hợp lệ ("${format}") hoặc rỗng — bỏ qua cover, vẫn nạp bài.`);
+                                                        cover = null;
+                                                    }
                                                 }
                                             } catch (tagErr) {
                                                 console.error(`[playlist] Lỗi đọc cover/tag của "${file.name}", bỏ qua cover, vẫn nạp bài:`, tagErr);
@@ -157,6 +171,13 @@
         // ngoài — tại 1 thời điểm chỉ 1 trong 2 menu (#song-action-menu / #upload-action-menu)
         // hiện, không xung đột. Cùng công thức định vị "rect.bottom + 6, lật lên nếu tràn đáy màn
         // hình" như openSongActionMenu() để 2 menu có cảm giác nhất quán.
+        //
+        // FIX (ver 8 refine): 2 mục trong menu giờ là <label> bọc input thật (xem playlist-view.js)
+        // — click tự nhiên lên label đã trigger input qua hành vi HTML chuẩn, KHÔNG cần gọi
+        // fileInput.click()/folderInput.click() bằng JS nữa (cách cũ "treo" trên một số nền tảng,
+        // xem comment ở playlist-view.js). Listener dưới đây CHỈ còn lo đóng menu lại sau khi click
+        // (đóng ngay khi bấm bất kỳ đâu trong menu, bằng đúng click event mà label vừa nhận, không
+        // chặn hay preventDefault gì cả nên input vẫn mở hộp thoại bình thường ngay sau đó).
         const songActionOverlayForUpload = document.getElementById('song-action-overlay');
         function closeUploadActionMenu() {
             uploadActionMenu.classList.add('hidden');
@@ -176,13 +197,13 @@
             songActionOverlayForUpload.classList.remove('hidden');
         });
         songActionOverlayForUpload.addEventListener('click', closeUploadActionMenu);
+        // Đóng menu sau khi bấm vào 1 trong 2 label — dùng setTimeout(...,0) để KHÔNG ẩn menu
+        // (classList.add('hidden')) NGAY trong cùng tick của sự kiện click: nếu ẩn ngay lập tức,
+        // một số trình duyệt có thể chưa kịp xử lý xong việc click vào label kích hoạt input bên
+        // trong nó (input đã bị display:none trước khi hộp thoại kịp mở) — đẩy việc đóng menu ra
+        // sau 1 tick đảm bảo hộp thoại file picker đã được yêu cầu mở trước khi DOM bị ẩn.
         uploadActionMenu.addEventListener('click', (e) => {
-            const btn = e.target.closest('button[data-upload-action]');
-            if (!btn) return;
-            const action = btn.dataset.uploadAction;
-            closeUploadActionMenu();
-            if (action === 'files') fileInput.click();
-            else if (action === 'folder') folderInput.click();
+            if (e.target.closest('label')) setTimeout(closeUploadActionMenu, 0);
         });
 
         /**

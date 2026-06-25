@@ -60,12 +60,24 @@
 
                 playerTitle.textContent = record.tag.title; playerArtist.textContent = record.tag.artist;
                 recordContainer.innerHTML = `<img id="record-art" src="${currentCoverObjectURL}" class="w-full h-full rounded-full object-cover shadow-lg relative z-20 ${audioPlayer.paused ? 'paused' : 'animate-spin-slow'}" alt="Record"><div class="absolute inset-0 m-auto w-3 h-3 bg-slate-900 rounded-full border border-slate-700 z-30"></div>`;
+                // Ver 8 refine (mục 4): cover Blob có thể không decode được làm ảnh thật (ID3 cover
+                // lỗi/cắt cụt, jsmediatags đọc nhầm định dạng...) -> <img> "vỡ" thay vì hiện vinyl
+                // mặc định. attachCoverFallback() (định nghĩa ở render.js) gắn onerror tự fallback
+                // về DEFAULT_VINYL — tái dùng đúng 1 hàm cho mọi nơi hiển thị cover trong app.
+                attachCoverFallback(document.getElementById('record-art'));
 
                 if ('mediaSession' in navigator) {
                     navigator.mediaSession.metadata = new MediaMetadata({
                         title: record.tag.title || "Visual Master",
                         artist: record.tag.artist || "Unknown Artist",
-                        artwork: record.cover ? [{ src: currentCoverObjectURL, sizes: '512x512', type: 'image/jpeg' }] : []
+                        // Ver 8 refine (mục 4): dùng ĐÚNG record.cover.type thật (đã được validate
+                        // ở loader.js, đảm bảo là MIME ảnh hợp lệ) thay cho hard-code 'image/jpeg'
+                        // trước đây — khai báo sai MIME (ví dụ cover thật là PNG nhưng báo JPEG) có
+                        // thể khiến hệ điều hành/màn hình khóa từ chối hiển thị artwork dù dữ liệu
+                        // ảnh hoàn toàn hợp lệ. Fallback 'image/jpeg' chỉ dùng khi vì lý do nào đó
+                        // record.cover.type rỗng (hiếm, nhưng Blob.type có thể rỗng trên 1 số trình
+                        // duyệt cũ dù nội dung vẫn đúng).
+                        artwork: record.cover ? [{ src: currentCoverObjectURL, sizes: '512x512', type: record.cover.type || 'image/jpeg' }] : []
                     });
                 }
 
@@ -187,6 +199,10 @@
         // object: { url: string } object URL tạm để preview ảnh MỚI chọn — phải revoke khi đóng
         // modal hoặc chọn ảnh khác, tránh rò bộ nhớ (cùng nguyên tắc currentCoverObjectURL ở actions.js).
         let songEditPendingCoverPreviewUrl = null;
+        // Ver 8 refine (mục 4): songEditCoverPreview là <img> CỐ ĐỊNH trong DOM (không bị tạo lại
+        // qua innerHTML như #record-art) -> chỉ cần gắn onerror fallback 1 LẦN ở đây, không cần
+        // gắn lại mỗi lần setSongEditCoverPreview() đổi src.
+        attachCoverFallback(songEditCoverPreview);
 
         function setSongEditCoverPreview(url) {
             songEditCoverPreview.src = url || DEFAULT_VINYL;
@@ -283,12 +299,20 @@
                     if (currentCoverObjectURL && currentCoverObjectURL.startsWith('blob:')) URL.revokeObjectURL(currentCoverObjectURL);
                     currentCoverObjectURL = record.cover ? URL.createObjectURL(record.cover) : DEFAULT_VINYL;
                     const recordArtEl = document.getElementById('record-art');
-                    if (recordArtEl) recordArtEl.src = currentCoverObjectURL;
+                    if (recordArtEl) {
+                        recordArtEl.src = currentCoverObjectURL;
+                        // Gắn lại fallback mỗi khi đổi src (ver 8 refine, mục 4) — listener cũ tự
+                        // gỡ sau 1 lần lỗi (xem attachCoverFallback ở render.js), nên ảnh MỚI vừa
+                        // đổi sang cần listener mới của riêng nó để vẫn được bảo vệ.
+                        attachCoverFallback(recordArtEl);
+                    }
                     if ('mediaSession' in navigator) {
                         navigator.mediaSession.metadata = new MediaMetadata({
                             title: record.tag.title || "Visual Master",
                             artist: record.tag.artist || "Unknown Artist",
-                            artwork: record.cover ? [{ src: currentCoverObjectURL, sizes: '512x512', type: 'image/jpeg' }] : []
+                            // Ver 8 refine (mục 4): dùng đúng record.cover.type thật, xem comment
+                            // tương tự ở playSong() phía trên.
+                            artwork: record.cover ? [{ src: currentCoverObjectURL, sizes: '512x512', type: record.cover.type || 'image/jpeg' }] : []
                         });
                     }
                 }

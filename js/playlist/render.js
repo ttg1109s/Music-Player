@@ -16,11 +16,46 @@
             </button>`;
         }
 
+        /**
+         * Ver 8 refine (mục 4 — lỗi ảnh cover không hiển thị): GẮN onerror NGAY SAU khi tạo
+         * `<img>` cover trong DOM, KHÔNG nhúng onerror="..." dạng inline-attribute trong chuỗi
+         * HTML — tránh hoàn toàn rủi ro escaping (DEFAULT_VINYL là data URI dài, lỡ chứa ký tự
+         * đặc biệt nào sẽ vỡ chuỗi HTML). `<img>` chỉ "vỡ" (hiện icon ảnh hỏng trình duyệt) khi
+         * Blob cover KHÔNG decode được làm ảnh thật — có thể xảy ra do: file gốc có cover ID3 bị
+         * lỗi/cắt cụt, jsmediatags đọc nhầm định dạng ảnh (ví dụ gắn nhãn JPEG nhưng dữ liệu thật
+         * là PNG hoặc ngược lại), hoặc người dùng tự upload 1 ảnh hỏng qua tab "Ảnh bìa". Khi đó,
+         * `onerror` tự thay `src` về DEFAULT_VINYL (ảnh vinyl mặc định) — y hệt hành vi "không có
+         * cover" — và gỡ chính `onerror` đó (`this.onerror = null`) để tránh loop vô hạn nếu
+         * DEFAULT_VINYL (vốn là data URI, không bao giờ lỗi) vẫn lỡ bị lỗi vì lý do khác.
+         */
+        function attachCoverFallback(imgEl) {
+            imgEl.addEventListener('error', function onCoverError() {
+                this.removeEventListener('error', onCoverError);
+                if (this.src !== DEFAULT_VINYL) this.src = DEFAULT_VINYL;
+            });
+        }
+
+        /**
+         * Ver 8 refine (mục 4): theo dõi object URL của ảnh cover NGAY TRÊN node (thuộc tính JS
+         * tuỳ biến `_coverObjectUrl`, không phải attribute DOM) để revoke đúng lúc node bị bỏ —
+         * trước đây buildSongNode() tạo URL mới mỗi lần gọi mà KHÔNG BAO GIỜ revoke URL cũ, rò bộ
+         * nhớ tích lũy dần khi danh sách render lại nhiều lần (đổi bài/thêm bài/sort lại đều có
+         * thể gọi lại buildSongNode cho 1 key). revokeNodeCoverUrl() được gọi ở mọi nơi 1 node bị
+         * loại khỏi domNodesByKey (xoá bài khỏi danh sách, hoặc refreshSongNode thay node cũ).
+         */
+        function revokeNodeCoverUrl(node) {
+            if (node && node._coverObjectUrl) { try { URL.revokeObjectURL(node._coverObjectUrl); } catch (e) {} node._coverObjectUrl = null; }
+        }
+
         function buildSongNode(key) {
             const cached = playlistCache.get(key);
             const title = cached ? cached.tag.title : key;
             const artist = cached ? cached.tag.artist : '';
-            const coverUrl = (cached && cached.cover) ? URL.createObjectURL(cached.cover) : DEFAULT_VINYL;
+            // Chỉ Blob cover (record.cover) mới cần tạo + theo dõi object URL để revoke sau; ảnh
+            // DEFAULT_VINYL là data: URI tĩnh, không phải object URL — node._coverObjectUrl giữ
+            // null cho trường hợp này để revokeNodeCoverUrl() không vô tình revoke nhầm data: URI.
+            const hasRealCover = !!(cached && cached.cover);
+            const coverUrl = hasRealCover ? URL.createObjectURL(cached.cover) : DEFAULT_VINYL;
 
             const isPlaying = (key === currentKey); const isActuallyPlaying = isPlaying && !audioPlayer.paused;
             const eqIconHtml = isActuallyPlaying ? `<div class="flex items-end gap-[2px] h-3 w-3"><div class="w-[3px] bg-sky-400 eq-1"></div><div class="w-[3px] bg-sky-400 eq-2"></div><div class="w-[3px] bg-sky-400 eq-3"></div></div>` : (isPlaying ? `<div class="w-2 h-2 rounded-full bg-sky-500 shadow-[0_0_5px_rgba(14,165,233,0.8)]"></div>` : '');
@@ -28,6 +63,7 @@
 
             const wrapper = document.createElement('div');
             wrapper.dataset.key = key;
+            wrapper._coverObjectUrl = hasRealCover ? coverUrl : null;
 
             if (isGridView) {
                 wrapper.className = `flex flex-col cursor-pointer active:scale-[0.98] transition-transform group relative w-full`;
@@ -51,6 +87,7 @@
                     </div>
                     <div class="flex opacity-0 group-hover:opacity-100 transition-opacity">${menuBtnHtml}</div>`;
             }
+            attachCoverFallback(wrapper.querySelector('img'));
             return wrapper;
         }
 
@@ -98,6 +135,10 @@
         }
 
         function renderPlaylistFull() {
+            // Revoke TOÀN BỘ object URL cover của các node cũ TRƯỚC khi xoá — renderPlaylistFull
+            // dựng lại từ đầu (layout grid/list đổi, hoặc lệch số lượng node), mọi node cũ chắc
+            // chắn bị bỏ, không có ngoại lệ nào cần giữ lại.
+            domNodesByKey.forEach(revokeNodeCoverUrl);
             playlistContainer.innerHTML = '';
             domNodesByKey.clear();
             renderOrder.forEach((key) => {
@@ -119,6 +160,7 @@
 
             for (const [key, node] of Array.from(domNodesByKey.entries())) {
                 if (!renderKeySet.has(key)) {
+                    revokeNodeCoverUrl(node); // bài đã bị lọc khỏi danh sách hiển thị (xoá/tìm kiếm) -> node này bỏ vĩnh viễn
                     node.remove();
                     domNodesByKey.delete(key);
                 }
@@ -146,6 +188,7 @@
             const oldNode = domNodesByKey.get(key);
             if (!oldNode) return;
             const newNode = buildSongNode(key);
+            revokeNodeCoverUrl(oldNode); // node cũ bị thay hẳn bằng node mới (cover mới tạo riêng ở buildSongNode trên) -> revoke URL cũ ngay
             oldNode.replaceWith(newNode);
             domNodesByKey.set(key, newNode);
         }
