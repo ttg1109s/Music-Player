@@ -36,6 +36,11 @@
 
         .glass-panel { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(255, 255, 255, 0.05); }
         .drawer-glass { background: rgba(10, 10, 15, 0.95); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); }
+        /* Kính mờ "nét" dùng riêng cho card modal (Sửa thông tin / Thông tin chi tiết bài hát):
+           nền đậm hơn .glass-panel (ít trong suốt -> chữ/control nổi rõ trên mọi ảnh nền playlist)
+           + viền sáng nhẹ + glow rất mờ phía trong để card tách khỏi nền mà vẫn giữ chất kính mờ
+           (backdrop-filter blur) chứ không phải nền đặc như trước ver 8. */
+        .glass-modal { background: rgba(15, 23, 42, 0.82); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px); border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 0 0 1px rgba(255,255,255,0.04) inset, 0 20px 60px rgba(0,0,0,0.5); }
         
         .fade-enter { opacity: 0; transform: scale(0.95); pointer-events: none; }
         .fade-enter-active { opacity: 1; transform: scale(1); pointer-events: auto; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
