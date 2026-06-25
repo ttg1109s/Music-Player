@@ -22,7 +22,7 @@
          file local của project (CSS/JS riêng), KHÔNG đụng tới các thư viện CDN bên thứ 3 ở trên —
          những file đó đã tự có version riêng trong URL (@6, @4, r128, 3.9.5...) nên cache của
          chúng không liên quan tới cache "cứng đầu" của riêng project trên GitHub Pages. -->
-    <link rel="stylesheet" href="css/styles.css?v=20260625v7">
+    <link rel="stylesheet" href="css/styles.css?v=20260625v8">
 </head>
 <body class="text-white h-screen flex flex-col relative overflow-hidden bg-[#000000]">
 
@@ -43,21 +43,29 @@
          1) COMPONENTS: mỗi file chỉ định nghĩa một biến TPL_* chứa chuỗi HTML.
             Chưa có gì được vẽ ra DOM ở bước này.
          ===================================================================== -->
-    <script src="js/components/loading-shield.js?v=20260625v7"></script>
-    <script src="js/components/playlist-view.js?v=20260625v7"></script>
-    <script src="js/components/visualizer-overlay.js?v=20260625v7"></script>
-    <script src="js/components/subtitle-modal.js?v=20260625v7"></script>
-    <script src="js/components/bottom-player.js?v=20260625v7"></script>
-    <script src="js/components/settings-drawer.js?v=20260625v7"></script>
-    <script src="js/components/about-drawer.js?v=20260625v7"></script>
-    <script src="js/components/storage-drawer.js?v=20260625v7"></script>
+    <script src="js/components/loading-shield.js?v=20260625v8"></script>
+    <script src="js/components/playlist-view.js?v=20260625v8"></script>
+    <script src="js/components/visualizer-overlay.js?v=20260625v8"></script>
+    <script src="js/components/subtitle-modal.js?v=20260625v8"></script>
+    <script src="js/components/bottom-player.js?v=20260625v8"></script>
+    <!-- Settings Drawer (ver 8): 5 "section" HTML nhỏ PHẢI nạp TRƯỚC settings-drawer.js — file
+         đó chỉ còn là bộ điều phối (object SettingsDrawer) ghép 5 biến TPL_SETTINGS_* dưới đây
+         lại thành TPL_SETTINGS_DRAWER, không tự chứa HTML nào. -->
+    <script src="js/components/settings/playlist-background.js?v=20260625v8"></script>
+    <script src="js/components/settings/visualizer-geometry-color.js?v=20260625v8"></script>
+    <script src="js/components/settings/audio-eq.js?v=20260625v8"></script>
+    <script src="js/components/settings/subtitle-style.js?v=20260625v8"></script>
+    <script src="js/components/settings/misc.js?v=20260625v8"></script>
+    <script src="js/components/settings-drawer.js?v=20260625v8"></script>
+    <script src="js/components/about-drawer.js?v=20260625v8"></script>
+    <script src="js/components/storage-drawer.js?v=20260625v8"></script>
 
     <!-- =====================================================================
          2) MAIN (bootstrap): lắp toàn bộ component vào #app-root.
             Sau dòng này, mọi phần tử (id="...") trong các component đã tồn tại
             thật sự trong DOM và có thể dùng document.getElementById an toàn.
          ===================================================================== -->
-    <script src="js/main.js?v=20260625v7"></script>
+    <script src="js/main.js?v=20260625v8"></script>
 
     <!-- =====================================================================
          3) CORE: logic nghiệp vụ. PHẢI nạp sau bước (2).
@@ -68,53 +76,53 @@
             state-and-video-bg.js/about-stats.js/id3-export.js vì các file đó gọi
             hàm helper định nghĩa trong 2 file này.
          ===================================================================== -->
-    <script src="js/core/config.js?v=20260625v7"></script>
-    <script src="js/core/dom-refs.js?v=20260625v7"></script>
-    <script src="js/core/db.js?v=20260625v7"></script>
-    <script src="js/core/upload-validation.js?v=20260625v7"></script>
-    <script src="js/core/listen-stats.js?v=20260625v7"></script>
-    <script src="js/core/loading-shield-util.js?v=20260625v7"></script>
-    <script src="js/core/three-vortex.js?v=20260625v7"></script>
-    <script src="js/core/state-and-video-bg.js?v=20260625v7"></script>
-    <script src="js/core/subtitles.js?v=20260625v7"></script>
-    <script src="js/core/equalizer-settings.js?v=20260625v7"></script>
-    <script src="js/core/subtitle-display.js?v=20260625v7"></script>
-    <script src="js/core/wakelock.js?v=20260625v7"></script>
-    <script src="js/core/color-utils.js?v=20260625v7"></script>
-    <script src="js/core/canvas-scene-setup.js?v=20260625v7"></script>
+    <script src="js/core/config.js?v=20260625v8"></script>
+    <script src="js/core/dom-refs.js?v=20260625v8"></script>
+    <script src="js/core/db.js?v=20260625v8"></script>
+    <script src="js/core/upload-validation.js?v=20260625v8"></script>
+    <script src="js/core/listen-stats.js?v=20260625v8"></script>
+    <script src="js/core/loading-shield-util.js?v=20260625v8"></script>
+    <script src="js/core/three-vortex.js?v=20260625v8"></script>
+    <script src="js/core/state-and-video-bg.js?v=20260625v8"></script>
+    <script src="js/core/subtitles.js?v=20260625v8"></script>
+    <script src="js/core/equalizer-settings.js?v=20260625v8"></script>
+    <script src="js/core/subtitle-display.js?v=20260625v8"></script>
+    <script src="js/core/wakelock.js?v=20260625v8"></script>
+    <script src="js/core/color-utils.js?v=20260625v8"></script>
+    <script src="js/core/canvas-scene-setup.js?v=20260625v8"></script>
     <!-- Playlist tách module (v6): state -> order -> render -> loader -> actions -> main.
          PHẢI nạp TRƯỚC player-controls.js (file đó tham chiếu playlistOrder/displayOrder/
          recomputeDisplayOrder/renderPlaylistDiff...). main.js (object-function) gọi PlaylistMain.init()
          ngay khi nạp — mọi #id đã có sẵn trong DOM vì js/main.js đã mount component trước nhóm core. -->
-    <script src="js/playlist/state.js?v=20260625v7"></script>
-    <script src="js/playlist/order.js?v=20260625v7"></script>
-    <script src="js/playlist/render.js?v=20260625v7"></script>
-    <script src="js/playlist/loader.js?v=20260625v7"></script>
-    <script src="js/playlist/actions.js?v=20260625v7"></script>
-    <script src="js/playlist/main.js?v=20260625v7"></script>
-    <script src="js/core/player-controls.js?v=20260625v7"></script>
-    <script src="js/core/audio-engine.js?v=20260625v7"></script>
-    <script src="js/core/audio-analysis.js?v=20260625v7"></script>
-    <script src="js/core/rubik-math.js?v=20260625v7"></script>
-    <script src="js/core/about-stats.js?v=20260625v7"></script>
-    <script src="js/core/id3-export.js?v=20260625v7"></script>
-    <script src="js/core/storage-manager.js?v=20260625v7"></script>
+    <script src="js/playlist/state.js?v=20260625v8"></script>
+    <script src="js/playlist/order.js?v=20260625v8"></script>
+    <script src="js/playlist/render.js?v=20260625v8"></script>
+    <script src="js/playlist/loader.js?v=20260625v8"></script>
+    <script src="js/playlist/actions.js?v=20260625v8"></script>
+    <script src="js/playlist/main.js?v=20260625v8"></script>
+    <script src="js/core/player-controls.js?v=20260625v8"></script>
+    <script src="js/core/audio-engine.js?v=20260625v8"></script>
+    <script src="js/core/audio-analysis.js?v=20260625v8"></script>
+    <script src="js/core/rubik-math.js?v=20260625v8"></script>
+    <script src="js/core/about-stats.js?v=20260625v8"></script>
+    <script src="js/core/id3-export.js?v=20260625v8"></script>
+    <script src="js/core/storage-manager.js?v=20260625v8"></script>
 
     <!-- =====================================================================
          4) VISUALIZERS: hàm vẽ canvas dùng chung (draw-helpers.js), từng visual riêng theo
             file trong types/, rồi cuối cùng vòng lặp render chính (draw-visualizer.js) — file
             này phải nạp SAU CÙNG vì nó tham chiếu tới các hàm draw* định nghĩa ở các file trên.
          ===================================================================== -->
-    <script src="js/visualizers/draw-helpers.js?v=20260625v7"></script>
-    <script src="js/visualizers/types/bar.js?v=20260625v7"></script>
-    <script src="js/visualizers/types/lightning.js?v=20260625v7"></script>
-    <script src="js/visualizers/types/rubik.js?v=20260625v7"></script>
-    <script src="js/visualizers/types/vortex.js?v=20260625v7"></script>
-    <script src="js/visualizers/types/black-hole.js?v=20260625v7"></script>
-    <script src="js/visualizers/types/rain.js?v=20260625v7"></script>
+    <script src="js/visualizers/draw-helpers.js?v=20260625v8"></script>
+    <script src="js/visualizers/types/bar.js?v=20260625v8"></script>
+    <script src="js/visualizers/types/lightning.js?v=20260625v8"></script>
+    <script src="js/visualizers/types/rubik.js?v=20260625v8"></script>
+    <script src="js/visualizers/types/vortex.js?v=20260625v8"></script>
+    <script src="js/visualizers/types/black-hole.js?v=20260625v8"></script>
+    <script src="js/visualizers/types/rain.js?v=20260625v8"></script>
     <!-- draw-visualizer.js chứa điểm khởi động thực sự của app (DOMContentLoaded ->
          loadConfig() + initPlaylistFromDB()), giữ nguyên vị trí như các bản trước. -->
-    <script src="js/visualizers/draw-visualizer.js?v=20260625v7"></script>
+    <script src="js/visualizers/draw-visualizer.js?v=20260625v8"></script>
 
 </body>
 </html>
