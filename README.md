@@ -1,20 +1,25 @@
-# Audio Visualizer - Master Edition
+# Simple Audio Visualizer
 
-Bản chia nhỏ của file `VM_4.html` gốc (2032 dòng, 1 file duy nhất) thành các
+Bản chia nhỏ và phát triển từ tệp `VM_4.html` gốc (2032 dòng, 1 file duy nhất) thành các
 file CSS / JS / "component" HTML riêng biệt, **không dùng ES6 module**
 (`import`/`export`) — toàn bộ vẫn dùng `<script src="...">` thông thường để
 chạy được trực tiếp khi mở `index.html` bằng cách double-click (file://),
 không cần server, không cần build step.
 
 Ngoài việc chia module, project đã qua nhiều lượt cải tiến tính năng/visual.
-Bản hiện tại (**ver 6**) tập trung dọn lỗi vặt còn sót lại từ ver 5 (sort,
-trạng thái rỗng, video nền chớp/khựng), tách lại file `playlist.js` quá khổ,
-thêm ô tìm kiếm + thống kê nghe theo từng bài, và mày mò chuyện giữ nhạc chạy
-nền trên điện thoại. Chi tiết đầy đủ ở [CHANGELOG_v6.md](./CHANGELOG_v6.md).
-Ver 5 trước đó là thay đổi lớn nhất — toàn bộ playlist (nhạc, tag, cover, phụ
-đề, ảnh/video nền) persist qua **IndexedDB**. Lịch sử các bản cũ hơn nằm ở
-changelog riêng từng bản.
+Bản hiện tại (**ver 7**) tập trung vào hiệu năng và độ bền dữ liệu: thuật
+toán nhận diện cao độ (YIN) được tách sang Web Worker riêng để không tranh
+CPU với canvas mỗi khung hình, sửa 2 điểm O(n²) khi playlist lớn, khoá định
+dạng file ở cả 3 nơi nhận upload (nhạc/ảnh nền/video nền), và cấu hình giờ tự
+phục hồi từ IndexedDB nếu `localStorage` bị trình duyệt xoá mất. Chi tiết đầy
+đủ ở [CHANGELOG_v7.md](./CHANGELOG_v7.md). Ver 6 trước đó dọn lỗi vặt còn sót
+từ ver 5 (sort, trạng thái rỗng, video nền chớp/khựng), tách lại file
+`playlist.js` quá khổ, thêm ô tìm kiếm + thống kê nghe theo từng bài. Ver 5 là
+thay đổi lớn nhất — toàn bộ playlist (nhạc, tag, cover, phụ đề, ảnh/video nền)
+persist qua **IndexedDB**. Lịch sử các bản cũ hơn nằm ở changelog riêng từng
+bản.
 
+- [CHANGELOG_v7.md](./CHANGELOG_v7.md)
 - [CHANGELOG_v6.md](./CHANGELOG_v6.md)
 - [CHANGELOG_v5.md](./CHANGELOG_v5.md)
 - [CHANGELOG_v4.md](./CHANGELOG_v4.md)
@@ -41,7 +46,7 @@ visual-master/
 ├── CHANGELOG_v4.md
 ├── CHANGELOG_v5.md
 ├── CHANGELOG_v6.md
-├── PLAN_INDEXEDDB.md         ← tài liệu thiết kế gốc của ver 5
+├── CHANGELOG_v7.md
 ├── index.html                  ← Mở file này để chạy ứng dụng
 ├── css/
 │   └── styles.css               (toàn bộ CSS gốc, không đổi)
@@ -52,7 +57,7 @@ visual-master/
     │   ├── visualizer-overlay.js
     │   ├── subtitle-modal.js
     │   ├── bottom-player.js
-    │   ├── settings-drawer.js   (★ ver 1, ★★★ ver 3, ★★★★ ver 4, ★★★★★ ver 5, ★★★★★★ ver 6 — toggle "Giữ màn hình sáng")
+    │   ├── settings-drawer.js   (★ ver 1, ★★★ ver 3, ★★★★ ver 4, ★★★★★ ver 5, ★★★★★★ ver 6 — toggle "Giữ màn hình sáng"; ★★★★★★★ ver 7 — accept= khớp whitelist ảnh/video)
     │   ├── storage-drawer.js    (★★★★★★ ver 6 — mô tả nút xoá: chỉ xoá bài hát)
     │   └── about-drawer.js      (★★★★★ mới ở ver 5 — thống kê, giới thiệu, cảnh báo IndexedDB)
     ├── main.js                  (★★★★★ ver 5 — ghép thêm TPL_ABOUT_DRAWER)
@@ -60,29 +65,31 @@ visual-master/
     │   ├── config.js            (★ ver 1, ★★★ ver 3, ★★★★ ver 4, ★★★★★ ver 5, ★★★★★★ ver 6 — thêm keepScreenOn)
     │   ├── dom-refs.js          (★ ver 1, ★★★ ver 3, ★★★★ ver 4, ★★★★★ ver 5, ★★★★★★ ver 6 — ref keepScreenOnToggle)
     │   ├── db.js                (★★★★★ mới ở ver 5 — IndexedDB: slugify/resolveKey/CRUD)
+    │   ├── upload-validation.js (★★★★★★★ mới ở ver 7 — validate MIME/đuôi file cho nhạc/ảnh nền/video nền)
     │   ├── loading-shield-util.js (★★★★★ mới ở ver 5 — withLoadingShield dùng chung)
     │   ├── three-vortex.js      (★ ver 1, ★★ ver 2)
-    │   ├── state-and-video-bg.js (★★★★★ ver 5, ★★★★★★ ver 6 — handleVideoBackground viết lại, bám nhạc không bám màn hình)
+    │   ├── state-and-video-bg.js (★★★★★ ver 5, ★★★★★★ ver 6 — handleVideoBackground viết lại, bám nhạc không bám màn hình; ★★★★★★★ ver 7 — validate định dạng video lúc upload)
     │   ├── subtitles.js         (★★★★★ ver 5 — persist subtitles khi Apply)
-    │   ├── equalizer-settings.js (★ ver 1, ★★★ ver 3, ★★★★ ver 4, ★★★★★ ver 5, ★★★★★★ ver 6 — nạp/đồng bộ keepScreenOn)
+    │   ├── equalizer-settings.js (★ ver 1, ★★★ ver 3, ★★★★ ver 4, ★★★★★ ver 5, ★★★★★★ ver 6 — nạp/đồng bộ keepScreenOn; ★★★★★★★ ver 7 — backup config sang IndexedDB debounce + fallback phục hồi khi mất localStorage)
     │   ├── subtitle-display.js
     │   ├── wakelock.js          (★★★★★ ver 5, ★★★★★★ ver 6 — gate theo keepScreenOn, resume AudioContext khi visible)
     │   ├── color-utils.js       (★★★★★★ ver 6 — nền đen thay transparent khi bật video, chống chớp trắng)
     │   ├── canvas-scene-setup.js (★ ver 1, ★★ ver 2, ★★★ ver 3, ★★★★ ver 4)
     │   ├── listen-stats.js      (★★★★★★ mới ở ver 6 — số lần nghe + thời gian nghe riêng từng bài, key {count,totalTime} trong meta.songStats)
-    │   ├── player-controls.js   (★★★ ver 3, ★★★★ ver 4, ★★★★★ ver 5, ★★★★★★ ver 6 — video bám theo nhạc, cộng dồn giờ nghe/bài, gate wake lock)
-    │   ├── audio-engine.js
-    │   ├── audio-analysis.js
+    │   ├── player-controls.js   (★★★ ver 3, ★★★★ ver 4, ★★★★★ ver 5, ★★★★★★ ver 6 — video bám theo nhạc, cộng dồn giờ nghe/bài, gate wake lock; ★★★★★★★ ver 7 — validate định dạng ảnh nền lúc upload)
+    │   ├── audio-engine.js      (★★★★★★★ ver 7 — detectPitchYIN() dời sang pitch-worker.js; chỉ còn cầu nối postMessage/onmessage)
+    │   ├── audio-analysis.js   (★★★★★★★ ver 7 — đọc kết quả pitch bất đồng bộ từ worker thay vì gọi hàm đồng bộ)
+    │   ├── pitch-worker.js      (★★★★★★★ mới ở ver 7 — Web Worker thuần CPU cho thuật toán YIN, tách khỏi main thread/draw loop)
     │   ├── rubik-math.js
     │   ├── about-stats.js       (★★★★★ mới ở ver 5 — computeStats() cho About Drawer)
     │   ├── id3-export.js        (★★★★★ mới ở ver 5 — export/restore gắn tag mới qua ID3Writer)
     │   └── storage-manager.js   (★★★★★★ ver 6 — "Xoá hết" chỉ xoá bài hát, GIỮ ảnh/video nền)
     ├── playlist/                (★★★★★★ mới ở ver 6 — tách từ core/playlist.js cũ thành module nhiều file, kiểu object-function)
     │   ├── state.js             (state dùng chung: playlistOrder / displayOrder [hàng đợi phát] / renderOrder [danh sách hiển thị] tách rời)
-    │   ├── order.js             (sort default/az/za — KHÔNG còn random; lọc tìm kiếm; pending-append hàng đợi khi đang phát)
+    │   ├── order.js             (sort default/az/za — KHÔNG còn random; lọc tìm kiếm; pending-append hàng đợi khi đang phát; ★★★★★★★ ver 7 — applyNewSongsToDisplayOrder() dùng Set tra cứu O(1) thay .includes() O(n))
     │   ├── render.js            (vẽ diff theo renderOrder; trạng thái rỗng #playlist-empty / #playlist-search-empty thuần theo dữ liệu)
-    │   ├── loader.js            (đọc duration, nạp file mới, quét/khởi tạo playlist từ IndexedDB)
-    │   ├── actions.js           (playSong, xoá/sửa/info bài, menu thao tác — info hiện số lần nghe + giờ nghe riêng)
+    │   ├── loader.js            (đọc duration, nạp file mới, quét/khởi tạo playlist từ IndexedDB; ★★★★★★★ ver 7 — validate định dạng nhạc trước khi xử lý, Set tra cứu O(1) thay .includes() O(n) trong vòng lặp nạp file)
+    │   ├── actions.js           (playSong, xoá/sửa/info bài, menu thao tác — info hiện số lần nghe + giờ nghe riêng; ★★★★★★★ ver 7 — reset trạng thái pitch worker khi đổi bài)
     │   └── main.js              (object `PlaylistMain`: initSortMenu + initSearch + init(); tự gọi init ở cuối)
     └── visualizers/
         ├── draw-helpers.js      (★★★ ver 3, ★★★★ ver 4)
@@ -97,8 +104,8 @@ visual-master/
 ```
 
 (★ = có thay đổi ở ver 1, ★★ = thêm ở ver 2, ★★★ = thêm ở ver 3, ★★★★ = thêm
-ở ver 4, ★★★★★ = thêm ở ver 5, ★★★★★★ = thêm ở ver 6; file không đánh dấu giữ
-nguyên 100% so với bản chia module gốc.)
+ở ver 4, ★★★★★ = thêm ở ver 5, ★★★★★★ = thêm ở ver 6, ★★★★★★★ = thêm ở
+ver 7; file không đánh dấu giữ nguyên 100% so với bản chia module gốc.)
 
 > **Lưu ý ver 6:** `js/core/playlist.js` (bản ver 5) ĐÃ BỊ XOÁ — toàn bộ nội
 > dung được tách sang thư mục `js/playlist/` (6 file). Mọi tên biến/hàm global
@@ -129,7 +136,11 @@ nguyên 100% so với bản chia module gốc.)
    nạp ngay sau `db.js`, và 6 file `js/playlist/*.js` nạp theo đúng thứ tự
    `state → order → render → loader → actions → main` (file sau dùng hàm/biến
    của file trước; `main.js` tự gọi `PlaylistMain.init()` ở cuối), đặt TRƯỚC
-   `player-controls.js`.
+   `player-controls.js`. **Từ ver 7:** `upload-validation.js` nạp ngay sau
+   `db.js` (cùng nhóm "helper sớm" như `loading-shield-util.js`) — định nghĩa
+   `validateAudioFile()`/`validateImageFile()`/`validateVideoFile()`, phải có
+   mặt TRƯỚC `js/playlist/loader.js` (validate nhạc), `player-controls.js`
+   (validate ảnh nền) và `state-and-video-bg.js` (validate video nền).
 4. **visualizers/draw-helpers.js**, rồi **visualizers/types/\*.js** (mỗi
    visual một file, không phụ thuộc thứ tự lẫn nhau), rồi cuối cùng
    **visualizers/draw-visualizer.js** — file này gọi tới các hàm `draw*`
@@ -140,7 +151,20 @@ nguyên 100% so với bản chia module gốc.)
    toàn bộ app. Từ ver 5, `loadConfig()` là `async` (đọc ảnh/video nền từ
    IndexedDB) và có `initPlaylistFromDB()` (đọc lại playlist đã lưu, render
    danh sách ngay khi mở trang). Từ ver 6 có thêm `loadSongStats()` (đọc
-   thống kê nghe theo từng bài trước khi render playlist).
+   thống kê nghe theo từng bài trước khi render playlist). Từ ver 7,
+   `loadConfig()` còn có thể `await getMeta('configBackup')` (đọc IndexedDB)
+   nếu localStorage rỗng — xem mục riêng trong CHANGELOG_v7.md.
+
+> **Lưu ý riêng cho `js/core/pitch-worker.js` (mới ở ver 7):** đây KHÔNG nằm
+> trong danh sách `<script src="...">` ở trên — nó được nạp bằng
+> `new Worker('js/core/pitch-worker.js')` ngay trong `audio-engine.js`
+> (`initPitchWorker()`), chạy trên 1 thread hoàn toàn riêng biệt, không chia
+> sẻ global scope với các file `core/*.js` khác. Đường dẫn `'js/core/...'`
+> trong `new Worker(...)` resolve theo base URL của `index.html`, giống mọi
+> đường dẫn tương đối khác trong project — không tương đối theo file JS gọi
+> nó. Đây vẫn là *classic Worker* (không `type: 'module'`) để chạy được qua
+> `file://`, đồng bộ với chủ trương "không build step, không ES6 module" của
+> toàn bộ project (xem mục *Vì sao không dùng ES6 module ở đây?* phía trên).
 
 ## Cách dùng
 
