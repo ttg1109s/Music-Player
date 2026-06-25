@@ -6,9 +6,12 @@
         let isGridView = false;
 
         const fileInput = document.getElementById('audio-upload'), audioPlayer = document.getElementById('audio-player');
-        // Input "Chọn cả thư mục" (ver 8 refine) — cùng xử lý chung qua handleAudioFiles() ở
-        // playlist/loader.js, chỉ khác cách mở hộp thoại (webkitdirectory). Nút "Thêm nhạc" giờ mở
-        // 1 menu nhỏ (#upload-action-menu) cho người dùng chọn 1 trong 2 input này.
+        // Input "Chọn cả thư mục" + "Chọn file nhạc" (ver 8 refine) — CẢ 2 đều nằm trong
+        // #upload-action-menu (template playlist-view.js), mỗi input bọc trong 1 <label> riêng
+        // (KHÔNG còn ở index.html ngoài #app-root, KHÔNG còn trigger bằng .click() qua JS — xem
+        // comment ở playlist-view.js để biết lý do: 1 số trình duyệt/WebView chặn .click() gọi
+        // gián tiếp lên input[type=file], chỉ click NATIVE thật lên label mới chắc chắn hoạt
+        // động). Cùng xử lý chung qua handleAudioFiles() ở playlist/loader.js.
         const folderInput = document.getElementById('audio-upload-folder');
         const btnUploadAudio = document.getElementById('btn-upload-audio'), uploadActionMenu = document.getElementById('upload-action-menu');
         const canvas = document.getElementById('visualizer'), ctx = canvas.getContext('2d');
@@ -34,6 +37,15 @@
         const statBpm = document.getElementById('stat-bpm'), statNote = document.getElementById('stat-note'), statEnergy = document.getElementById('stat-energy');
         
         const drawerSettings = document.getElementById('drawer-settings'), btnSettings = document.getElementById('btn-settings'), btnSettingsPlaylist = document.getElementById('btn-settings-playlist'), closeDrawer = document.getElementById('close-drawer');
+        // Drawer "Tùy chỉnh Visualizer" + "Tùy chỉnh Phụ đề" (ver 8 refine, mục 3) — cùng pattern
+        // navigation stack với About/Storage Drawer, mở chồng lên #drawer-settings.
+        const drawerVisualizerSettings = document.getElementById('drawer-visualizer-settings');
+        const btnOpenVisualizerSettings = document.getElementById('setting-open-visualizer-settings');
+        const btnBackVisualizerSettings = document.getElementById('btn-back-visualizer-settings');
+        const visualizerTypeSelect = document.getElementById('setting-visualizer-type');
+        const drawerSubtitleSettings = document.getElementById('drawer-subtitle-settings');
+        const btnOpenSubtitleSettings = document.getElementById('setting-open-subtitle-settings');
+        const btnBackSubtitleSettings = document.getElementById('btn-back-subtitle-settings');
         // Logo "SAV" góc trái Playlist (đối xứng với cụm icon góc phải) — hiệu ứng trượt chữ khi
         // hover/unhover xử lý THUẦN BẰNG CSS (transition max-width ở chính class trong HTML, xem
         // playlist-view.js), không cần xử lý JS nào ở đây. Khai báo ref dù không dùng trực tiếp,
