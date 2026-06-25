@@ -1,6 +1,11 @@
 /**
- * State playlist/subtitle bổ sung + sự kiện đổi chế độ xem playlist (grid/list) + xử lý video nền (handleVideoBackground và các listener liên quan).
+ * State playlist/subtitle bổ sung + xử lý video nền (handleVideoBackground và các listener liên quan).
  * (Trích từ file gốc, dòng 273-314 trong khối <script>)
+ *
+ * Ver 10 refine: listener đổi chế độ xem playlist (grid/list, trước đây ở #btn-toggle-view) ĐÃ
+ * CHUYỂN sang js/playlist/main.js (PlaylistMain.initViewMode) — UI điều khiển giờ là select
+ * trong Settings (#setting-playlist-view-mode), không còn icon riêng ở header Playlist nữa. Hợp
+ * lý hơn khi đặt cùng nhà với initSortMenu() (cùng nhóm "cách hiển thị danh sách Playlist").
  */
 
         // isSubtitlesEnabled: biến runtime dùng trực tiếp trong processSubtitles()/updateSubToggleUI()
@@ -12,18 +17,6 @@
 
         let isShuffle = false, shuffleIndices = [], repeatMode = 0;
         window.currentMediaSessionCover = null; window.lastValidNoteStr = null; window.lastValidNoteTime = 0; window.lastValidMidiNote = null;
-
-        btnToggleView.addEventListener('click', () => {
-            isGridView = !isGridView;
-            if (isGridView) {
-                iconGridView.classList.add('hidden'); iconListView.classList.remove('hidden');
-                playlistContainer.className = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-4 gap-y-6 px-5 pb-32';
-            } else {
-                iconGridView.classList.remove('hidden'); iconListView.classList.add('hidden');
-                playlistContainer.className = 'flex flex-col pb-32';
-            }
-            renderPlaylistFull(); // layout grid/list khác cấu trúc node hoàn toàn -> vẽ lại từ đầu, không diff
-        });
 
         btnReturnVisual.addEventListener('click', () => { if(currentKey) switchToVisualizer(); });
 

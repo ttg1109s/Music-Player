@@ -62,7 +62,9 @@
         // playlist-view.js), không cần xử lý JS nào ở đây. Khai báo ref dù không dùng trực tiếp,
         // để nhất quán với quy ước "mọi #id quan trọng đều có ref ở dom-refs.js" của project.
         const savLogo = document.getElementById('sav-logo');
-        const btnToggleView = document.getElementById('btn-toggle-view'), iconGridView = document.getElementById('icon-grid-view'), iconListView = document.getElementById('icon-list-view');
+        // Ver 10 refine: KHÔNG còn #btn-toggle-view/#icon-grid-view/#icon-list-view trong HTML —
+        // "Kiểu xem" (grid/list) đã chuyển vào Settings (#setting-playlist-view-mode, xem
+        // js/playlist/main.js: PlaylistMain.initViewMode()). Đã xoá 3 ref tương ứng ở đây.
         const btnCycleMode = document.getElementById('btn-cycle-mode'), modeBadge = document.getElementById('mode-badge');
         const qualitySelect = document.getElementById('setting-quality'), bgColorPicker = document.getElementById('bg-color-picker');
         const bgUploadInput = document.getElementById('setting-bg-upload'), bgBlurSlider = document.getElementById('setting-bg-blur'), valBgBlurDisplay = document.getElementById('val-bg-blur');
