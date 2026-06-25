@@ -41,6 +41,11 @@
            + viền sáng nhẹ + glow rất mờ phía trong để card tách khỏi nền mà vẫn giữ chất kính mờ
            (backdrop-filter blur) chứ không phải nền đặc như trước ver 8. */
         .glass-modal { background: rgba(15, 23, 42, 0.82); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px); border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 0 0 1px rgba(255,255,255,0.04) inset, 0 20px 60px rgba(0,0,0,0.5); }
+        /* Kính mờ "Control Center" kiểu iPhone (ver 8 refine) — nhạt hơn HẲN mọi class glass khác
+           trong app: gần trong suốt, chỉ làm mờ-đục (frosted) cảnh phía sau thay vì che kín bằng
+           1 lớp nền đậm. Dùng riêng cho #visualizer-control-center — KHÔNG đổi .drawer-glass (vẫn
+           dùng cho Settings/About/Storage, cần đậm hơn để đọc rõ nhiều dòng cài đặt liền nhau). */
+        .glass-control-center { background: rgba(255, 255, 255, 0.12); backdrop-filter: blur(36px) saturate(1.6); -webkit-backdrop-filter: blur(36px) saturate(1.6); border: 1px solid rgba(255, 255, 255, 0.25); box-shadow: 0 0 0 1px rgba(255,255,255,0.08) inset, 0 25px 50px rgba(0,0,0,0.35); }
         
         .fade-enter { opacity: 0; transform: scale(0.95); pointer-events: none; }
         .fade-enter-active { opacity: 1; transform: scale(1); pointer-events: auto; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
