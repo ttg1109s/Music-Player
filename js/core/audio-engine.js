@@ -6,6 +6,27 @@
  * — xem audio-analysis.js để biết cách kết quả bất đồng bộ được tiêu thụ. Khu vực dưới đây chỉ còn
  * lại "cầu nối": khởi tạo 1 Worker duy nhất, gửi buffer (transfer, không copy) kèm reqId, và giữ
  * lại kết quả mới nhất hợp lệ cho audio-analysis.js đọc.
+ *
+ * FIX (log 9->10, mục "play lại/Next/Prev không ra tiếng sau khi quay lại tab trên iOS"): nguyên
+ * nhân gốc rễ THẬT là ở ĐÂY, không phải ở currentKey/isShieldBusy (đã sửa ở bản trước, vẫn đúng và
+ * cần giữ). Trên iOS Safari, khi tab/app bị ẩn, AudioContext KHÔNG chuyển sang 'suspended' (trạng
+ * thái do CHÍNH app tự gọi suspend() — resume() được) mà chuyển sang 'interrupted' — một trạng thái
+ * THỨ BA, riêng của Safari, do HỆ ĐIỀU HÀNH áp đặt từ ngoài app (xem MDN BaseAudioContext.state).
+ * setupAudioContext() (hàm này) trước đây CHỈ kiểm tra `audioContext.state === 'suspended'` ở nhánh
+ * `else if` — bỏ sót hoàn toàn 'interrupted'. Vì audioContext là biến toàn cục chỉ được TẠO MỚI
+ * đúng 1 lần (`if (!audioContext)`), mọi lượt gọi lại setupAudioContext() sau đó (Play, Next, Prev,
+ * chọn bài trong playlist — TẤT CẢ đều đi qua playSong() -> setupAudioContext() ở cuối) chỉ rơi vào
+ * nhánh else if, và else if đó KHÔNG khớp 'interrupted' -> không resume() -> graph âm thanh (analyser/
+ * analyserPitch/EQ) vẫn nối với 1 context bị OS "ngắt" -> KHÔNG có tiếng phát ra, và
+ * analyser.getByteFrequencyData()/analyserPitch.getFloatTimeDomainData() (dùng cho BPM/Pitch/Energy
+ * ở audio-analysis.js) chỉ đọc được dữ liệu rỗng/cũ từ 1 context đã ngắt — giải thích ĐÚNG NGUYÊN
+ * VĂN triệu chứng "nhạc không phát ra tiếng + BPM/Pitch/Energy không hoạt động" dù currentKey/icon
+ * Play đã đúng (bản fix log 8->9 đã sửa đúng phần currentKey/isShieldBusy/UI, nhưng tầng AudioContext
+ * bên dưới vẫn câm vì lỗ hổng riêng này) — và giải thích luôn vì sao Next/Prev "lây" cùng lỗi: mọi
+ * đường đều dùng CHUNG 1 audioContext toàn cục, hỏng ở 1 chỗ là hỏng cho mọi bài sau đó.
+ *
+ * Sửa: thêm 'interrupted' vào điều kiện resume (gộp chung với 'suspended', cùng 1 cách xử lý —
+ * resume() hợp lệ cho cả 2 trạng thái theo đúng spec). Không đổi gì khác trong hàm.
  */
         let pitchWorker = null;
         let pitchWorkerBusy = false;       // true khi đang có 1 request bay tới worker, chưa có hồi đáp
@@ -76,6 +97,6 @@
 
                 initPitchWorker();
                 allocateBuffers(); resizeCanvas(); drawVisualizer(); updateDOMBackground();
-            } else if (audioContext.state === 'suspended') audioContext.resume();
+            } else if (audioContext.state === 'suspended' || audioContext.state === 'interrupted') audioContext.resume();
         }
 

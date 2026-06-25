@@ -179,7 +179,11 @@
         playPauseBtn.addEventListener('click', () => {
             requestWakeLock(); if (playlistOrder.length === 0) return;
             if (currentKey === null) { window.playSong(displayOrder[0] || playlistOrder[0]); return; }
-            if (audioPlayer.paused) { audioPlayer.play(); if (audioContext && audioContext.state === 'suspended') audioContext.resume(); } else { audioPlayer.pause(); }
+            // FIX (log 9->10): 'interrupted' là trạng thái RIÊNG của iOS Safari khi audio bị hệ điều
+            // hành "ngắt" lúc tab/app bị ẩn (khác 'suspended' — xem giải thích đầy đủ ở
+            // setupAudioContext(), audio-engine.js). Thiếu check này thì audioContext.resume() không
+            // được gọi, dù audioPlayer.play() có chạy thì vẫn không nghe được tiếng gì.
+            if (audioPlayer.paused) { audioPlayer.play(); if (audioContext && (audioContext.state === 'suspended' || audioContext.state === 'interrupted')) audioContext.resume(); } else { audioPlayer.pause(); }
         });
 
         btnNext.addEventListener('click', () => playNext(true)); btnPrev.addEventListener('click', () => playPrev());
