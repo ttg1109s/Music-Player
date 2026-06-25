@@ -52,19 +52,24 @@
         const eqSelect = document.getElementById('setting-eq'), eqSlidersWrapper = document.getElementById('eq-sliders-wrapper');
 
         const videoEnableToggle = document.getElementById('setting-video-enable'), videoUploadInput = document.getElementById('setting-video-upload'), bgVideoElement = document.getElementById('bg-video');
-        const videoHideVisualToggle = document.getElementById('setting-video-hide-visual');
+        // "Tắt Visual" (ver 8 refine) — ĐỘC LẬP khỏi nhóm Video Background, đặt thành mục cài đặt
+        // riêng (xem js/components/settings/playlist-background.js). id mới `setting-visual-enable`.
+        const visualEnabledToggle = document.getElementById('setting-visual-enable');
         const keepScreenOnToggle = document.getElementById('setting-keep-screen-on');
 
         const btnSubtitle = document.getElementById('btn-subtitle'), subToggleBadge = document.getElementById('sub-toggle-badge');
         const subtitleModal = document.getElementById('subtitle-modal'), btnCloseSubModal = document.getElementById('btn-close-sub-modal');
         const srtUpload = document.getElementById('srt-upload'), btnApplySub = document.getElementById('btn-apply-sub');
-        const btnToggleSub = document.getElementById('btn-toggle-sub'), btnAddSub = document.getElementById('btn-add-sub'), btnExportSrt = document.getElementById('btn-export-srt');
+        const btnAddSub = document.getElementById('btn-add-sub'), btnExportSrt = document.getElementById('btn-export-srt');
         const subtitleDisplay = document.getElementById('subtitle-display'), subtitleFrame = document.getElementById('subtitle-frame'), subActiveLines = document.getElementById('sub-active-lines');
         const subListContainer = document.getElementById('sub-list-container'), subEmptyState = document.getElementById('sub-empty-state');
         const btnAutoTiming = document.getElementById('btn-auto-timing');
         const iconAutoTimingIdle = document.getElementById('icon-auto-timing-idle'), iconAutoTimingRecording = document.getElementById('icon-auto-timing-recording');
         let autoSubStartTime = null;
 
+        // Toggle "Hiện phụ đề" (ver 8 refine) — chuyển từ #btn-toggle-sub trong modal sub về đây,
+        // lưu vào vizConfig.subtitlesEnabled (xem equalizer-settings.js).
+        const settingSubtitlesEnabled = document.getElementById('setting-subtitles-enabled');
         const settingSubBgColor = document.getElementById('setting-sub-bg-color'), settingSubBgOpacity = document.getElementById('setting-sub-bg-opacity'), valSubBgOpacity = document.getElementById('val-sub-bg-opacity');
         const settingSubBorderColor = document.getElementById('setting-sub-border-color'), settingSubBorderOpacity = document.getElementById('setting-sub-border-opacity'), valSubBorderOpacity = document.getElementById('val-sub-border-opacity');
         const settingSubBorderWidth = document.getElementById('setting-sub-border-width'), valSubBorderWidth = document.getElementById('val-sub-border-width');

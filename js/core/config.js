@@ -25,8 +25,17 @@
             minH: 4, maxH: 400, barWidth: 4, bgImage: '', bgBlur: 0, bgImageEnabled: false,
             mirrorBarCount: 32,
             volume: 100, eqMode: 'flat', manualEq: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            videoBgEnabled: false, videoBgUrl: '', videoHideVisual: false,
+            videoBgEnabled: false, videoBgUrl: '',
+            // Bật/tắt riêng cho VISUAL (canvas hiệu ứng) — ver 8 refine: TÁCH HẲN khỏi video nền
+            // (trước đây field này tên `videoHideVisual`, chỉ có tác dụng khi video nền đang bật).
+            // Giờ độc lập hoàn toàn: tắt -> luôn ẩn canvas + dừng tính toán vẽ, BẤT KỂ có video nền
+            // hay không; nền hiển thị khi đó là nền THẬT đang được chọn (video nền nếu đang bật,
+            // nếu không thì màu nền `bgColor`) — xem updateVisualVisibility() ở color-utils.js.
+            visualEnabled: true,
             keepScreenOn: true,
+            // Hiện/ẩn phụ đề (ver 8 refine) — chuyển từ biến in-memory isSubtitlesEnabled (mất khi
+            // tải lại trang) sang field lưu trong vizConfig, đồng bộ với mọi setting khác.
+            subtitlesEnabled: true,
             subtitleStyle: {
                 bgColor: '#000000', bgOpacity: 0.4,
                 borderColor: '#ffffff', borderOpacity: 0.1, borderWidth: 1, borderRadius: 16,

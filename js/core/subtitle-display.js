@@ -2,14 +2,17 @@
  * Hiển thị / đồng bộ phụ đề theo thời gian thực (updateSubToggleUI, processSubtitles).
  * (Trích từ file gốc, dòng 492-526 trong khối <script>)
  */
+        /**
+         * Cập nhật UI theo trạng thái isSubtitlesEnabled — ver 8 refine: nút "Bật/Tắt Sub" (trước
+         * nằm trong modal quản lý phụ đề) đã chuyển thành checkbox #setting-subtitles-enabled
+         * trong Cài đặt, nên hàm này giờ chỉ còn lo 2 việc: (1) badge xanh nhỏ trên icon "Phụ đề"
+         * ở overlay (#sub-toggle-badge — vẫn là indicator hữu ích cho biết sub đang bật, KHÔNG
+         * phải nút điều khiển), và (2) đồng bộ ngược checkbox Settings nếu trạng thái đổi từ nơi
+         * khác (ví dụ subtitles.js tự bật lại sub khi người dùng tải file .srt mới — xem mục đó).
+         */
         function updateSubToggleUI() {
-            if (isSubtitlesEnabled) {
-                btnToggleSub.textContent = "Tắt Sub"; btnToggleSub.classList.replace('bg-emerald-500', 'bg-slate-700/80');
-                subToggleBadge.classList.remove('hidden');
-            } else {
-                btnToggleSub.textContent = "Bật Sub"; btnToggleSub.classList.replace('bg-slate-700/80', 'bg-emerald-500');
-                subToggleBadge.classList.add('hidden');
-            }
+            subToggleBadge.classList.toggle('hidden', !isSubtitlesEnabled);
+            if (typeof settingSubtitlesEnabled !== 'undefined' && settingSubtitlesEnabled) settingSubtitlesEnabled.checked = isSubtitlesEnabled;
         }
 
         // Khung phụ đề chỉ thực sự hiện (chiếm chỗ trên màn hình) khi có ít nhất 1 dòng

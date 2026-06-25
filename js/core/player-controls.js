@@ -12,7 +12,19 @@
          * applyNewSongsToDisplayOrder trong playlist.js) — chỉ áp dụng khi KHÔNG shuffle, vì khi
          * shuffle thì shuffleIndices đã là nguồn phát riêng, không liên quan displayOrder.
          */
+        /**
+         * Fix (ver 8 refine): trước đây requestWakeLock() chỉ được gọi RIÊNG ở từng nơi BẤM nút
+         * (click Next/Prev) — Media Session ('previoustrack'/'nexttrack', điều khiển từ màn hình
+         * khoá/tai nghe) và auto-next khi hết bài ('ended') KHÔNG xin lại wake lock, nên màn hình
+         * vẫn có thể tự tắt sau khi chuyển bài bằng những đường đó dù "Giữ màn hình sáng" đang bật.
+         * Đưa requestWakeLock() vào ĐẦU playNext()/playPrev() — chạy NGAY khi hàm được gọi, trước
+         * mọi điều kiện khác — để MỌI lối gọi (click, mediaSession, ended, và bất kỳ chỗ nào sau
+         * này gọi 2 hàm này) đều tự động xin lại, không cần nhớ gọi requestWakeLock() riêng ở từng
+         * nơi nữa. requestWakeLock() tự kiểm tra vizConfig.keepScreenOn nội bộ (xem wakelock.js) nên
+         * gọi vô điều kiện ở đây không vi phạm tùy chọn "Giữ màn hình sáng" đang tắt.
+         */
         function playNext(force = false) {
+            requestWakeLock();
             if (playlistOrder.length === 0) return;
             if (!force && repeatMode === 2) { audioPlayer.currentTime = 0; audioPlayer.play(); return; }
             let nextKey;
@@ -34,6 +46,7 @@
         }
 
         function playPrev() {
+            requestWakeLock();
             if (playlistOrder.length === 0) return;
             if (audioPlayer.currentTime > 3) { audioPlayer.currentTime = 0; return; }
             let prevKey;
@@ -73,7 +86,7 @@
             if (audioPlayer.paused) { audioPlayer.play(); if (audioContext && audioContext.state === 'suspended') audioContext.resume(); } else { audioPlayer.pause(); }
         });
 
-        btnNext.addEventListener('click', () => { requestWakeLock(); playNext(true); }); btnPrev.addEventListener('click', () => { requestWakeLock(); playPrev(); });
+        btnNext.addEventListener('click', () => playNext(true)); btnPrev.addEventListener('click', () => playPrev());
         btnShuffle.addEventListener('click', () => { isShuffle = !isShuffle; btnShuffle.classList.toggle('!text-sky-400', isShuffle); btnShuffle.classList.toggle('text-slate-400', !isShuffle); updateShuffleArray(); });
         btnRepeat.addEventListener('click', () => {
             repeatMode = (repeatMode + 1) % 3;

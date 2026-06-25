@@ -73,14 +73,14 @@
             }
 
             if (vizConfig.videoBgEnabled && !videoBlob) {
-                vizConfig.videoBgEnabled = false; vizConfig.videoHideVisual = false;
+                vizConfig.videoBgEnabled = false;
             } else if (videoBlob && vizConfig.videoBgEnabled) {
                 vizConfig.videoBgUrl = URL.createObjectURL(videoBlob);
             }
 
             saveConfig();
             bgImageEnableToggle.checked = vizConfig.bgImageEnabled;
-            videoEnableToggle.checked = vizConfig.videoBgEnabled; videoHideVisualToggle.checked = vizConfig.videoHideVisual || false;
+            videoEnableToggle.checked = vizConfig.videoBgEnabled;
             updatePlaylistBg(); handleVideoBackground();
         }
 
@@ -112,6 +112,12 @@
             if (vizConfig.mirrorBarCount == null) vizConfig.mirrorBarCount = 32;
             if (vizConfig.bgImageEnabled == null) vizConfig.bgImageEnabled = false;
             if (vizConfig.keepScreenOn == null) vizConfig.keepScreenOn = true;
+            if (vizConfig.subtitlesEnabled == null) vizConfig.subtitlesEnabled = true;
+            if (vizConfig.visualEnabled == null) vizConfig.visualEnabled = true;
+            // Dữ liệu cũ (trước ver 8) có thể còn field `videoHideVisual` (đã loại bỏ, thay bằng
+            // `visualEnabled` độc lập khỏi video nền) — không cần migrate giá trị qua, vì ý nghĩa
+            // 2 field khác nhau (cũ: ẩn visual CHỈ khi có video; mới: ẩn visual LUÔN LUÔN khi tắt).
+            // Field thừa này vô hại nếu còn tồn tại trong bản JSON cũ, JS đơn giản bỏ qua nó.
             if (!vizConfig.subtitleStyle) vizConfig.subtitleStyle = { ...DEFAULT_VIZ_CONFIG.subtitleStyle };
             else vizConfig.subtitleStyle = { ...DEFAULT_VIZ_CONFIG.subtitleStyle, ...vizConfig.subtitleStyle };
             // Cấu hình cũ (trước khi thang cỡ chữ đổi thành 8-16px) có thể đã lưu giá trị lớn hơn —
@@ -138,6 +144,7 @@
             rainStyleSelect.value = vizConfig.rainStyle;
             glassFlashToggle.checked = vizConfig.glassFlash;
             if (typeof keepScreenOnToggle !== 'undefined' && keepScreenOnToggle) keepScreenOnToggle.checked = vizConfig.keepScreenOn !== false;
+            if (typeof visualEnabledToggle !== 'undefined' && visualEnabledToggle) visualEnabledToggle.checked = vizConfig.visualEnabled !== false;
             
             volumeSlider.value = vizConfig.volume; valVolumeDisplay.textContent = vizConfig.volume + '%';
             if(masterGainNode) masterGainNode.gain.value = vizConfig.volume / 100;
@@ -148,6 +155,11 @@
             updateDOMBackground(); updatePlaylistBg(); updateColorMenuUI(); updateTypeUI();
 
             const ss = vizConfig.subtitleStyle;
+            // Đồng bộ biến runtime + checkbox UI từ config đã lưu (ver 8 refine) — updateSubToggleUI()
+            // cập nhật luôn badge xanh #sub-toggle-badge ở overlay theo giá trị vừa nạp.
+            isSubtitlesEnabled = vizConfig.subtitlesEnabled !== false;
+            if (typeof settingSubtitlesEnabled !== 'undefined' && settingSubtitlesEnabled) settingSubtitlesEnabled.checked = isSubtitlesEnabled;
+            updateSubToggleUI();
             settingSubBgColor.value = ss.bgColor; settingSubBgOpacity.value = Math.round(ss.bgOpacity * 100); valSubBgOpacity.textContent = Math.round(ss.bgOpacity * 100) + '%';
             settingSubBorderColor.value = ss.borderColor; settingSubBorderOpacity.value = Math.round(ss.borderOpacity * 100); valSubBorderOpacity.textContent = Math.round(ss.borderOpacity * 100) + '%';
             settingSubBorderWidth.value = ss.borderWidth; valSubBorderWidth.textContent = ss.borderWidth;
@@ -161,7 +173,18 @@
 
         btnSubtitle.addEventListener('click', () => { subtitleModal.classList.remove('translate-y-full'); renderSubList(); });
         btnCloseSubModal.addEventListener('click', () => { resetAutoSub(); subtitleModal.classList.add('translate-y-full'); });
-        btnToggleSub.addEventListener('click', () => { isSubtitlesEnabled = !isSubtitlesEnabled; updateSubToggleUI(); });
+
+        // Toggle "Hiện phụ đề" (ver 8 refine) — chuyển từ nút trong modal sub về Cài đặt, giờ LƯU
+        // vào vizConfig.subtitlesEnabled (saveConfig()) thay vì chỉ đổi biến in-memory như trước.
+        if (typeof settingSubtitlesEnabled !== 'undefined' && settingSubtitlesEnabled) {
+            settingSubtitlesEnabled.addEventListener('change', (e) => {
+                isSubtitlesEnabled = e.target.checked;
+                vizConfig.subtitlesEnabled = isSubtitlesEnabled;
+                saveConfig();
+                updateSubToggleUI();
+                if (!isSubtitlesEnabled) clearAllActiveSubBlocks();
+            });
+        }
 
         settingSubBgColor.addEventListener('input', (e) => { vizConfig.subtitleStyle.bgColor = e.target.value; applySubtitleStyle(); saveConfig(); });
         settingSubBgOpacity.addEventListener('input', (e) => { const v = parseInt(e.target.value); vizConfig.subtitleStyle.bgOpacity = v / 100; valSubBgOpacity.textContent = v + '%'; applySubtitleStyle(); saveConfig(); });

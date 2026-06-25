@@ -3,6 +3,10 @@
  * (Trích từ file gốc, dòng 273-314 trong khối <script>)
  */
 
+        // isSubtitlesEnabled: biến runtime dùng trực tiếp trong processSubtitles()/updateSubToggleUI()
+        // (giữ tên cũ để không phải đổi khắp nơi). Giá trị khởi tạo `true` ở đây chỉ là tạm — được
+        // ĐỒNG BỘ LẠI từ vizConfig.subtitlesEnabled (đã lưu) ngay trong loadConfig() (ver 8 refine,
+        // xem equalizer-settings.js), nên giá trị thật sau khi trang nạp xong luôn khớp với Cài đặt.
         let subtitles = []; let isSubtitlesEnabled = true; let activeSubIds = new Set(); let editingSubId = null;
         let currentCalculatedBpm = "---";
 
@@ -25,12 +29,12 @@
 
         // Khi đóng drawer Cài đặt: nếu người dùng đã bật "Sử dụng Video Background" nhưng CHƯA
         // chọn video nào (vizConfig.videoBgUrl rỗng) thì tự tắt lại — tránh trạng thái "on" ảo
-        // không có video thật phía sau. "Video phủ kín, tạm dừng Visual" phụ thuộc vào video bg
-        // đang bật nên cũng phải tắt theo.
+        // không có video thật phía sau. "Tắt Visual" (ver 8 refine) KHÔNG còn phụ thuộc video bg
+        // nên không tắt theo nữa.
         function validateVideoBgOnClose() {
             if (vizConfig.videoBgEnabled && !vizConfig.videoBgUrl) {
-                vizConfig.videoBgEnabled = false; vizConfig.videoHideVisual = false;
-                videoEnableToggle.checked = false; videoHideVisualToggle.checked = false;
+                vizConfig.videoBgEnabled = false;
+                videoEnableToggle.checked = false;
                 handleVideoBackground(); saveConfig();
             }
         }
@@ -94,12 +98,23 @@
                 withLoadingShield("Đang xóa video nền...", async () => {
                     await delMeta('videoBg');
                     if (vizConfig.videoBgUrl && vizConfig.videoBgUrl.startsWith('blob:')) URL.revokeObjectURL(vizConfig.videoBgUrl);
-                    vizConfig.videoBgUrl = ''; vizConfig.videoHideVisual = false; videoHideVisualToggle.checked = false;
+                    vizConfig.videoBgUrl = '';
                     handleVideoBackground(); saveConfig();
                 });
             } else { handleVideoBackground(); saveConfig(); }
         });
-        videoHideVisualToggle.addEventListener('change', (e) => { vizConfig.videoHideVisual = e.target.checked; saveConfig(); });
+        // Toggle "Tắt Visual" (ver 8 refine) — ĐỘC LẬP khỏi video nền, không còn nằm trong khối
+        // cài đặt Video Background nữa (xem js/components/settings/playlist-background.js, mục
+        // "Hiệu ứng Visualizer" riêng). Đổi vizConfig.visualEnabled rồi lưu — vòng lặp vẽ chính
+        // (draw-visualizer.js) tự đọc field này mỗi khung hình, không cần gọi thêm hàm nào ở đây.
+        // Nền hiển thị khi tắt visual tự đúng theo setting đã chọn vì handleVideoBackground()/
+        // updateDOMBackground() vốn không phụ thuộc field này — chúng vẫn chạy độc lập như cũ.
+        if (typeof visualEnabledToggle !== 'undefined' && visualEnabledToggle) {
+            visualEnabledToggle.addEventListener('change', (e) => {
+                vizConfig.visualEnabled = e.target.checked;
+                saveConfig();
+            });
+        }
         videoUploadInput.addEventListener('change', (e) => {
             const file = e.target.files[0]; if (!file) return;
             e.target.value = '';

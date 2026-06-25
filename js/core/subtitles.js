@@ -122,7 +122,15 @@
 
         btnApplySub.addEventListener('click', async () => {
             editingSubId = null; resetAutoSub(); renderSubList();
-            if (!isSubtitlesEnabled) { isSubtitlesEnabled = true; updateSubToggleUI(); }
+            // Tự bật lại "Hiện phụ đề" nếu đang tắt — người dùng vừa soạn xong, hợp lý là muốn xem
+            // ngay. Đồng bộ LUÔN vào vizConfig + lưu (ver 8 refine) để checkbox trong Cài đặt khớp
+            // với trạng thái thật, không chỉ đổi biến runtime như trước.
+            if (!isSubtitlesEnabled) {
+                isSubtitlesEnabled = true;
+                vizConfig.subtitlesEnabled = true;
+                saveConfig();
+                updateSubToggleUI();
+            }
             subtitleModal.classList.add('translate-y-full'); clearAllActiveSubBlocks();
 
             // Ghi đè subtitles của bài hiện tại vào IndexedDB — điểm xác nhận + persist duy nhất.
