@@ -1,6 +1,11 @@
 /**
  * Component: Subtitle Editor Modal (màn hình toàn màn hình để quản lý / chỉnh sửa phụ đề)
  * Biến này chứa chuỗi HTML, được main.js chèn vào DOM lúc khởi động.
+ *
+ * Ver 8 refine: nút "Bật Sub"/"Tắt Sub" (#btn-toggle-sub) ĐÃ CHUYỂN sang Cài đặt > Khung & Chữ
+ * Phụ đề (toggle "Hiện phụ đề", xem js/components/settings/subtitle-style.js) — modal này giờ
+ * chỉ còn lo việc SOẠN nội dung phụ đề (tải .srt, canh giờ tự động, thêm dòng, xuất .srt), không
+ * còn điều khiển hiển thị, đúng nguyên tắc "mọi tuỳ chọn hiển thị nằm trong Cài đặt".
  */
 const TPL_SUBTITLE_MODAL = `
     <div id="subtitle-modal" class="fixed inset-0 z-[110] bg-[#0f172a] transform translate-y-full transition-transform duration-300 flex flex-col">
@@ -12,7 +17,6 @@ const TPL_SUBTITLE_MODAL = `
                 Quản lý Phụ đề
             </h3>
             <div class="flex gap-2">
-                <button id="btn-toggle-sub" class="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-sm font-semibold rounded-xl transition-colors text-white shadow-md">Bật Sub</button>
                 <button id="btn-close-sub-modal" class="px-5 py-2.5 bg-slate-700/80 hover:bg-slate-600 text-sm font-semibold rounded-xl transition-colors text-white shadow-md">Đóng</button>
             </div>
         </div>
