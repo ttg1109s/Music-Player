@@ -23,6 +23,11 @@
         const statBpm = document.getElementById('stat-bpm'), statNote = document.getElementById('stat-note'), statEnergy = document.getElementById('stat-energy');
         
         const drawerSettings = document.getElementById('drawer-settings'), btnSettings = document.getElementById('btn-settings'), btnSettingsPlaylist = document.getElementById('btn-settings-playlist'), closeDrawer = document.getElementById('close-drawer');
+        // Logo "SAV" góc trái Playlist (đối xứng với cụm icon góc phải) — hiệu ứng trượt chữ khi
+        // hover/unhover xử lý THUẦN BẰNG CSS (transition max-width ở chính class trong HTML, xem
+        // playlist-view.js), không cần xử lý JS nào ở đây. Khai báo ref dù không dùng trực tiếp,
+        // để nhất quán với quy ước "mọi #id quan trọng đều có ref ở dom-refs.js" của project.
+        const savLogo = document.getElementById('sav-logo');
         const btnToggleView = document.getElementById('btn-toggle-view'), iconGridView = document.getElementById('icon-grid-view'), iconListView = document.getElementById('icon-list-view');
         const btnCycleMode = document.getElementById('btn-cycle-mode'), modeBadge = document.getElementById('mode-badge');
         const qualitySelect = document.getElementById('setting-quality'), bgColorPicker = document.getElementById('bg-color-picker');
