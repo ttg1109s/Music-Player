@@ -188,15 +188,34 @@
          *                         bị dừng.
          *   - "Nghe lại"       -> phát lại bài đó TỪ ĐẦU (currentTime = 0).
          */
+        /**
+         * Cờ chống MỞ CHỒNG modal "Tiếp tục nghe?" — xử lý đúng kịch bản người dùng phát hiện:
+         * quay lại tab -> modal hiện ra -> (CHƯA CHỌN GÌ) ẩn tab đi -> quay lại tab LẦN NỮA. Nếu
+         * không có cờ này, lần quay lại thứ 2 có thể gọi showResumeChoiceModal() chồng lên modal
+         * cũ đang mở (modalChoice() tự dọn modal cũ trước khi dựng modal mới — xem modal-choice.js
+         * — nhưng làm vậy nghĩa là context của lượt hỏi đầu tiên bị xoá âm thầm, người dùng có thể
+         * hoang mang vì modal "tự đổi nội dung"/nhảy giật mà không hiểu vì sao).
+         *
+         * true  = modal đang mở, đang chờ người dùng chọn -> showResumeChoiceModal() gọi lại lúc
+         *         này sẽ KHÔNG làm gì cả (không dựng modal thứ 2, không đụng vào modal đang có).
+         * false = không có modal nào đang mở -> nếu có lastStoppedKey, được phép dựng modal mới.
+         * Đặt lại false ngay khi 1 trong 3 nút được bấm (modal đã đóng xong), bất kể chọn nút nào.
+         */
+        let isResumeModalOpen = false;
+
         function showResumeChoiceModal() {
+            if (isResumeModalOpen) return; // modal cũ vẫn đang mở chờ chọn -> không mở chồng/thay thế
             if (!lastStoppedKey) return; // chưa từng nghe gì trước đó -> không có gì để hỏi
             const key = lastStoppedKey;
             const resumeTime = lastStoppedTime;
             // Xoá cache NGAY khi mở modal (không phải lúc bấm nút) — tránh hiện lại modal này thêm
             // lần nữa nếu lại bị ẩn/hiện tab liên tiếp trong lúc modal đang mở (currentKey vẫn null
             // lúc đó, nhưng lastStoppedKey đã bị xoá nên triggerHideReset()/showResumeChoiceModal()
-            // sau đó không có gì để hỏi nữa).
+            // sau đó không có gì để hỏi nữa). Cờ isResumeModalOpen ở trên là lớp chặn THỨ HAI, áp
+            // dụng kể cả trong trường hợp hiếm lastStoppedKey vô tình có giá trị trở lại trước khi
+            // modal hiện tại đóng (ví dụ nếu code khác sau này gán lastStoppedKey ở chỗ mới).
             lastStoppedKey = null; lastStoppedTime = 0;
+            isResumeModalOpen = true;
 
             const cached = (typeof playlistCache !== 'undefined') ? playlistCache.get(key) : null;
             const title = cached && cached.tag && cached.tag.title ? cached.tag.title : key;
@@ -204,11 +223,16 @@
             modalChoice(
                 `Bạn có muốn tiếp tục nghe bài <b>${title}</b> không?`,
                 [
-                    { label: 'Không', className: 'flex-1 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-sm font-semibold transition-colors', onClick: () => {} },
+                    {
+                        label: 'Không',
+                        className: 'flex-1 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-sm font-semibold transition-colors',
+                        onClick: () => { isResumeModalOpen = false; }
+                    },
                     {
                         label: 'Tiếp tục phát',
                         className: 'flex-1 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-sm font-semibold transition-colors',
                         onClick: async () => {
+                            isResumeModalOpen = false;
                             await window.playSong(key);
                             if (currentKey === key) audioPlayer.currentTime = resumeTime;
                         }
@@ -216,7 +240,7 @@
                     {
                         label: 'Nghe lại',
                         className: 'flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold transition-colors',
-                        onClick: () => { window.playSong(key); } // playSong() đã tự đặt currentTime = 0 khi gán src mới — không cần seek thêm
+                        onClick: () => { isResumeModalOpen = false; window.playSong(key); } // playSong() đã tự đặt currentTime = 0 khi gán src mới — không cần seek thêm
                     }
                 ],
                 { title: 'Đang phát tiếp?' }
