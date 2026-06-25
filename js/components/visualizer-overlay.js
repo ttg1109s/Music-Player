@@ -14,11 +14,8 @@
  *
  * Ver 8 refine (lần 2): panel đổi từ "trượt từ trên xuống full chiều rộng" thành "PHÓNG RA TỪ
  * TRUNG TÂM" (scale từ vị trí nút mở, đúng kiểu Control Center iOS thật) + nền đổi từ
- * .drawer-glass (đen đậm) sang .glass-control-center (kính mờ TRONG SUỐT hơn nhiều — xem
- * css/styles.css).
- *
- * Ver 8 refine (lần 3): panel rộng GẦN BẰNG TOÀN MÀN HÌNH (neo cả 2 mép trái/phải, KHÔNG còn
- * cố định 220px lệch trái) — grid 5 icon nằm đều trên 1 hàng ngang duy nhất.
+ * .drawer-glass (đen đậm) sang .glass-control-center (kính mờ TRONG SUỐT hơn nhiều, gần như chỉ
+ * làm mờ-đục cảnh phía sau — xem css/styles.css).
  */
 const TPL_VISUALIZER_OVERLAY = `
     <div id="visualizer-ui" class="absolute inset-0 z-30 pointer-events-none fade-enter hidden flex flex-col">
@@ -48,26 +45,17 @@ const TPL_VISUALIZER_OVERLAY = `
             </button>
 
             <!-- Panel "Control Center" — PHÓNG RA TỪ TRUNG TÂM (vị trí nút mở, góc trái trên) kiểu
-                 iOS Control Center thật, KHÔNG còn trượt từ trên xuống full chiều rộng (ver 8
+                 iOS Control Center thật, KHÔNG còn trượt từ trên xuống full chiều rộng nữa (ver 8
                  refine). Cơ chế: scale(0) + opacity 0 ở trạng thái đóng, transform-origin đặt tại
                  góc trên-trái (đúng vị trí nút bấm) -> khi mở, scale(1) tạo cảm giác "nở ra" từ
                  đúng điểm người dùng vừa chạm, không phải trượt cứng theo 1 hướng. Nền đổi sang
                  .glass-control-center — kính mờ TRONG SUỐT hơn nhiều so với .drawer-glass (gần
                  như chỉ làm mờ-đục cảnh phía sau, giống đúng chất liệu Control Center iPhone thật
-                 — không phải 1 lớp nền đậm che kín).
-                 FIX (ver 8 refine #2 — khung quá hẹp so với màn hình): panel trước đây CHỈ neo
-                 mép trái (class left-3 sm:left-6) với grid trong cố định width 220px — trên màn
-                 hình rộng (đặc biệt tablet/màn ngang), panel co lại thành 1 ô vuông nhỏ lệch trái,
-                 rất mất cân đối so với phần còn lại của visualizer. SỬA: neo CẢ 2 MÉP (left-3
-                 right-3 sm:left-6 sm:right-6) để panel rộng GẦN BẰNG TOÀN MÀN HÌNH (trừ margin 2
-                 bên), grid trong đổi từ width cố định (3 cột) sang full-width (co giãn theo
-                 panel, 5 cột) — đúng số lượng nút thật (Hiệu ứng/Phụ đề/Cài đặt/Trộn bài/Lặp lại),
-                 nằm đều trên 1 hàng ngang duy nhất thay vì 3+2 như trước. transform-origin giữ
-                 "top left" vì nút mở vẫn ở góc trái — hiệu ứng "nở ra" từ đúng vị trí bấm không
-                 đổi. -->
+                 — không phải 1 lớp nền đậm che kín). Không còn full-width: co lại thành 1 panel
+                 vuông góc bo tròn, kích thước theo nội dung (max-w), neo góc trái trên màn hình. -->
             <div id="control-center-overlay" class="hidden fixed inset-0 z-[45] pointer-events-auto"></div>
-            <div id="visualizer-control-center" class="absolute top-16 left-3 right-3 sm:left-6 sm:right-6 glass-control-center rounded-3xl shadow-2xl transform scale-0 opacity-0 transition-all duration-300 ease-out z-[46] pointer-events-auto p-4" style="transform-origin: top left;">
-                <div class="grid grid-cols-5 gap-1 sm:gap-2 w-full">
+            <div id="visualizer-control-center" class="absolute top-16 left-3 sm:left-6 glass-control-center rounded-3xl shadow-2xl transform scale-0 opacity-0 transition-all duration-300 ease-out z-[46] pointer-events-auto p-4" style="transform-origin: top left;">
+                <div class="grid grid-cols-3 gap-2 w-[220px]">
                     <button id="btn-cycle-mode" data-cc-action class="flex flex-col items-center gap-1.5 py-3 rounded-2xl hover:bg-white/15 transition-colors relative" title="Đổi hiệu ứng">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 11a9 9 0 019 9M4 11a9 9 0 019-9m9 9a9 9 0 01-9-9m9 9a9 9 0 01-9 9m-9-9h18" /></svg>
                         <span class="text-[10px] text-white font-medium">Hiệu ứng</span>
