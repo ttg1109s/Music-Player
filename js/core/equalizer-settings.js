@@ -114,6 +114,14 @@
             if (vizConfig.keepScreenOn == null) vizConfig.keepScreenOn = true;
             if (vizConfig.subtitlesEnabled == null) vizConfig.subtitlesEnabled = true;
             if (vizConfig.visualEnabled == null) vizConfig.visualEnabled = true;
+            // Auto-switch-visual (ver 10) — migrate field mới + validate lại ngưỡng tối thiểu
+            // (phòng giá trị bị sửa tay/hỏng trong bản JSON cũ thấp hơn AUTO_SWITCH_VISUAL_MIN_SECONDS).
+            if (vizConfig.autoSwitchVisualEnabled == null) vizConfig.autoSwitchVisualEnabled = false;
+            if (vizConfig.autoSwitchVisualMode !== 'sequential' && vizConfig.autoSwitchVisualMode !== 'random') vizConfig.autoSwitchVisualMode = 'sequential';
+            if (!['fixed', 'random', 'duration'].includes(vizConfig.autoSwitchVisualTimeMode)) vizConfig.autoSwitchVisualTimeMode = 'fixed';
+            if (typeof vizConfig.autoSwitchVisualSeconds !== 'number' || vizConfig.autoSwitchVisualSeconds < AUTO_SWITCH_VISUAL_MIN_SECONDS) {
+                vizConfig.autoSwitchVisualSeconds = Math.max(AUTO_SWITCH_VISUAL_MIN_SECONDS, DEFAULT_VIZ_CONFIG.autoSwitchVisualSeconds);
+            }
             // Dữ liệu cũ (trước ver 8) có thể còn field `videoHideVisual` (đã loại bỏ, thay bằng
             // `visualEnabled` độc lập khỏi video nền) — không cần migrate giá trị qua, vì ý nghĩa
             // 2 field khác nhau (cũ: ẩn visual CHỈ khi có video; mới: ẩn visual LUÔN LUÔN khi tắt).
@@ -145,6 +153,7 @@
             glassFlashToggle.checked = vizConfig.glassFlash;
             if (typeof keepScreenOnToggle !== 'undefined' && keepScreenOnToggle) keepScreenOnToggle.checked = vizConfig.keepScreenOn !== false;
             if (typeof visualEnabledToggle !== 'undefined' && visualEnabledToggle) visualEnabledToggle.checked = vizConfig.visualEnabled !== false;
+            if (typeof initAutoSwitchVisualUI === 'function') initAutoSwitchVisualUI(); // đồng bộ toàn bộ UI auto-switch-visual (xem auto-switch-visual.js)
             
             volumeSlider.value = vizConfig.volume; valVolumeDisplay.textContent = vizConfig.volume + '%';
             if(masterGainNode) masterGainNode.gain.value = vizConfig.volume / 100;

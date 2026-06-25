@@ -229,6 +229,22 @@
                 return true;
             }
 
+            /**
+             * FIX (bug): this.running[taskName] là 1 cờ ĐỘC LẬP, được set true/false CHỈ bởi
+             * operator()/kill() — nhưng khi 1 Loop có `count` giới hạn (vd count: 1) tự chạy hết
+             * và tự gọi disabled() NỘI BỘ (xem Loop.#tickCount()), KHÔNG có cơ chế nào báo lại cho
+             * TaskManager biết để dọn this.running[taskName] — cờ đó vẫn đọc ra `true` mãi dù task
+             * thật đã dừng từ lâu (Loop.isRunning đã là `false`). Mọi chỗ cần biết "task này còn
+             * sống thật không" PHẢI đối chiếu CẢ HAI: cờ this.running[taskName] (lịch sử có
+             * enabled() qua operator() chưa) VÀ this.plan[taskName].isRunning (trạng thái THẬT của
+             * chính Loop instance, luôn đúng vì Loop tự cập nhật nó ở mọi nhánh enabled/disabled).
+             * pause()/resume() bên dưới dùng helper này thay cho đọc thẳng this.running[taskName].
+             */
+            isTaskRunning(taskName) {
+                const taskLoop = this.plan[taskName];
+                return !!(taskLoop && this.running[taskName] && taskLoop.isRunning);
+            }
+
             operator(taskName, mode) {
                 const taskLoop = this.plan[taskName];
                 if (!taskLoop) return;
@@ -271,14 +287,14 @@
 
             pause(taskName) {
                 const taskLoop = this.plan[taskName];
-                if (taskLoop && this.running[taskName]) {
+                if (taskLoop && this.isTaskRunning(taskName)) {
                     taskLoop.pause();
                 }
             }
 
             resume(taskName) {
                 const taskLoop = this.plan[taskName];
-                if (taskLoop && this.running[taskName]) {
+                if (taskLoop && this.isTaskRunning(taskName)) {
                     taskLoop.resume();
                 }
             }

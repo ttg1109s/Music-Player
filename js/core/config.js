@@ -18,7 +18,7 @@
             if (!_hasShownFatalErrorAlert) {
                 _hasShownFatalErrorAlert = true;
                 try {
-                    console.error(`Đã xảy ra lỗi không mong muốn (${context}). Vui lòng tải lại trang (F5).\n\nChi tiết: ${err && err.message ? err.message : err}`);
+                    alert(`Đã xảy ra lỗi không mong muốn (${context}). Vui lòng tải lại trang (F5).\n\nChi tiết: ${err && err.message ? err.message : err}`);
                 } catch (alertErr) { /* alert có thể bị chặn ở 1 số trình duyệt — bỏ qua, log vẫn còn ở console */ }
             }
         }
@@ -46,6 +46,16 @@
 
         const MODES = ['bar', 'lightning', 'rubik', 'vortex', 'black hole', 'rain'];
 
+        // Auto-switch-visual (ver 10): ngưỡng tối thiểu HARDCODE cho mọi cách tính thời gian giữa
+        // 2 lần đổi hiệu ứng — người dùng KHÔNG thể điền thấp hơn mức này, validate ở cả input UI
+        // (auto-switch-visual.js) lẫn lúc đọc lại config cũ/hỏng (đề phòng giá trị bị sửa tay
+        // trong localStorage/IndexedDB). Cùng 1 hằng số dùng cho:
+        //   - mode 'fixed' (c1): chính là khoảng giây cố định người điền — không cho < ngưỡng này.
+        //   - mode 'random' (c2): cận DƯỚI của khoảng random — max là số người điền.
+        //   - mode 'duration' (c3): SỐ CHIA CỐ ĐỊNH cho duration bài hát (vd: bài 450s / 10 = 45s/lần
+        //     đổi) — KHÔNG phải ngưỡng tối thiểu ở đây, người dùng KHÔNG điền/can thiệp được gì cả.
+        const AUTO_SWITCH_VISUAL_MIN_SECONDS = 10;
+
         const DEFAULT_VIZ_CONFIG = {
             quality: 'high', type: 'bar', barStyle: 'mirror', vortexStyle: 'rings', rainStyle: 'glass', glassFlash: true, mode: 'solid', 
             bgColor: '#000000', solidColor: '#ffffff', dynA: '#ec4899', dynB: '#3b82f6', 
@@ -60,6 +70,17 @@
             // nếu không thì màu nền `bgColor`) — xem updateVisualVisibility() ở color-utils.js.
             visualEnabled: true,
             keepScreenOn: true,
+            // Tự động đổi hiệu ứng Visualizer theo thời gian (ver 10) — xem auto-switch-visual.js.
+            //   - autoSwitchVisualEnabled : bật/tắt tổng.
+            //   - autoSwitchVisualMode    : 'sequential' (tuần tự/cố định theo MODES) | 'random'.
+            //   - autoSwitchVisualTimeMode: 'fixed' (c1) | 'random' (c2) | 'duration' (c3).
+            //   - autoSwitchVisualSeconds : số giây người dùng điền — dùng cho 'fixed' (chính là
+            //     khoảng cố định) và 'random' (là cận TRÊN của khoảng [10, X]). KHÔNG dùng cho
+            //     'duration' (c3 không cho người dùng điền gì, luôn chia cố định cho 10).
+            autoSwitchVisualEnabled: false,
+            autoSwitchVisualMode: 'sequential',
+            autoSwitchVisualTimeMode: 'fixed',
+            autoSwitchVisualSeconds: 30,
             // Hiện/ẩn phụ đề (ver 8 refine) — chuyển từ biến in-memory isSubtitlesEnabled (mất khi
             // tải lại trang) sang field lưu trong vizConfig, đồng bộ với mọi setting khác.
             subtitlesEnabled: true,

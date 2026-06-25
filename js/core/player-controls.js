@@ -182,6 +182,11 @@
                 audioPlayer.removeAttribute('src'); audioPlayer.src = '';
                 const previousKey = currentKey;
                 currentKey = null;
+                // ver 10: audioPlayer.pause() ở trên đã bắn event 'pause' (gọi syncAutoSwitchVisualPlayState())
+                // NHƯNG lúc đó currentKey vẫn còn giá trị cũ (dòng này mới set null) -> hàm đó chỉ
+                // pause() task thay vì kill() hẳn. Dọn dứt điểm ở đây — không còn bài nào đang phát
+                // thì task auto-switch-visual không có lý do gì tồn tại (pause hờ) nữa.
+                if (typeof taskManager !== 'undefined' && typeof AUTO_SWITCH_VISUAL_TASK !== 'undefined') taskManager.kill(AUTO_SWITCH_VISUAL_TASK);
                 // Reset UI player về ĐÚNG trạng thái ban đầu — xem bottom-player.js (TPL_BOTTOM_PLAYER)
                 // để biết giá trị gốc lúc chưa chọn bài nào.
                 playerTitle.textContent = 'Chưa chọn bài'; playerArtist.textContent = '---';
@@ -373,7 +378,7 @@
             taskManager.operator(LISTEN_CLOCK_TASK, 'enabled');
         }
         function stopListenClock() {
-            if (!taskManager.running[LISTEN_CLOCK_TASK]) return;
+            if (!taskManager.isTaskRunning(LISTEN_CLOCK_TASK)) return;
             _listenTick(); // chốt nốt phần lẻ kể từ tick gần nhất trước khi dừng
             taskManager.kill(LISTEN_CLOCK_TASK);
         }
@@ -384,6 +389,7 @@
             if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing";
             if (currentKey) refreshSongNode(currentKey);
             startListenClock();
+            if (typeof syncAutoSwitchVisualPlayState === 'function') syncAutoSwitchVisualPlayState(); // ver 10: xem auto-switch-visual.js
             // Chỉ ĐỒNG BỘ phát video theo nhạc — KHÔNG fade lại. Nguồn + fade đã thiết lập 1 lần
             // lúc bật/upload/nạp trang (handleVideoBackground), nên Next/Prev không lặp lại cú fade.
             syncVideoBgToAudio();
@@ -394,10 +400,16 @@
             releaseWakeLock(); if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "paused";
             if (currentKey) refreshSongNode(currentKey);
             stopListenClock();
+            if (typeof syncAutoSwitchVisualPlayState === 'function') syncAutoSwitchVisualPlayState(); // ver 10: xem auto-switch-visual.js
             syncVideoBgToAudio();
         });
         audioPlayer.addEventListener('ended', () => { stopListenClock(); playNext(false); });
-        audioPlayer.addEventListener('loadedmetadata', () => { progressBar.max = audioPlayer.duration; durationTimeDisplay.textContent = formatTime(audioPlayer.duration); updateMediaPositionState(); });
+        audioPlayer.addEventListener('loadedmetadata', () => {
+            progressBar.max = audioPlayer.duration; durationTimeDisplay.textContent = formatTime(audioPlayer.duration); updateMediaPositionState();
+            // ver 10: bài MỚI bắt đầu (duration vừa có giá trị chính xác) -> build lại marks cho
+            // auto-switch-visual — xem onAutoSwitchVisualSongChanged() ở auto-switch-visual.js.
+            if (typeof onAutoSwitchVisualSongChanged === 'function') onAutoSwitchVisualSongChanged();
+        });
         // Lỗi decode THẬT (khác với "không tìm thấy record" đã xử lý riêng trong playSong) — trình
         // duyệt gán src xong rồi mới phát hiện không decode được (file hỏng dù qua được check nhanh
         // lúc nạp/quét). Chỉ xử lý khi đang thực sự gắn với currentKey (audioPlayer.src vẫn còn trỏ
