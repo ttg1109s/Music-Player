@@ -24,13 +24,27 @@
         }
         window.addEventListener("error", e => {
 
-    alert(console.log(e));
+    alert(JSON.stringify({
 
-    alet(console.log(e.target));
+        message: e.message,
 
-    alert(console.log(e.currentTarget));
+        filename: e.filename,
 
-    alert(console.log(e.error));
+        lineno: e.lineno,
+
+        colno: e.colno,
+
+        error: String(e.error),
+
+        target: e.target?.tagName,
+
+        currentTarget: e.currentTarget === window ? "window" : "other",
+
+        type: e.type,
+
+        isTrusted: e.isTrusted
+
+    }, null, 2));
 
 });
         window.addEventListener('unhandledrejection', (e) => {
