@@ -24,12 +24,13 @@
         function drawVisualizer() {
             animationId = requestAnimationFrame(drawVisualizer);
 
-            // Video nền đang "phủ kín, tạm dừng Visual": vẫn phải tính toán phân tích âm thanh
-            // (BPM/Pitch/Energy ở stats-panel dùng chung các biến này) mỗi khung hình — CHỈ bỏ
-            // qua phần vẽ canvas (2D + WebGL) vì nó đang bị ẩn phía sau video nên vẽ ra cũng vô ích.
-            const isVideoHidingVisual = vizConfig.videoBgEnabled && vizConfig.videoBgUrl && vizConfig.videoHideVisual;
+            // "Tắt Visual" (ver 8 refine) — ĐỘC LẬP khỏi video nền: tắt -> luôn ẩn canvas + dừng
+            // tính toán vẽ, để lộ ra nền THẬT đang được chọn (video nền nếu đang bật, ảnh/màu nền
+            // nếu không) phía dưới. Vẫn phải tính toán phân tích âm thanh (BPM/Pitch/Energy ở
+            // stats-panel dùng chung các biến này) mỗi khung hình — CHỈ bỏ qua phần vẽ canvas.
+            const isVisualOff = vizConfig.visualEnabled === false;
 
-            if (isVideoHidingVisual) {
+            if (isVisualOff) {
                 if (canvas.style.visibility !== 'hidden') {
                     canvas.style.visibility = 'hidden';
                     document.getElementById('webgl-canvas').style.visibility = 'hidden';
@@ -55,8 +56,8 @@
             updateStatsDashboard(bufferLength);
 
             // Mọi phần dưới đây CHỈ liên quan tới việc VẼ ra canvas (note bay, Vortex WebGL, các
-            // visual 2D) — bỏ qua khi video đang phủ kín & ẩn visual, vì canvas đang invisible.
-            if (isVideoHidingVisual) return;
+            // visual 2D) — bỏ qua khi visual đang tắt, vì canvas đang invisible.
+            if (isVisualOff) return;
 
             if (isPlaying && (vizConfig.quality === 'high' || vizConfig.quality === 'medium') && smoothedEnergy > 0.3 && Math.random() > 0.6) spawnFlyingNote();
 
