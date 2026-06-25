@@ -211,3 +211,19 @@ Một số chỉnh sửa nhỏ tiếp theo trong cùng vòng ver 6:
    KHÔNG hiện lớp che. **Chuyển bài (Next/Prev) giờ dùng `display=false`** nên bỏ
    hẳn cú nháy lớp đen `bg-black/80` mỗi lần đổi bài — kết hợp với sửa video ở
    mục 1, việc chuyển bài giờ mượt hoàn toàn, không chớp.
+
+---
+
+## Cập nhật bổ sung ver 6 (đợt 3) — giao diện Playlist
+
+1. **Bố cục lại đầu Playlist.** "Bài hát" nằm cạnh trái cùng hàng với thanh tìm
+   kiếm. Nút **Thêm nhạc** và **Cài đặt** quay về cụm icon góc phải (chỗ cũ),
+   cạnh nút Đang-phát và Đổi-giao-diện. Hàng nút Phát / Trộn bài / Sắp xếp giữ
+   bên dưới. Giảm khoảng đệm trên cùng của khu vực header cho gọn hơn.
+2. **Lớp "đang nạp danh sách" (chống nháy "chưa có bài nào").** Thêm
+   `#playlist-loading-list` phủ lên vùng list lúc khởi động. Logic ở
+   `initPlaylistFromDB`: nếu **không có key nào (≤ 0)** → hiện luôn "Chưa có bài
+   hát nào"; nếu **có key** → phủ lớp nạp hiển thị tiến độ "Đang nạp dữ liệu
+   x / y bài..." trong lúc đọc record từ IndexedDB, rồi **fade out** khi DOM list
+   dựng xong. Trạng thái rỗng `#playlist-empty` giờ mặc định ẩn (chỉ hiện khi
+   thật sự không có bài) nên không còn cú nháy "chưa có bài nào" lúc đang nạp.
