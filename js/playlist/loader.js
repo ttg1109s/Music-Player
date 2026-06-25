@@ -154,46 +154,16 @@
             }
         }
 
-        /**
-         * FIX (log 7->8, mục "không up được file/thư mục"): trước đây handleAudioFiles() có
-         * try/catch RIÊNG cho lỗi của TỪNG FILE bên trong vòng `for` (dòng errMsg ở trên) — nhưng
-         * KHÔNG có lớp bắt lỗi nào bọc quanh CHÍNH listener 'change' hay quanh các bước CHẠY TRƯỚC
-         * vòng lặp đó (validateAudioFile(), withLoadingShield() tự nó, v.v.). Nếu một lỗi xảy ra ở
-         * những chỗ đó — ví dụ trình duyệt/thiết bị trả về FileList có thuộc tính bất thường,
-         * playlistEmpty hoặc loadingShield vì lý do nào đó là null, hoặc bất kỳ exception JS nào
-         * khác — lỗi đó bay thẳng ra ngoài, KHÔNG bị bắt ở đâu cả: listener 'change' ném lỗi ra
-         * console rồi DỪNG HẲN giữa chừng, không có alert(), không có dấu hiệu gì cho người dùng
-         * biết KHÔNG có gì xảy ra (đúng triệu chứng "bấm chọn file/thư mục xong không thấy gì,
-         * không lỗi, không phản hồi" — vì lỗi thật ra CÓ xảy ra, chỉ là chỉ hiện trong console mà
-         * người dùng thường không mở xem).
-         *
-         * Giải pháp: bọc TOÀN BỘ phần xử lý của mỗi listener 'change' trong try/catch riêng (KHÔNG
-         * thay đổi try/catch theo từng file đã có sẵn bên trong handleAudioFiles — đó vẫn lo đúng
-         * việc của nó là lỗi của 1 file giữa nhiều file). catch ở đây chỉ bắt lỗi "tầng ngoài" hiếm
-         * gặp, và alert() ĐÚNG NGUYÊN VĂN thông tin lỗi thật từ console (err.name + err.message),
-         * KHÔNG tự đặt lại câu thông báo chung — yêu cầu rõ là phải thấy lỗi cụ thể, không phải lời
-         * giải thích tự suy diễn.
-         */
         fileInput.addEventListener('change', async function(e) {
             const fileList = e.target.files;
             e.target.value = '';
-            try {
-                await handleAudioFiles(fileList);
-            } catch (err) {
-                console.error('[playlist] Lỗi không xác định khi xử lý file nhạc vừa chọn:', err);
-                alert(`Lỗi khi nạp file:\n\n${err && err.name ? err.name + ': ' : ''}${err && err.message ? err.message : String(err)}`);
-            }
+            await handleAudioFiles(fileList);
         });
 
         folderInput.addEventListener('change', async function(e) {
             const fileList = e.target.files;
             e.target.value = '';
-            try {
-                await handleAudioFiles(fileList);
-            } catch (err) {
-                console.error('[playlist] Lỗi không xác định khi xử lý thư mục vừa chọn:', err);
-                alert(`Lỗi khi nạp thư mục:\n\n${err && err.name ? err.name + ': ' : ''}${err && err.message ? err.message : String(err)}`);
-            }
+            await handleAudioFiles(fileList);
         });
 
         // ===================== Menu nhỏ cho nút "Thêm nhạc": Chọn file / Chọn cả thư mục =====================
@@ -214,25 +184,17 @@
             songActionOverlayForUpload.classList.add('hidden');
         }
         btnUploadAudio.addEventListener('click', () => {
-            try {
-                const rect = btnUploadAudio.getBoundingClientRect();
-                const menuWidth = 208;
-                let left = rect.right - menuWidth;
-                if (left < 8) left = 8;
-                let top = rect.bottom + 8;
-                const viewportH = window.innerHeight || 800;
-                if (top + 110 > viewportH) top = rect.top - 110 - 8;
-                uploadActionMenu.style.left = `${left}px`;
-                uploadActionMenu.style.top = `${top}px`;
-                uploadActionMenu.classList.remove('hidden');
-                songActionOverlayForUpload.classList.remove('hidden');
-            } catch (err) {
-                // FIX (log 7->8): nếu phần định vị menu lỗi vì lý do gì đó, menu "Chọn file nhạc /
-                // Chọn cả thư mục" không bao giờ hiện ra — đúng triệu chứng "bấm nút Thêm nhạc
-                // không thấy gì". Báo lỗi thật ra ngay, không để im lặng.
-                console.error('[playlist] Lỗi khi mở menu Thêm nhạc:', err);
-                alert(`Lỗi khi mở menu Thêm nhạc:\n\n${err && err.name ? err.name + ': ' : ''}${err && err.message ? err.message : String(err)}`);
-            }
+            const rect = btnUploadAudio.getBoundingClientRect();
+            const menuWidth = 208;
+            let left = rect.right - menuWidth;
+            if (left < 8) left = 8;
+            let top = rect.bottom + 8;
+            const viewportH = window.innerHeight || 800;
+            if (top + 110 > viewportH) top = rect.top - 110 - 8;
+            uploadActionMenu.style.left = `${left}px`;
+            uploadActionMenu.style.top = `${top}px`;
+            uploadActionMenu.classList.remove('hidden');
+            songActionOverlayForUpload.classList.remove('hidden');
         });
         songActionOverlayForUpload.addEventListener('click', closeUploadActionMenu);
         // Đóng menu sau khi bấm vào 1 trong 2 label — dùng setTimeout(...,0) để KHÔNG ẩn menu
