@@ -102,7 +102,7 @@
             const block = document.getElementById(`sub-active-${id}`);
             if (!block) return;
             block.classList.add('opacity-0');
-            setTimeout(() => { block.remove(); updateSubtitleFrameVisibility(); }, 300);
+            taskManager.once(() => { block.remove(); updateSubtitleFrameVisibility(); }, 300);
         }
 
         function clearAllActiveSubBlocks() {

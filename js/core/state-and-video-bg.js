@@ -112,9 +112,9 @@
                 bgVideoElement.style.opacity = '0';
                 bgVideoElement.pause();
                 _videoBgLoadedUrl = null;
-                setTimeout(() => {
+                taskManager.once(() => {
                     if (!vizConfig.videoBgEnabled) { bgVideoElement.classList.add('hidden'); bgVideoElement.removeAttribute('src'); bgVideoElement.src = ''; }
-                }, 500);
+                }, 500, 'hideVideoBgAfterFade');
                 updateDOMBackground();
             }
         }

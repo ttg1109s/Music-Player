@@ -14,7 +14,6 @@
  * gọi bumpSongPlayCount / addSongListenTime / getSongStats / removeSongStats / formatListenTime).
  */
         let songStatsMap = new Map(); // key -> { count, totalTime }
-        let _songStatsSaveTimer = null;
         let _songStatsDirty = false;
 
         async function loadSongStats() {
@@ -67,12 +66,17 @@
         function scheduleSongStatsSave(immediate) {
             _songStatsDirty = true;
             if (immediate) { flushSongStats(); return; }
-            if (_songStatsSaveTimer) return;
-            _songStatsSaveTimer = setTimeout(flushSongStats, 4000);
+            // QUAN TRỌNG: giữ đúng hành vi THROTTLE cũ — chỉ đặt task nếu CHƯA có task nào đang chờ
+            // (không phải debounce/reset-mỗi-lần-gọi). taskManager.once() với tên cố định sẽ TỰ HUỶ
+            // + đặt lại từ đầu nếu gọi lại khi task cùng tên đang chạy (đúng cho debounce, SAI cho
+            // throttle) — nên ở đây phải tự kiểm tra `taskManager.plan` trước, không gọi once() lại
+            // nếu task đã tồn tại, để mốc 4s tính từ LẦN GỌI ĐẦU TIÊN không bị đẩy lùi liên tục.
+            if (taskManager.plan['songStatsSaveFlush']) return;
+            taskManager.once(flushSongStats, 4000, 'songStatsSaveFlush');
         }
 
         function flushSongStats() {
-            if (_songStatsSaveTimer) { clearTimeout(_songStatsSaveTimer); _songStatsSaveTimer = null; }
+            taskManager.kill('songStatsSaveFlush');
             if (!_songStatsDirty) return;
             _songStatsDirty = false;
             const obj = {};

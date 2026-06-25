@@ -39,7 +39,7 @@
                     loadingShield.classList.add('opacity-0');
                     // Chờ fade-out kết thúc HẲN rồi mới mở khoá — không cho thao tác tiếp trong lúc
                     // đang còn mờ dần, chỉ mở khi đã tắt hoàn toàn.
-                    await new Promise(resolve => setTimeout(resolve, SHIELD_FADE_MS));
+                    await new Promise(resolve => taskManager.once(resolve, SHIELD_FADE_MS));
                     // QUAN TRỌNG: phải remove 'pointer-events-auto' ở đây — nếu không, class này tồn tại
                     // song song với 'pointer-events-none' vừa thêm. Vì cả 2 đều là utility class của
                     // Tailwind CDN với cùng độ ưu tiên CSS, trình duyệt áp dụng class nào đứng SAU trong

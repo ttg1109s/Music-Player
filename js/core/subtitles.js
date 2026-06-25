@@ -96,7 +96,7 @@
                 if (endTime < autoSubStartTime) { let temp = autoSubStartTime; autoSubStartTime = endTime; endTime = temp; }
                 let newSub = { id: Date.now().toString(), start: autoSubStartTime, end: endTime, startStr: secToStr(autoSubStartTime), endStr: secToStr(endTime), text: "(Nhập nội dung...)" };
                 subtitles.push(newSub); resetAutoSub(); renderSubList();
-                setTimeout(() => { document.getElementById('sub-list-container').scrollTop = document.getElementById('sub-list-container').scrollHeight; }, 100);
+                taskManager.once(() => { document.getElementById('sub-list-container').scrollTop = document.getElementById('sub-list-container').scrollHeight; }, 100);
             }
         });
 
@@ -104,7 +104,7 @@
             let lastSub = subtitles[subtitles.length - 1]; let newStart = lastSub ? lastSub.end + 0.1 : 0; let newEnd = newStart + 2;
             let newSub = { id: Date.now().toString(), start: newStart, end: newEnd, startStr: secToStr(newStart), endStr: secToStr(newEnd), text: "Dòng phụ đề mới..." };
             subtitles.push(newSub); editingSubId = newSub.id; renderSubList();
-            setTimeout(() => { document.getElementById('sub-list-container').scrollTop = document.getElementById('sub-list-container').scrollHeight; }, 100);
+            taskManager.once(() => { document.getElementById('sub-list-container').scrollTop = document.getElementById('sub-list-container').scrollHeight; }, 100);
         });
 
         btnExportSrt.addEventListener('click', () => {

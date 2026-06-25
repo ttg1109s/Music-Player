@@ -44,13 +44,13 @@
             scheduleConfigBackup();
         }
 
-        let _configBackupTimer = null;
         function scheduleConfigBackup() {
-            if (_configBackupTimer) clearTimeout(_configBackupTimer);
-            _configBackupTimer = setTimeout(flushConfigBackup, 2000);
+            // taskManager.once() với tên cố định tự huỷ bản cũ + đặt lại từ đầu (addNew() validate
+            // tự kill() task trùng tên) — đúng hành vi debounce, không cần biến timer riêng nữa.
+            taskManager.once(flushConfigBackup, 2000, 'configBackupFlush');
         }
         function flushConfigBackup() {
-            if (_configBackupTimer) { clearTimeout(_configBackupTimer); _configBackupTimer = null; }
+            taskManager.kill('configBackupFlush');
             const { bgImage, videoBgUrl, ...persistable } = vizConfig; // loại trừ blob: URL runtime
             setMeta('configBackup', persistable).catch(e => console.warn('[equalizer-settings] Lưu configBackup (IndexedDB) lỗi:', e));
         }

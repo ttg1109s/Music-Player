@@ -168,7 +168,7 @@
                 if (webglCanvasEl) webglCanvasEl.classList.add('opacity-0');
                 playlistView.classList.remove('-translate-y-full');
                 if (typeof closeControlCenter === 'function') closeControlCenter(); // phòng panel còn mở sót
-                setTimeout(() => { visualizerUI.classList.add('hidden'); playerContainer.classList.add('hidden'); renderPlaylistDiff(); }, 300);
+                taskManager.once(() => { visualizerUI.classList.add('hidden'); playerContainer.classList.add('hidden'); renderPlaylistDiff(); }, 300, 'hideVisualizerUiAfterFade');
             } finally {
                 _resetPlayerToIdleInProgress = false;
             }
@@ -251,10 +251,10 @@
             playlistView.classList.add('-translate-y-full'); visualizerUI.classList.remove('hidden'); playerContainer.classList.remove('hidden');
             // KHÔNG gọi handleVideoBackground() ở đây nữa: chuyển màn hình KHÔNG được điều khiển video
             // (video chỉ bám theo trạng thái nhạc). Playlist đè z-[60] tự che video khi cần.
-            setTimeout(() => { 
+            taskManager.once(() => { 
                 visualizerUI.classList.add('fade-enter-active'); canvas.classList.remove('opacity-0'); 
                 if (vizConfig.type === 'vortex') document.getElementById('webgl-canvas').classList.remove('opacity-0');
-            }, 50);
+            }, 50, 'showVisualizerFadeIn');
         }
 
         btnBackPlaylist.addEventListener('click', () => {
@@ -262,7 +262,7 @@
             playlistView.classList.remove('-translate-y-full');
             closeControlCenter(); // tránh trạng thái panel còn mở sót khi quay lại Visualizer lần sau
             // KHÔNG dừng/ẩn video ở đây nữa: Playlist (z-[60]) tự che video, video vẫn chạy theo nhạc.
-            setTimeout(() => { visualizerUI.classList.add('hidden'); playerContainer.classList.add('hidden'); renderPlaylistDiff(); }, 300);
+            taskManager.once(() => { visualizerUI.classList.add('hidden'); playerContainer.classList.add('hidden'); renderPlaylistDiff(); }, 300, 'hideVisualizerUiAfterFade');
         });
 
         playPauseBtn.addEventListener('click', () => {
@@ -303,9 +303,15 @@
         // Trước đây thời lượng nghe được suy ra từ delta của audioPlayer.currentTime (vị trí thanh
         // tiến trình). Cách đó không đáng tin: currentTime nhảy khi seek, khựng khi buffer, và phụ
         // thuộc tốc độ phát — không phản ánh đúng "đã nghe bao lâu theo đồng hồ". Bản này đo bằng
-        // performance.now(): một interval 1s chỉ chạy KHI nhạc thực sự đang phát, cộng dồn delta
-        // thời gian thực vào cả tổng (meta.totalListenSeconds) lẫn từng bài (addSongListenTime).
-        let _listenTickHandle = null;
+        // performance.now(): một task lặp 1s (qua taskManager, mode 'timeout' — bù trôi, tránh dồn
+        // tick khi tab bị throttle nền) chỉ chạy KHI nhạc thực sự đang phát, cộng dồn delta thời
+        // gian thực vào cả tổng (meta.totalListenSeconds) lẫn từng bài (addSongListenTime).
+        //
+        // Mỗi lần play() là 1 "phiên" đếm MỚI (không nối tiếp pha cũ của lần phát trước) — vì vậy
+        // startListenClock() luôn kill() task cũ (nếu lỡ còn sót) rồi addNew() + enabled() lại từ
+        // đầu, KHÔNG dùng taskManager.resume() (resume() giữ nguyên remainingTime để nối đúng pha
+        // — đúng nghĩa cho việc tạm dừng/tiếp tục GIỮA chừng 1 phiên, không phải bắt đầu phiên mới).
+        const LISTEN_CLOCK_TASK = 'listenClock';
         let _listenLastTick = 0;
         let pendingListenSeconds = 0; // phần tổng chưa flush vào IndexedDB (cũng được wakelock.js flush lúc unload)
 
@@ -315,14 +321,14 @@
             _listenLastTick = now;
             if (!(delta > 0)) return;
             // Chặn delta bất thường khi tab bị treo/throttle nền hoặc máy ngủ rồi thức (tránh cộng
-            // vọt hàng phút/giờ). Giới hạn 4s/tick (interval 1s nên bình thường delta ~1s).
+            // vọt hàng phút/giờ). Giới hạn 4s/tick (chu kỳ 1s nên bình thường delta ~1s).
             if (delta > 4) delta = 4;
             pendingListenSeconds += delta;
             if (currentKey && typeof addSongListenTime === 'function') addSongListenTime(currentKey, delta);
             if (pendingListenSeconds >= 5) {
                 const toFlush = pendingListenSeconds; pendingListenSeconds = 0;
                 // FIX (log 9->10, mục "Promise bị reject nhưng không ai .catch()"): hàm này chạy mỗi
-                // GIÂY qua setInterval (xem startListenClock()) SUỐT lúc nhạc đang phát — nếu tab bị
+                // GIÂY qua taskManager (xem startListenClock()) SUỐT lúc nhạc đang phát — nếu tab bị
                 // ẩn trên iOS và connection IndexedDB bị hệ điều hành đóng/treo giữa lúc transaction
                 // đang mở (db.transaction() throw đồng bộ một DOMException khi connection đã chết —
                 // xem db.js, makeStoreAccessor), exception đó tự biến thành promise reject vì nằm
@@ -337,14 +343,15 @@
             }
         }
         function startListenClock() {
-            if (_listenTickHandle !== null) return;
+            taskManager.kill(LISTEN_CLOCK_TASK); // phòng còn sót từ phiên trước (an toàn nếu gọi lại)
             _listenLastTick = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-            _listenTickHandle = setInterval(_listenTick, 1000);
+            taskManager.addNew(LISTEN_CLOCK_TASK, { time: 1000, exe: _listenTick, mode: 'timeout', count: 0 });
+            taskManager.operator(LISTEN_CLOCK_TASK, 'enabled');
         }
         function stopListenClock() {
-            if (_listenTickHandle === null) return;
+            if (!taskManager.running[LISTEN_CLOCK_TASK]) return;
             _listenTick(); // chốt nốt phần lẻ kể từ tick gần nhất trước khi dừng
-            clearInterval(_listenTickHandle); _listenTickHandle = null;
+            taskManager.kill(LISTEN_CLOCK_TASK);
         }
 
         audioPlayer.addEventListener('play', () => { 
