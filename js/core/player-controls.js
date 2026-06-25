@@ -113,18 +113,6 @@
          *      btnBackPlaylist – để nhất quán 100% hiệu ứng) + closeControlCenter() phòng panel đó
          *      còn mở sót.
          */
-        /**
-         * Cache "bài vừa bị dừng" do resetPlayerToIdle() — dùng cho modalChoice() hỏi người dùng
-         * lúc quay lại tab (xem wakelock.js, showResumeChoiceModal()). KHÁC `previousKey` cục bộ
-         * trong resetPlayerToIdle() (biến đó chỉ sống trong phạm vi hàm, dùng để refreshSongNode):
-         * 2 biến dưới đây sống XUYÊN SUỐT đến khi modal xử lý xong (Không/Tiếp tục phát/Nghe lại),
-         * rồi mới bị xoá. `lastStoppedTime` lưu ĐÚNG `audioPlayer.currentTime` tại thời điểm bị
-         * dừng (trước khi resetPlayerToIdle() đưa nó về 0) — để "Tiếp tục phát" phát đúng từ chỗ
-         * cũ, "Nghe lại" phát lại từ đầu.
-         */
-        let lastStoppedKey = null;
-        let lastStoppedTime = 0;
-
         let _resetPlayerToIdleInProgress = false;
         function resetPlayerToIdle() {
             if (_resetPlayerToIdleInProgress) return; // chặn gọi chồng (vd. 'visibilitychange' + 'pagehide' cùng bắn)
@@ -137,10 +125,6 @@
                     loadingShield.classList.remove('opacity-100', 'pointer-events-auto');
                     loadingShield.classList.add('opacity-0', 'pointer-events-none');
                 }
-
-                // Cache LẠI key + vị trí đang phát TRƯỚC khi mọi thứ dưới đây bị reset về 0/null —
-                // dùng cho modal hỏi "Tiếp tục nghe?" lúc quay lại tab (xem wakelock.js).
-                if (currentKey) { lastStoppedKey = currentKey; lastStoppedTime = audioPlayer.currentTime || 0; }
 
                 audioPlayer.pause();
                 audioPlayer.currentTime = 0;
@@ -172,55 +156,6 @@
             } finally {
                 _resetPlayerToIdleInProgress = false;
             }
-        }
-
-        /**
-         * Modal "Bạn có muốn tiếp tục nghe bài XXX không?" — hiện ra khi người dùng QUAY LẠI tab
-         * sau khi resetPlayerToIdle() đã dừng nhạc + xoá currentKey (xem wakelock.js, gọi hàm này
-         * lúc visibilitychange/pageshow báo tab vừa hiện lại). Dùng modalChoice() (file riêng,
-         * js/core/modal-choice.js) — KHÔNG đụng gì tới loading-shield (chỉ là spinner, không có
-         * chỗ cho nút bấm — xem comment ở modal-choice.js).
-         *
-         * 3 lựa chọn (đúng yêu cầu):
-         *   - "Không"          -> không làm gì cả, ở lại màn Playlist (đã sẵn ở idle từ
-         *                         resetPlayerToIdle() rồi, không cần làm gì thêm).
-         *   - "Tiếp tục phát"  -> phát lại ĐÚNG bài đó, seek về đúng vị trí (lastStoppedTime) lúc
-         *                         bị dừng.
-         *   - "Nghe lại"       -> phát lại bài đó TỪ ĐẦU (currentTime = 0).
-         */
-        function showResumeChoiceModal() {
-            if (!lastStoppedKey) return; // chưa từng nghe gì trước đó -> không có gì để hỏi
-            const key = lastStoppedKey;
-            const resumeTime = lastStoppedTime;
-            // Xoá cache NGAY khi mở modal (không phải lúc bấm nút) — tránh hiện lại modal này thêm
-            // lần nữa nếu lại bị ẩn/hiện tab liên tiếp trong lúc modal đang mở (currentKey vẫn null
-            // lúc đó, nhưng lastStoppedKey đã bị xoá nên triggerHideReset()/showResumeChoiceModal()
-            // sau đó không có gì để hỏi nữa).
-            lastStoppedKey = null; lastStoppedTime = 0;
-
-            const cached = (typeof playlistCache !== 'undefined') ? playlistCache.get(key) : null;
-            const title = cached && cached.tag && cached.tag.title ? cached.tag.title : key;
-
-            modalChoice(
-                `Bạn có muốn tiếp tục nghe bài <b>${title}</b> không?`,
-                [
-                    { label: 'Không', className: 'flex-1 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-sm font-semibold transition-colors', onClick: () => {} },
-                    {
-                        label: 'Tiếp tục phát',
-                        className: 'flex-1 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-sm font-semibold transition-colors',
-                        onClick: async () => {
-                            await window.playSong(key);
-                            if (currentKey === key) audioPlayer.currentTime = resumeTime;
-                        }
-                    },
-                    {
-                        label: 'Nghe lại',
-                        className: 'flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold transition-colors',
-                        onClick: () => { window.playSong(key); } // playSong() đã tự đặt currentTime = 0 khi gán src mới — không cần seek thêm
-                    }
-                ],
-                { title: 'Đang phát tiếp?' }
-            );
         }
 
         function switchToVisualizer() {

@@ -51,27 +51,13 @@
             // refine). resetPlayerToIdle() (player-controls.js) tự gọi audioPlayer.pause() — event
             // 'pause' tự release wake lock (xem player-controls.js), không cần gọi releaseWakeLock()
             // riêng ở đây.
-            if (document.visibilityState !== 'visible') {
-                triggerHideReset();
-            } else {
-                // Tab/app vừa HIỆN LẠI (ver 9->10, tính năng mới) — nếu có bài vừa bị dừng do
-                // resetPlayerToIdle() (lastStoppedKey, xem player-controls.js), hỏi người dùng có
-                // muốn tiếp tục nghe không. showResumeChoiceModal() tự bỏ qua (không làm gì) nếu
-                // không có gì để hỏi (lastStoppedKey null — app vừa mở lần đầu, hoặc đã hỏi rồi).
-                if (typeof showResumeChoiceModal === 'function') showResumeChoiceModal();
-            }
+            if (document.visibilityState !== 'visible') triggerHideReset();
         });
         // Tín hiệu DỰ PHÒNG cho iOS (xem ghi chú đầu file) — 'pagehide' bắn khi trang bị đưa ra
         // khỏi màn hình (chuyển app, khoá máy...) ở những trường hợp 'visibilitychange' bỏ lỡ.
         // event.persisted=true nghĩa là trang được đưa vào "bfcache" (có thể quay lại bằng
         // 'pageshow' sau đó) — vẫn coi là "ẩn", vẫn reset, vì yêu cầu là dừng hẳn nhạc bất kể lý do ẩn.
         window.addEventListener('pagehide', triggerHideReset);
-        // Đối ứng với 'pagehide' — bắn khi trang được phục hồi từ bfcache (quay lại bằng nút back/
-        // forward của trình duyệt, ÍT gặp trên iOS hơn so với chuyển app, nhưng vẫn nên xử lý nhất
-        // quán với nhánh "visible" của 'visibilitychange' ở trên).
-        window.addEventListener('pageshow', () => {
-            if (typeof showResumeChoiceModal === 'function') showResumeChoiceModal();
-        });
         document.body.addEventListener('touchstart', () => { if(!audioPlayer.paused) requestWakeLock(); }, { once: true });
         document.body.addEventListener('click', () => { if(!audioPlayer.paused) requestWakeLock(); }, { once: true });
 
