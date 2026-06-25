@@ -35,34 +35,52 @@
             }
         }
 
+        // URL đã thực sự nạp xong + fade vào <video>. Dùng để KHÔNG fade lại khi Next/Prev:
+        // cú "nền đen -> hiện video" chỉ xảy ra MỘT LẦN cho mỗi URL video, lúc nạp lần đầu.
+        let _videoBgLoadedUrl = null;
+
+        /**
+         * Chỉ lo NGUỒN video + fade-in MỘT LẦN cho mỗi URL. Gọi khi cấu hình video đổi
+         * (bật/tắt, upload, nạp lại lúc mở trang) — KHÔNG gọi mỗi lần chuyển bài.
+         */
+        function setupVideoBgSource() {
+            // Đã đúng URL và đã fade xong rồi -> không làm gì (tránh fade lặp lại khi Next/Prev).
+            if (bgVideoElement.getAttribute('src') === vizConfig.videoBgUrl && _videoBgLoadedUrl === vizConfig.videoBgUrl) return;
+            _videoBgLoadedUrl = null;
+            bgVideoElement.style.opacity = '0'; // ẩn cho tới khi có khung hình thật -> không chớp trắng
+            bgVideoElement.src = vizConfig.videoBgUrl;
+            const fadeVideoIn = () => { bgVideoElement.style.opacity = '1'; _videoBgLoadedUrl = vizConfig.videoBgUrl; };
+            bgVideoElement.addEventListener('loadeddata', fadeVideoIn, { once: true });
+            bgVideoElement.addEventListener('playing', fadeVideoIn, { once: true });
+        }
+
+        /**
+         * CHỈ đồng bộ play/pause của video theo nhạc — KHÔNG đụng src/opacity/fade.
+         * Đây là hàm được gọi mỗi lần nhạc play/pause hoặc Next/Prev, nên KHÔNG được
+         * gây ra cú "nền đen rồi fade video" lần nữa.
+         */
+        function syncVideoBgToAudio() {
+            if (!(vizConfig.videoBgEnabled && vizConfig.videoBgUrl)) return;
+            if (!audioPlayer.paused) { bgVideoElement.play().catch(() => {}); } else { bgVideoElement.pause(); }
+        }
+
         function handleVideoBackground() {
-            // QUY TẮC v6:
+            // QUY TẮC v6 (đã sửa):
             //  - Video nền BẬT/TẮT chỉ phụ thuộc cấu hình + trạng thái NHẠC, KHÔNG phụ thuộc đang ở
-            //    màn Playlist hay Visualizer. Mở Playlist KHÔNG còn làm dừng video nữa (Playlist nằm
-            //    đè z-[60] lên trên nên tự che video, không cần dừng — trước đây dừng video là can
-            //    thiệp phi chức năng).
-            //  - src của video chỉ gán 1 LẦN (hoặc khi URL đổi) -> Next/Prev KHÔNG nạp lại video.
-            //  - Nền đen cưỡng chế phía sau + fade video lên khi đã có khung hình thật -> bỏ hẳn cú
-            //    "lóe trắng" lúc video đang nạp.
+            //    màn Playlist hay Visualizer.
+            //  - NGUỒN + fade chỉ thiết lập MỘT LẦN cho mỗi URL (setupVideoBgSource). Next/Prev chỉ
+            //    gọi syncVideoBgToAudio() (xem player-controls.js) nên KHÔNG fade lại nữa.
+            //  - Nền đen cưỡng chế phía sau video.
             if (vizConfig.videoBgEnabled && vizConfig.videoBgUrl) {
                 document.body.style.backgroundColor = '#000000'; // nền đen cưỡng chế sau video
                 bgVideoElement.classList.remove('hidden');
-
-                if (bgVideoElement.getAttribute('src') !== vizConfig.videoBgUrl) {
-                    bgVideoElement.style.opacity = '0'; // giữ ẩn cho tới khi có hình -> không chớp trắng
-                    bgVideoElement.src = vizConfig.videoBgUrl;
-                    const fadeVideoIn = () => { bgVideoElement.style.opacity = '1'; };
-                    bgVideoElement.addEventListener('loadeddata', fadeVideoIn, { once: true });
-                    bgVideoElement.addEventListener('playing', fadeVideoIn, { once: true });
-                } else {
-                    bgVideoElement.style.opacity = '1';
-                }
-
-                // Phát/dừng video CHỈ bám theo nhạc: nhạc đang phát -> video chạy; nhạc dừng -> video dừng.
-                if (!audioPlayer.paused) { bgVideoElement.play().catch(() => {}); } else { bgVideoElement.pause(); }
+                setupVideoBgSource(); // nạp nguồn + fade nếu là URL mới; no-op nếu đã sẵn sàng
+                if (_videoBgLoadedUrl === vizConfig.videoBgUrl) bgVideoElement.style.opacity = '1'; // đã sẵn sàng -> hiện ngay
+                syncVideoBgToAudio();
             } else {
                 bgVideoElement.style.opacity = '0';
                 bgVideoElement.pause();
+                _videoBgLoadedUrl = null;
                 setTimeout(() => {
                     if (!vizConfig.videoBgEnabled) { bgVideoElement.classList.add('hidden'); bgVideoElement.removeAttribute('src'); bgVideoElement.src = ''; }
                 }, 500);

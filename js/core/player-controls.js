@@ -97,23 +97,61 @@
             }
         }
 
+        // ===== Bộ đếm THỜI GIAN NGHE THẬT — đồng hồ thực, ĐỘC LẬP với thanh tiến trình =====
+        // Trước đây thời lượng nghe được suy ra từ delta của audioPlayer.currentTime (vị trí thanh
+        // tiến trình). Cách đó không đáng tin: currentTime nhảy khi seek, khựng khi buffer, và phụ
+        // thuộc tốc độ phát — không phản ánh đúng "đã nghe bao lâu theo đồng hồ". Bản này đo bằng
+        // performance.now(): một interval 1s chỉ chạy KHI nhạc thực sự đang phát, cộng dồn delta
+        // thời gian thực vào cả tổng (meta.totalListenSeconds) lẫn từng bài (addSongListenTime).
+        let _listenTickHandle = null;
+        let _listenLastTick = 0;
+        let pendingListenSeconds = 0; // phần tổng chưa flush vào IndexedDB (cũng được wakelock.js flush lúc unload)
+
+        function _listenTick() {
+            const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+            let delta = (now - _listenLastTick) / 1000;
+            _listenLastTick = now;
+            if (!(delta > 0)) return;
+            // Chặn delta bất thường khi tab bị treo/throttle nền hoặc máy ngủ rồi thức (tránh cộng
+            // vọt hàng phút/giờ). Giới hạn 4s/tick (interval 1s nên bình thường delta ~1s).
+            if (delta > 4) delta = 4;
+            pendingListenSeconds += delta;
+            if (currentKey && typeof addSongListenTime === 'function') addSongListenTime(currentKey, delta);
+            if (pendingListenSeconds >= 5) {
+                const toFlush = pendingListenSeconds; pendingListenSeconds = 0;
+                getMeta('totalListenSeconds').then(v => setMeta('totalListenSeconds', (v || 0) + toFlush));
+            }
+        }
+        function startListenClock() {
+            if (_listenTickHandle !== null) return;
+            _listenLastTick = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+            _listenTickHandle = setInterval(_listenTick, 1000);
+        }
+        function stopListenClock() {
+            if (_listenTickHandle === null) return;
+            _listenTick(); // chốt nốt phần lẻ kể từ tick gần nhất trước khi dừng
+            clearInterval(_listenTickHandle); _listenTickHandle = null;
+        }
+
         audioPlayer.addEventListener('play', () => { 
             iconPlay.classList.add('hidden'); iconPause.classList.remove('hidden'); 
             let recordArtDynamic = document.getElementById('record-art'); if(recordArtDynamic) recordArtDynamic.classList.remove('paused');
             if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing";
             if (currentKey) refreshSongNode(currentKey);
-            // Video nền chỉ chịu sự điều khiển của trạng thái phát nhạc (không phải của màn hình).
-            // handleVideoBackground() tự lo: gán src 1 lần, ép nền đen, fade video lên rồi mới phát.
-            handleVideoBackground();
+            startListenClock();
+            // Chỉ ĐỒNG BỘ phát video theo nhạc — KHÔNG fade lại. Nguồn + fade đã thiết lập 1 lần
+            // lúc bật/upload/nạp trang (handleVideoBackground), nên Next/Prev không lặp lại cú fade.
+            syncVideoBgToAudio();
         });
         audioPlayer.addEventListener('pause', () => { 
             iconPlay.classList.remove('hidden'); iconPause.classList.add('hidden'); 
             let recordArtDynamic = document.getElementById('record-art'); if(recordArtDynamic) recordArtDynamic.classList.add('paused');
             releaseWakeLock(); if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "paused";
             if (currentKey) refreshSongNode(currentKey);
-            if (!bgVideoElement.paused) bgVideoElement.pause();
+            stopListenClock();
+            syncVideoBgToAudio();
         });
-        audioPlayer.addEventListener('ended', () => { playNext(false); });
+        audioPlayer.addEventListener('ended', () => { stopListenClock(); playNext(false); });
         audioPlayer.addEventListener('loadedmetadata', () => { progressBar.max = audioPlayer.duration; durationTimeDisplay.textContent = formatTime(audioPlayer.duration); updateMediaPositionState(); });
         // Lỗi decode THẬT (khác với "không tìm thấy record" đã xử lý riêng trong playSong) — trình
         // duyệt gán src xong rồi mới phát hiện không decode được (file hỏng dù qua được check nhanh
@@ -126,29 +164,12 @@
         });
 
         let lastPositionSync = 0;
-        let lastListenTrackTime = null; let pendingListenSeconds = 0;
         audioPlayer.addEventListener('timeupdate', () => { 
             if (!isSeeking) { progressBar.value = audioPlayer.currentTime; updateProgressBarCSS(); } 
             currentTimeDisplay.textContent = formatTime(audioPlayer.currentTime); processSubtitles(audioPlayer.currentTime);
             if (Date.now() - lastPositionSync > 5000) { updateMediaPositionState(); lastPositionSync = Date.now(); }
-
-            // Thống kê "thời lượng đã nghe thật" (mục 1/7 plan) — cộng dồn theo delta thời gian thực
-            // giữa các lần timeupdate liên tiếp khi đang phát (không seek), flush vào IndexedDB mỗi
-            // khi tích lũy đủ 5s để tránh ghi liên tục.
-            if (!audioPlayer.paused && !isSeeking) {
-                const now = audioPlayer.currentTime;
-                if (lastListenTrackTime !== null && now > lastListenTrackTime) {
-                    const delta = now - lastListenTrackTime;
-                    pendingListenSeconds += delta;
-                    // Cộng dồn thời gian nghe riêng cho từng bài (mục 2.6): key songStats[currentKey].totalTime
-                    if (currentKey && typeof addSongListenTime === 'function') addSongListenTime(currentKey, delta);
-                }
-                lastListenTrackTime = now;
-                if (pendingListenSeconds >= 5) {
-                    const toFlush = pendingListenSeconds; pendingListenSeconds = 0;
-                    getMeta('totalListenSeconds').then(v => setMeta('totalListenSeconds', (v || 0) + toFlush));
-                }
-            } else { lastListenTrackTime = null; }
+            // (Thống kê thời lượng nghe KHÔNG còn tính ở đây — xem "Bộ đếm thời gian nghe thật"
+            //  phía trên: đo bằng đồng hồ thực, độc lập với currentTime/thanh tiến trình.)
         });
         
         audioPlayer.addEventListener('seeked', updateMediaPositionState);
