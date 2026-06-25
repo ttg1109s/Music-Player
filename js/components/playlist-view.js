@@ -8,8 +8,13 @@ const TPL_PLAYLIST_VIEW = `
         <div class="absolute inset-0 bg-black/40 pointer-events-none z-0"></div>
 
         <div class="px-5 pt-4 pb-3 z-20 relative shrink-0">
-            <!-- Hàng 1: cụm icon góc phải (chỗ cũ của Thêm nhạc + Cài đặt). -->
-            <div class="flex justify-end items-center gap-5 text-white mb-3">
+            <!-- Hàng 1: logo SAV bên trái (hover trượt ra thành tên đầy đủ) + cụm icon góc phải
+                 (Thêm nhạc + Cài đặt + Đổi giao diện). -->
+            <div class="flex justify-between items-center gap-5 text-white mb-3">
+                <div id="sav-logo" class="group flex items-center h-8 px-3 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-colors duration-300 cursor-default shrink-0 overflow-hidden select-none" title="Simple Audio Visualizer">
+                    <span class="text-[13px] font-bold tracking-[0.15em] text-sky-400 whitespace-nowrap transition-all duration-300 ease-in-out max-w-[28px] group-hover:max-w-[220px] group-hover:tracking-normal">SAV<span class="inline-block overflow-hidden max-w-0 group-hover:max-w-[200px] transition-all duration-300 ease-in-out text-slate-200 font-semibold"> · Simple Audio Visualizer</span></span>
+                </div>
+                <div class="flex items-center gap-5 shrink-0">
                 <button id="btn-return-visual" class="hidden hover:text-emerald-400 transition-colors animate-pulse" title="Đang phát (Quay lại)">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10"></circle>
@@ -26,6 +31,7 @@ const TPL_PLAYLIST_VIEW = `
                     <svg id="icon-grid-view" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
                     <svg id="icon-list-view" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
                 </button>
+                </div>
             </div>
 
             <!-- Hàng 2: "Bài hát" nằm cạnh trái, thanh tìm kiếm chiếm phần còn lại. -->
@@ -33,7 +39,7 @@ const TPL_PLAYLIST_VIEW = `
                 <h1 class="text-[26px] leading-none font-bold tracking-tight text-white shrink-0">Bài hát</h1>
                 <div class="relative flex-1">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                    <input id="playlist-search-input" type="text" inputmode="search" autocomplete="off" placeholder="Tìm bài hát, nghệ sĩ..." class="w-full bg-white/10 focus:bg-white/15 border border-white/10 focus:border-sky-500/60 rounded-2xl pl-10 pr-10 py-2.5 text-[15px] text-white placeholder-slate-400 outline-none transition-colors backdrop-blur-md">
+                    <input id="playlist-search-input" type="text" inputmode="search" autocomplete="off" placeholder="Tìm bài hát, nghệ sĩ, album..." class="w-full bg-white/10 focus:bg-white/15 border border-white/10 focus:border-sky-500/60 rounded-2xl pl-10 pr-10 py-2.5 text-[15px] text-white placeholder-slate-400 outline-none transition-colors backdrop-blur-md">
                     <button id="playlist-search-clear" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors p-1" title="Xóa tìm kiếm">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
@@ -84,25 +90,59 @@ const TPL_PLAYLIST_VIEW = `
         </div>
     </div>
 
-    <!-- Modal: Sửa thông tin bài hát (title/artist/album) -->
+    <!-- Modal: Sửa thông tin bài hát (title/artist/album + ảnh bìa) — 2 tab trong cùng 1 modal:
+         "Thông tin" (text fields cũ) và "Ảnh bìa" (upload/xem trước/xóa cover, mới ở ver 8).
+         Card dùng .glass-panel (kính mờ blur 24px) đúng theme glassmorphism chung của app, thay
+         cho nền đặc bg-[#0f172a] trước đây — đồng bộ với .glass-panel đã dùng ở #stats-panel/
+         các nút tròn trong visualizer-overlay. -->
     <div id="song-edit-modal" class="fixed inset-0 z-[120] bg-black/70 backdrop-blur-sm hidden flex items-center justify-center px-5">
-        <div class="bg-[#0f172a] border border-white/10 rounded-2xl w-full max-w-sm p-5 shadow-2xl flex flex-col gap-4">
-            <h3 class="text-base font-bold text-sky-400">Sửa thông tin bài hát</h3>
-            <div class="flex flex-col gap-3">
+        <div class="glass-panel rounded-2xl w-full max-w-sm shadow-2xl flex flex-col overflow-hidden">
+            <div class="flex items-center justify-between px-5 pt-5 pb-1">
+                <h3 class="text-base font-bold text-sky-400">Sửa thông tin bài hát</h3>
+            </div>
+
+            <!-- Tab switcher: "Thông tin" / "Ảnh bìa" -->
+            <div class="flex gap-1 px-5 pt-3">
+                <button data-edit-tab="info" class="song-edit-tab-btn flex-1 py-2 rounded-lg text-xs font-semibold transition-colors bg-sky-500/20 text-sky-300 border border-sky-500/40">Thông tin</button>
+                <button data-edit-tab="cover" class="song-edit-tab-btn flex-1 py-2 rounded-lg text-xs font-semibold transition-colors bg-white/5 text-slate-400 border border-white/10">Ảnh bìa</button>
+            </div>
+
+            <!-- Tab 1: Thông tin (title/artist/album) -->
+            <div id="song-edit-tab-info" class="flex flex-col gap-3 p-5">
                 <div class="flex flex-col gap-1">
                     <label class="text-xs text-slate-400">Tên bài hát</label>
-                    <input type="text" id="song-edit-title" class="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-sky-500">
+                    <input type="text" id="song-edit-title" class="bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-sky-500">
                 </div>
                 <div class="flex flex-col gap-1">
                     <label class="text-xs text-slate-400">Nghệ sĩ</label>
-                    <input type="text" id="song-edit-artist" class="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-sky-500">
+                    <input type="text" id="song-edit-artist" class="bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-sky-500">
                 </div>
                 <div class="flex flex-col gap-1">
                     <label class="text-xs text-slate-400">Album</label>
-                    <input type="text" id="song-edit-album" class="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-sky-500">
+                    <input type="text" id="song-edit-album" class="bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-sky-500">
                 </div>
             </div>
-            <div class="flex gap-3 mt-1">
+
+            <!-- Tab 2: Ảnh bìa (mới) — preview hình vuông + nút Chọn ảnh / Xóa ảnh. Input file ẩn,
+                 nhãn (label) đóng vai trò nút bấm theo đúng pattern input[type=file] đã dùng ở
+                 settings-drawer (setting-bg-upload/setting-video-upload). -->
+            <div id="song-edit-tab-cover" class="hidden flex-col gap-4 p-5">
+                <div class="flex items-center gap-4">
+                    <div class="w-20 h-20 rounded-xl overflow-hidden border border-white/10 shrink-0 bg-black/30">
+                        <img id="song-edit-cover-preview" src="" class="w-full h-full object-cover" alt="Ảnh bìa">
+                    </div>
+                    <div class="flex flex-col gap-2 flex-1">
+                        <label class="px-3 py-2 bg-sky-500 hover:bg-sky-400 text-white rounded-lg text-xs font-bold cursor-pointer transition-colors shadow text-center">
+                            Chọn ảnh
+                            <input type="file" id="song-edit-cover-upload" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" class="hidden">
+                        </label>
+                        <button id="song-edit-cover-remove" class="px-3 py-2 bg-white/5 hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/40 text-slate-300 hover:text-rose-300 rounded-lg text-xs font-semibold transition-colors">Xóa ảnh bìa</button>
+                    </div>
+                </div>
+                <p class="text-[11px] text-slate-500 leading-relaxed">Chấp nhận PNG, JPG hoặc WEBP. Ảnh được lưu cùng bài hát trong IndexedDB và sẽ được ghi vào tag <span class="font-mono text-slate-400">APIC</span> khi xuất tệp.</p>
+            </div>
+
+            <div class="flex gap-3 p-5 pt-1">
                 <button id="song-edit-cancel" class="flex-1 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-sm font-semibold transition-colors">Hủy</button>
                 <button id="song-edit-save" class="flex-1 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-sm font-semibold transition-colors">Lưu</button>
             </div>
@@ -111,7 +151,7 @@ const TPL_PLAYLIST_VIEW = `
 
     <!-- Modal: Thông tin chi tiết bài hát -->
     <div id="song-info-modal" class="fixed inset-0 z-[120] bg-black/70 backdrop-blur-sm hidden flex items-center justify-center px-5">
-        <div class="bg-[#0f172a] border border-white/10 rounded-2xl w-full max-w-sm p-5 shadow-2xl flex flex-col gap-4">
+        <div class="glass-panel rounded-2xl w-full max-w-sm p-5 shadow-2xl flex flex-col gap-4">
             <h3 class="text-base font-bold text-sky-400">Thông tin bài hát</h3>
             <div id="song-info-body" class="flex flex-col gap-2 text-sm text-slate-300"></div>
             <div class="flex gap-3 mt-1">

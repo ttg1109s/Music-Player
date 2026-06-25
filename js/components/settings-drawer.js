@@ -1,265 +1,76 @@
 /**
- * Component: Settings Drawer (ngăn kéo cài đặt hệ thống toàn màn hình)
- * Biến này chứa chuỗi HTML, được main.js chèn vào DOM lúc khởi động.
+ * Component: Settings Drawer (ngăn kéo cài đặt hệ thống toàn màn hình) — BỘ ĐIỀU PHỐI, viết
+ * theo DẠNG OBJECT-FUNCTION (cùng tinh thần với PlaylistMain ở js/playlist/main.js).
+ *
+ * Ver 8: file này (vốn ~28KB HTML dồn hết vào 1 biến TPL_SETTINGS_DRAWER) được tách thành 5
+ * "section" nhỏ hơn trong thư mục js/components/settings/ — mỗi file chỉ định nghĩa ĐÚNG 1
+ * biến TPL_SETTINGS_* chứa HTML của riêng section đó, không có logic gì khác:
+ *
+ *   - settings/playlist-background.js       -> TPL_SETTINGS_PLAYLIST_BG     (Danh sách phát & Nền)
+ *   - settings/visualizer-geometry-color.js -> TPL_SETTINGS_VISUALIZER      (Hình học + Màu sắc Visualizer)
+ *   - settings/audio-eq.js                  -> TPL_SETTINGS_AUDIO_EQ        (Âm thanh & Equalizer)
+ *   - settings/subtitle-style.js            -> TPL_SETTINGS_SUBTITLE_STYLE  (Khung & Chữ Phụ đề)
+ *   - settings/misc.js                      -> TPL_SETTINGS_MISC            (Khác)
+ *
+ * File này (settings-drawer.js) KHÔNG còn chứa HTML trực tiếp — nó chỉ còn vai trò "lắp ráp":
+ * object `SettingsDrawer.build()` nối khung ngoài (header + nút đóng + wrapper scroll) với 5
+ * biến TPL_SETTINGS_* trên theo ĐÚNG thứ tự xuất hiện gốc, rồi gán kết quả vào biến toàn cục
+ * `TPL_SETTINGS_DRAWER` — GIỮ NGUYÊN TÊN BIẾN này vì main.js (bootstrap) ghép thẳng
+ * `TPL_SETTINGS_DRAWER` vào innerHTML của #app-root, không hề biết (và không cần biết) gì về
+ * việc nó được build từ 5 mảnh nhỏ hơn.
+ *
+ * THỨ TỰ NẠP SCRIPT — quan trọng: 5 file trong settings/ PHẢI nạp TRƯỚC file này trong
+ * index.html (các biến TPL_SETTINGS_* phải tồn tại trước khi SettingsDrawer.build() chạy).
+ * SettingsDrawer.build() được gọi NGAY ở cuối file này (đồng bộ) — không phải lúc
+ * DOMContentLoaded — vì main.js cần TPL_SETTINGS_DRAWER đã là string hoàn chỉnh ngay khi nó
+ * chạy (main.js nạp ngay sau toàn bộ components/*.js, xem index.html).
  */
-const TPL_SETTINGS_DRAWER = `
+        const SettingsDrawer = {
+
+            /** Khung ngoài: header "Cài đặt Hệ thống" + nút đóng + phần mở khối scroll. */
+            renderHeader() {
+                return `
     <div id="drawer-settings" class="fixed inset-0 drawer-glass z-[80] transform -translate-y-full transition-transform duration-500 ease-in-out flex flex-col">
         <div class="flex justify-between items-center px-4 py-3 sm:px-6 border-b border-white/10 shrink-0 bg-black/40">
             <h2 class="text-base sm:text-lg font-bold tracking-wider text-white uppercase">Cài đặt Hệ thống</h2>
             <button id="close-drawer" class="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-rose-500 transition-colors text-white"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
         </div>
-        
+        `;
+            },
+
+            /** Đóng khối scroll + đóng thẻ drawer ngoài cùng. */
+            renderFooter() {
+                return `
+    </div>`;
+            },
+
+            /**
+             * Nối khung ngoài + 5 section con theo ĐÚNG thứ tự gốc (Danh sách phát & Nền ->
+             * Visualizer -> Audio EQ -> Phụ đề -> Khác). Mỗi section đã tự có thẻ <div> bao
+             * ngoài + comment <!-- SECTION: ... --> riêng (xem các file trong settings/), nên ở
+             * đây chỉ cần nối chuỗi, không xử lý gì thêm.
+             */
+            build() {
+                return (
+                    this.renderHeader() +
+                    `
         <div class="flex-grow overflow-y-auto px-4 py-6 sm:px-8 pb-20">
             <div class="max-w-2xl mx-auto space-y-8">
-                
-                <!-- SECTION: HỆ THỐNG & PLAYLIST -->
-                <div>
-                    <h3 class="text-xs font-bold text-sky-400 uppercase tracking-widest mb-2 ml-2">Danh sách phát & Nền</h3>
-                    <div class="bg-white/5 rounded-2xl border border-white/10 flex flex-col overflow-hidden">
-                        <div class="flex flex-col border-b border-sky-500/30 bg-sky-900/20">
-                            <div class="flex justify-between items-center p-4 hover:bg-white/5 transition-colors">
-                                <span class="text-sm font-medium text-sky-300">Sử dụng Video Background</span>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" id="setting-video-enable" class="sr-only peer">
-                                    <div class="w-9 h-5 bg-slate-600 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-500 shadow-inner"></div>
-                                </label>
-                            </div>
-                            <div class="flex justify-between items-center p-4 pt-0">
-                                <div><div class="text-xs text-slate-400">Thay thế mọi hình nền bằng Video</div></div>
-                                <label class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-bold cursor-pointer transition-colors shadow">
-                                    Chọn Video
-                                    <input type="file" id="setting-video-upload" accept=".mp4,.webm,.ogv,.mov,video/mp4,video/webm,video/ogg,video/quicktime" class="hidden">
-                                </label>
-                            </div>
-                            <div class="flex justify-between items-center p-4 pt-0 border-t border-white/5">
-                                <div><div class="text-sm font-medium text-sky-300">Video phủ kín, tạm dừng Visual</div><div class="text-xs text-slate-400">Ẩn & dừng tính toán visual khi Video đang hiển thị</div></div>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" id="setting-video-hide-visual" class="sr-only peer">
-                                    <div class="w-9 h-5 bg-slate-600 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-500 shadow-inner"></div>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="flex justify-between items-center p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
-                            <div><div class="text-sm font-medium">Ảnh nền Playlist</div></div>
-                            <label class="px-3 py-1.5 bg-sky-500 hover:bg-sky-400 text-white rounded-lg text-xs font-bold cursor-pointer transition-colors shadow">
-                                Đổi ảnh
-                                <input type="file" id="setting-bg-upload" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" class="hidden">
-                            </label>
-                        </div>
-                        <div class="flex justify-between items-center p-4 border-b border-white/5">
-                            <span class="text-sm font-medium">Sử dụng Ảnh nền Playlist</span>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="setting-bg-image-enable" class="sr-only peer">
-                                <div class="w-9 h-5 bg-slate-600 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-500 shadow-inner"></div>
-                            </label>
-                        </div>
-                        <div class="flex flex-col p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
-                            <div class="flex justify-between items-center mb-2">
-                                <span class="text-sm font-medium">Độ mờ nhòe nền (Blur)</span>
-                                <span id="val-bg-blur" class="text-xs text-sky-400 font-mono">0px</span>
-                            </div>
-                            <input type="range" id="setting-bg-blur" min="0" max="20" step="1" class="setting-slider">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- SECTION: VISUALIZER -->
-                <div>
-                    <h3 class="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-2 ml-2">Hình học Visualizer</h3>
-                    <div class="bg-white/5 rounded-2xl border border-white/10 flex flex-col overflow-hidden mb-6">
-                        <div class="flex justify-between items-center p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
-                            <span class="text-sm font-medium">Chất lượng Render</span>
-                            <select id="setting-quality" class="bg-black/50 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white outline-none w-32 text-right">
-                                <option value="high">Cao (Mượt)</option>
-                                <option value="medium">Trung bình</option>
-                                <option value="low">Thấp (Nhẹ máy)</option>
-                            </select>
-                        </div>
-                        <div id="block-max-height" class="flex flex-col w-full">
-                            <div class="flex flex-col p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
-                                <div class="flex justify-between items-center mb-2"><span class="text-sm font-medium">Độ cao tối đa</span><span id="val-max" class="text-xs text-emerald-400 font-mono">400</span></div>
-                                <input type="range" id="setting-max-height" min="50" max="1000" step="10" class="setting-slider">
-                            </div>
-                        </div>
-                        <div id="block-bar-width" class="hidden flex-col w-full">
-                            <div class="flex flex-col p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
-                                <div class="flex justify-between items-center mb-2"><span class="text-sm font-medium">Độ dày thanh (px)</span><span id="val-width" class="text-xs text-emerald-400 font-mono">4</span></div>
-                                <input type="range" id="setting-bar-width" min="1" max="15" step="1" class="setting-slider">
-                            </div>
-                        </div>
-                        <div id="block-vortex" class="hidden flex justify-between items-center p-4 hover:bg-white/5 transition-colors bg-indigo-900/10 border-b border-indigo-500/20">
-                            <div><div class="text-sm font-medium text-indigo-300">Kiểu Ống Vortex</div></div>
-                            <select id="setting-vortex-style" class="bg-black/60 border border-indigo-500/30 rounded-lg px-2 py-1.5 text-xs text-white outline-none w-44 text-right">
-                                <option value="rings">Vòng Ring Ánh Sáng</option>
-                                <option value="bars">Đoạn Bar 3D (Equalizer)</option>
-                                <option value="wave">Nhiễu Động Sóng (Fade)</option>
-                            </select>
-                        </div>
-                        <div id="block-bar-style" class="hidden flex-col bg-emerald-900/10 border-b border-emerald-500/20">
-                            <div class="flex justify-between items-center p-4 hover:bg-white/5 transition-colors border-b border-emerald-500/10">
-                                <div><div class="text-sm font-medium text-emerald-300">Kiểu Bar</div></div>
-                                <select id="setting-bar-style" class="bg-black/60 border border-emerald-500/30 rounded-lg px-2 py-1.5 text-xs text-white outline-none w-40 text-right">
-                                    <option value="mirror">Phản chiếu (Cánh bướm)</option>
-                                    <option value="cascade">Thác đổ</option>
-                                </select>
-                            </div>
-                            <div id="bar-mirror-options" class="hidden flex-col">
-                                <div class="flex flex-col p-4 border-b border-emerald-500/10 hover:bg-white/5 transition-colors">
-                                    <div class="flex justify-between items-center mb-2"><span class="text-sm font-medium text-emerald-300">Số lượng thanh (mỗi bên)</span><span id="val-mirror-count" class="text-xs text-emerald-400 font-mono">32</span></div>
-                                    <input type="range" id="setting-mirror-count" min="10" max="32" step="1" class="setting-slider">
-                                </div>
-                            </div>
-                        </div>
-                        <div id="block-rain" class="hidden flex-col bg-blue-900/10 border-b border-blue-500/20">
-                            <div class="flex justify-between items-center p-4 hover:bg-white/5 transition-colors border-b border-blue-500/10">
-                                <div><div class="text-sm font-medium text-blue-300">Kiểu hiệu ứng mưa</div></div>
-                                <select id="setting-rain-style" class="bg-black/60 border border-blue-500/30 rounded-lg px-2 py-1.5 text-xs text-white outline-none w-36 text-right">
-                                    <option value="glass">Trôi trên cửa kính</option><option value="street">Mưa phố &amp; công viên</option>
-                                </select>
-                            </div>
-                            <div class="flex justify-between items-center p-4 hover:bg-white/5 transition-colors border-b border-blue-500/10">
-                                <div><div class="text-sm font-medium text-blue-300">Chớp sáng (kính &amp; đèn đường)</div></div>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" id="setting-glass-flash" class="sr-only peer">
-                                    <div class="w-9 h-5 bg-slate-600 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-500 shadow-inner"></div>
-                                </label>
-                            </div>
-                        </div>
-
-                    </div>
-
-                    <h3 class="text-xs font-bold text-rose-400 uppercase tracking-widest mb-2 ml-2">Màu sắc Visualizer</h3>
-                    <div class="bg-white/5 rounded-2xl border border-white/10 flex flex-col overflow-hidden">
-                        <div class="flex justify-between items-center p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
-                            <span class="text-sm font-medium">Màu nền đen</span>
-                            <div class="w-8 h-8 rounded-full border border-white/20 overflow-hidden shrink-0"><input type="color" id="bg-color-picker" class="w-10 h-10 -m-1 cursor-pointer"></div>
-                        </div>
-                        <div class="flex justify-between items-center p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
-                            <span class="text-sm font-medium">Chế độ sóng âm</span>
-                            <select id="setting-color-mode" class="bg-black/50 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white outline-none w-36 text-right">
-                                <option value="solid">Màu đơn sắc</option><option value="dynamic">Pha trộn 2 màu</option><option value="gradient">Gradient theo nhạc</option>
-                            </select>
-                        </div>
-                        <div id="solid-color-container" class="flex justify-between items-center p-4 hover:bg-white/5 transition-colors bg-black/20">
-                            <span class="text-sm text-slate-300">Chọn màu đơn</span>
-                            <div class="flex items-center gap-2">
-                                <input type="text" id="solid-color-text" class="w-20 bg-transparent border-b border-white/20 px-1 py-0.5 text-xs text-white outline-none font-mono text-right uppercase">
-                                <div class="w-8 h-8 rounded-full border border-white/20 overflow-hidden shrink-0"><input type="color" id="solid-color-picker" class="w-10 h-10 -m-1 cursor-pointer"></div>
-                            </div>
-                        </div>
-                        <div id="dynamic-color-container" class="hidden flex justify-between items-center p-4 hover:bg-white/5 transition-colors bg-black/20">
-                            <span class="text-sm text-slate-300">Chọn 2 màu pha trộn</span>
-                            <div class="flex items-center gap-2">
-                                <div class="w-8 h-8 rounded-full border border-white/20 overflow-hidden shrink-0"><input type="color" id="dyn-color-a" class="w-10 h-10 -m-1 cursor-pointer"></div>
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
-                                <div class="w-8 h-8 rounded-full border border-white/20 overflow-hidden shrink-0"><input type="color" id="dyn-color-b" class="w-10 h-10 -m-1 cursor-pointer"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- SECTION: AUDIO EQ & VOLUME -->
-                <div>
-                    <h3 class="text-xs font-bold text-violet-400 uppercase tracking-widest mb-2 ml-2">Âm thanh & Equalizer</h3>
-                    <div class="bg-white/5 rounded-2xl border border-white/10 flex flex-col overflow-hidden">
-                        <div class="flex flex-col p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
-                            <div class="flex justify-between items-center mb-2">
-                                <span class="text-sm font-medium flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-violet-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clip-rule="evenodd" /></svg> Âm lượng tổng</span>
-                                <span id="val-volume" class="text-xs text-sky-400 font-mono">100%</span>
-                            </div>
-                            <input type="range" id="setting-volume" min="0" max="100" step="1" value="100" class="setting-slider">
-                        </div>
-                        <div class="flex justify-between items-center p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
-                            <div><div class="text-sm font-medium">Chế độ Equalizer</div></div>
-                            <select id="setting-eq" class="bg-black/50 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white outline-none w-36 text-right">
-                                <option value="flat">Mặc định (Flat)</option>
-                                <option value="bass_boost">Siêu Trầm (Bass)</option>
-                                <option value="pop">Nhạc Pop</option>
-                                <option value="rock">Nhạc Rock</option>
-                                <option value="acoustic">Mộc (Acoustic)</option>
-                                <option value="electronic">Điện tử (EDM)</option>
-                                <option value="manual">Tùy chỉnh thủ công</option>
-                            </select>
-                        </div>
-                        <div id="eq-manual-container" class="p-4 bg-black/20 flex flex-col gap-2 transition-all">
-                            <span class="text-xs text-slate-400 text-center mb-1">Dải tần số (Hz)</span>
-                            <div class="flex justify-between items-end h-32 px-2" id="eq-sliders-wrapper">
-                                <!-- Tạo bằng JS -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- SECTION: PHỤ ĐỀ -->
-                <div>
-                    <h3 class="text-xs font-bold text-yellow-400 uppercase tracking-widest mb-2 ml-2">Khung & Chữ Phụ đề</h3>
-                    <div class="bg-white/5 rounded-2xl border border-white/10 flex flex-col overflow-hidden">
-                        <div class="flex justify-between items-center p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
-                            <span class="text-sm font-medium">Màu nền khung</span>
-                            <div class="w-8 h-8 rounded-full border border-white/20 overflow-hidden shrink-0"><input type="color" id="setting-sub-bg-color" class="w-10 h-10 -m-1 cursor-pointer"></div>
-                        </div>
-                        <div class="flex flex-col p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
-                            <div class="flex justify-between items-center mb-2"><span class="text-sm font-medium">Độ trong suốt nền</span><span id="val-sub-bg-opacity" class="text-xs text-yellow-400 font-mono">40%</span></div>
-                            <input type="range" id="setting-sub-bg-opacity" min="0" max="100" step="1" class="setting-slider">
-                        </div>
-                        <div class="flex justify-between items-center p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
-                            <span class="text-sm font-medium">Màu viền khung</span>
-                            <div class="w-8 h-8 rounded-full border border-white/20 overflow-hidden shrink-0"><input type="color" id="setting-sub-border-color" class="w-10 h-10 -m-1 cursor-pointer"></div>
-                        </div>
-                        <div class="flex flex-col p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
-                            <div class="flex justify-between items-center mb-2"><span class="text-sm font-medium">Độ trong suốt viền</span><span id="val-sub-border-opacity" class="text-xs text-yellow-400 font-mono">10%</span></div>
-                            <input type="range" id="setting-sub-border-opacity" min="0" max="100" step="1" class="setting-slider">
-                        </div>
-                        <div class="flex flex-col p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
-                            <div class="flex justify-between items-center mb-2"><span class="text-sm font-medium">Độ dày viền (px)</span><span id="val-sub-border-width" class="text-xs text-yellow-400 font-mono">1</span></div>
-                            <input type="range" id="setting-sub-border-width" min="0" max="6" step="1" class="setting-slider">
-                        </div>
-                        <div class="flex flex-col p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
-                            <div class="flex justify-between items-center mb-2"><span class="text-sm font-medium">Độ uốn góc khung (px)</span><span id="val-sub-border-radius" class="text-xs text-yellow-400 font-mono">16</span></div>
-                            <input type="range" id="setting-sub-border-radius" min="0" max="40" step="1" class="setting-slider">
-                        </div>
-                        <div class="flex justify-between items-center p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
-                            <span class="text-sm font-medium">Màu chữ phụ đề</span>
-                            <div class="w-8 h-8 rounded-full border border-white/20 overflow-hidden shrink-0"><input type="color" id="setting-sub-text-color" class="w-10 h-10 -m-1 cursor-pointer"></div>
-                        </div>
-                        <div class="flex flex-col p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
-                            <div class="flex justify-between items-center mb-2"><span class="text-sm font-medium">Cỡ chữ (px)</span><span id="val-sub-font-size" class="text-xs text-yellow-400 font-mono">8</span></div>
-                            <input type="range" id="setting-sub-font-size" min="8" max="16" step="1" class="setting-slider">
-                        </div>
-                        <div class="flex flex-col p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
-                            <div class="flex justify-between items-center mb-2"><span class="text-sm font-medium">Giãn dòng (Line height)</span><span id="val-sub-line-height" class="text-xs text-yellow-400 font-mono">1.3</span></div>
-                            <input type="range" id="setting-sub-line-height" min="1" max="2.5" step="0.1" class="setting-slider">
-                        </div>
-                        <div class="flex flex-col p-4 hover:bg-white/5 transition-colors">
-                            <div class="flex justify-between items-center mb-2"><span class="text-sm font-medium">Giãn chữ (Letter spacing, px)</span><span id="val-sub-letter-spacing" class="text-xs text-yellow-400 font-mono">0</span></div>
-                            <input type="range" id="setting-sub-letter-spacing" min="-1" max="5" step="0.5" class="setting-slider">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- SECTION: VỀ TRÌNH PHÁT -->
-                <div>
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-2">Khác</h3>
-                    <div class="bg-white/5 rounded-2xl border border-white/10 flex flex-col overflow-hidden">
-                        <div class="flex justify-between items-center p-4 border-b border-white/5">
-                            <div class="pr-3">
-                                <div class="text-sm font-medium">Giữ màn hình sáng</div>
-                                <div class="text-xs text-slate-400 mt-0.5">Khi đang phát, ngăn màn hình tự tắt. Tắt đi để tiết kiệm pin (nhạc vẫn cố gắng phát ở chế độ nền).</div>
-                            </div>
-                            <label class="relative inline-flex items-center cursor-pointer shrink-0">
-                                <input type="checkbox" id="setting-keep-screen-on" class="sr-only peer" checked>
-                                <div class="w-9 h-5 bg-slate-600 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-500 shadow-inner"></div>
-                            </label>
-                        </div>
-                        <button id="setting-open-about" class="flex justify-between items-center p-4 hover:bg-white/5 transition-colors w-full text-left">
-                            <span class="text-sm font-medium">Về trình phát</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                        </button>
-                    </div>
-                </div>
-
+                ` +
+                    TPL_SETTINGS_PLAYLIST_BG +
+                    TPL_SETTINGS_VISUALIZER +
+                    TPL_SETTINGS_AUDIO_EQ +
+                    TPL_SETTINGS_SUBTITLE_STYLE +
+                    TPL_SETTINGS_MISC +
+                    `
             </div>
         </div>
-    </div>
-`;
+        ` +
+                    this.renderFooter()
+                );
+            }
+        };
+
+        // Biến toàn cục mà main.js (bootstrap) ghép vào #app-root — GIỮ NGUYÊN TÊN so với mọi
+        // bản trước, để main.js không cần sửa gì khi file này được tách lại theo kiến trúc mới.
+        const TPL_SETTINGS_DRAWER = SettingsDrawer.build();
