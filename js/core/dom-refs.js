@@ -66,15 +66,30 @@
         // chạm các lần sau lệch khỏi vị trí logo thật (trông như "không bấm được" nữa).
         //
         // SỬA: bỏ hẳn :hover/group-hover, chuyển hẳn sang JS — desktop (chuột thật) dùng
-        // 'mouseenter'/'mouseleave' để GIỮ ĐÚNG cảm giác hover như cũ; mobile/cảm ứng dùng 'click'
-        // (1 sự kiện rời rạc, không phải gesture đoán) để toggle mở/thu — không còn tap nào bị
-        // trình duyệt hiểu nhầm thành double-tap nữa. Dùng matchMedia('(hover:hover) and
-        // (pointer:fine)') để chọn đúng cơ chế cho đúng loại thiết bị, không áp cả 2 cùng lúc
-        // (tránh listener thừa/ xung đột nếu thiết bị có cả chuột và cảm ứng).
+        // 'mouseenter'/'mouseleave' để GIỮ ĐÚNG cảm giác hover như cũ. Dùng matchMedia('(hover:
+        // hover) and (pointer:fine)') để chọn đúng cơ chế cho đúng loại thiết bị.
+        //
+        // FIX #2 (yêu cầu bổ sung — mobile phải "tự thu khi bấm chỗ khác", giống đúng cảm giác bỏ
+        // hover trên desktop, không bắt người dùng phải bấm LẠI ĐÚNG logo lần nữa mới thu được):
+        // đã NGHIÊN CỨU kỹ — mobile Safari/Chrome (cả iOS lẫn Android) hoàn toàn KHÔNG có khái
+        // niệm con trỏ "rời khỏi" 1 phần tử như chuột thật, nên 'mouseleave' không phải là tín hiệu
+        // đáng tin cậy để dùng trên cảm ứng:
+        //   - WebKit/Mobile Safari CHỈ giả lập 'mouseenter'/'mouseover' khi tap vào 1 phần tử được
+        //     coi là "clickable" (có onclick/role=button) — KHÔNG bao giờ tự bắn 'mouseleave' khi
+        //     người dùng tap sang chỗ khác; hiệu ứng hover giả lập đó chỉ mất khi trang điều
+        //     hướng/tap vào 1 link khác, không có cách nào bắt được lúc "rời" bằng sự kiện mouse.
+        //   - Bug lịch sử của WebKit (#128534) còn ghi nhận 'mouseenter' đôi khi KHÔNG bắn ra đúng
+        //     khi phần tử có gắn thêm touch listener — không đáng tin cậy để dùng làm cơ chế chính.
+        //   - Vì vậy pattern ĐÚNG cho "tự thu khi bấm ra ngoài" trên cảm ứng không phải dựa vào
+        //     mouseenter/mouseleave, mà là lắng nghe 'click' ở CẤP DOCUMENT (giống đúng pattern đã
+        //     dùng cho #song-action-overlay/#control-center-overlay trong app) — nếu điểm bấm nằm
+        //     NGOÀI logo, tự thu lại; nếu nằm TRÊN logo, để handler riêng của logo xử lý toggle.
         const savLogo = document.getElementById('sav-logo');
         const savLogoExpandSpans = savLogo ? Array.from(savLogo.querySelectorAll('.sav-logo-expand')) : [];
+        let savLogoExpanded = false;
         function setSavLogoExpanded(expand) {
             if (!savLogo) return;
+            savLogoExpanded = expand;
             savLogoExpandSpans.forEach(span => {
                 span.style.maxWidth = expand ? (span.dataset.expandWidth || '0') : '0';
             });
@@ -86,11 +101,18 @@
                 savLogo.addEventListener('mouseenter', () => setSavLogoExpanded(true));
                 savLogo.addEventListener('mouseleave', () => setSavLogoExpanded(false));
             } else {
-                // Mobile/cảm ứng — 'click' bắn ra từ đúng 1 tap thật (đã qua xử lý double-tap-zoom
-                // của trình duyệt nếu có, vì click chỉ bắn SAU KHI trình duyệt đã quyết định đó
-                // không phải double-tap), nên không bị ảnh hưởng bởi heuristic zoom đoạn văn bản.
-                let savLogoExpanded = false;
-                savLogo.addEventListener('click', () => { savLogoExpanded = !savLogoExpanded; setSavLogoExpanded(savLogoExpanded); });
+                // Mobile/cảm ứng — 'click' trên chính logo TOGGLE mở/thu (bắn ra từ đúng 1 tap
+                // thật, không phải gesture đoán, nên không bị ảnh hưởng bởi heuristic zoom đoạn văn
+                // bản). 'click' ở DOCUMENT (capture phase, chạy TRƯỚC handler của logo ở bubble
+                // phase phía dưới) tự THU LẠI nếu điểm bấm nằm ngoài logo — đúng cảm giác "bấm chỗ
+                // khác thì tự đóng" như hover thật, không cần bấm lại đúng logo mới thu được.
+                savLogo.addEventListener('click', (e) => {
+                    e.stopPropagation(); // không để listener document (đăng ký dưới đây) coi đây là "bấm ra ngoài"
+                    setSavLogoExpanded(!savLogoExpanded);
+                });
+                document.addEventListener('click', () => {
+                    if (savLogoExpanded) setSavLogoExpanded(false);
+                });
             }
         }
         // Ver 10 refine: KHÔNG còn #btn-toggle-view/#icon-grid-view/#icon-list-view trong HTML —
