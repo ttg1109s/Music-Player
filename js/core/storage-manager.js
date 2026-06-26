@@ -144,7 +144,7 @@
                 if (!ok) return;
                 withLoadingShield(t('common.storage.zippingStart'), async () => {
                     const keys = await getAllSongKeys();
-                    if (keys.length === 0) { alert(t('common.storage.noSongsToDownload')); return; }
+                    if (keys.length === 0) { await alertModal(t('common.storage.noSongsToDownload')); return; }
                     let zipBlob;
                     try {
                         zipBlob = await buildAllSongsZipBlob((done, total, percent) => {
@@ -153,7 +153,7 @@
                         });
                     } catch (err) {
                         console.error('[storage-manager] Lỗi đóng gói zip:', err);
-                        alert(tFormat('common.storage.zipBuildError', { message: err.message || err }));
+                        await alertModal(tFormat('common.storage.zipBuildError', { message: escapeHtml(err.message || err) }));
                         return;
                     }
                     const dateStr = new Date().toISOString().slice(0, 10);
@@ -162,7 +162,7 @@
                     loadingText.textContent = t('common.storage.deletingData');
                     await clearAllStoredData();
                     renderStorageStats();
-                    alert(t('common.storage.downloadThenClearDone'));
+                    await alertModal(t('common.storage.downloadThenClearDone'));
                 });
             });
         }
@@ -175,10 +175,11 @@
                 withLoadingShield(t('common.storage.deletingData'), async () => {
                     await clearAllStoredData();
                     renderStorageStats();
-                    alert(t('common.storage.clearNoDownloadDone'));
+                    await alertModal(t('common.storage.clearNoDownloadDone'));
                 });
             });
         }
+
 
         // ===================== Quét & dọn file lỗi =====================
 
@@ -270,7 +271,7 @@
                     }
                     resetScanResultUI();
                     renderStorageStats();
-                    alert(t('common.storage.deleteBrokenDone'));
+                    await alertModal(t('common.storage.deleteBrokenDone'));
                 });
             });
         }

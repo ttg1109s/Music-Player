@@ -107,8 +107,8 @@
             taskManager.once(() => { document.getElementById('sub-list-container').scrollTop = document.getElementById('sub-list-container').scrollHeight; }, 100);
         });
 
-        btnExportSrt.addEventListener('click', () => {
-            if(subtitles.length === 0) { alert(t('common.subtitle.exportEmpty')); return; }
+        btnExportSrt.addEventListener('click', async () => {
+            if(subtitles.length === 0) { await alertModal(t('common.subtitle.exportEmpty')); return; }
             const blob = new Blob([buildSRTString()], { type: "text/plain;charset=utf-8" });
             const url = URL.createObjectURL(blob); const a = document.createElement('a');
             const cached = currentKey ? playlistCache.get(currentKey) : null;

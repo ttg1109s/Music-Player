@@ -41,11 +41,79 @@
  * lâu", không phải hỏi quyết định). modalChoice() vì vậy là 1 component HOÀN TOÀN riêng, độc lập,
  * không đụng gì tới loading-shield.js/loading-shield-util.js.
  *
+ * alertModal(text, options?) (THÊM, xem định nghĩa dưới) — wrapper 1-nút "OK" dựng trên CHÍNH
+ * modalChoice() này, dùng để THAY THẾ TOÀN BỘ alert() rải rác khắp app (playlist/actions.js,
+ * playlist/loader.js, core/id3-export.js, core/state-and-video-bg.js, core/storage-manager.js,
+ * core/player-controls.js, core/language-settings.js, core/subtitles.js). LÝ DO: alert() là API
+ * đồng bộ-chặn của trình duyệt — có thể bị 1 số WebView mobile chặn hẳn (không hiện gì, coi như
+ * mất luôn thông báo lỗi), hoặc gây "đứng" cảm giác crash khi rơi đúng lúc 1 #loading-shield khác
+ * đang chạy. alertModal() không chặn gì cả, là 1 lớp DOM thật giống modalChoice(), an toàn 100%
+ * trên mọi trình duyệt/WebView. escapeHtml(str) (THÊM, xem định nghĩa dưới) đi kèm — dùng để
+ * escape phần dữ liệu KHÔNG đáng tin cậy (tên file người dùng chọn, err.message gốc) trước khi
+ * truyền vào alertModal()/modalChoice(), vì cả 2 đều gán trực tiếp qua `innerHTML`.
+ *
  * z-[130]: đứng trên mọi modal tĩnh hiện có (song-edit-modal/song-info-modal/playback-error-modal
  * đều z-[120]/z-[125]) — modal loại "quyết định" này cần luôn nổi trên cùng nếu cả 2 cùng xuất
  * hiện — nhưng vẫn DƯỚI loading-shield (z-[200], xem loading-shield.js) vì shield là trạng thái
  * "đang xử lý dữ liệu", ưu tiên cao hơn mọi hộp thoại hỏi người dùng.
  */
+        /**
+         * escapeHtml(str) — Escape 5 ký tự HTML đặc biệt (& < > " ') trước khi nhồi vào
+         * `textEl.innerHTML` của modalChoice()/alertModal(). BẮT BUỘC dùng cho bất kỳ chuỗi nào
+         * không hoàn toàn do code app tự dựng (ví dụ: tên file người dùng chọn — file.name có thể
+         * chứa bất kỳ ký tự gì kể cả "<img onerror=...>", hoặc err.message từ exception gốc của
+         * trình duyệt) — KHÔNG escape các chuỗi dịch (t()/tFormat()) vì chúng vốn đã được phép
+         * chứa HTML đơn giản có chủ đích (in đậm, xuống dòng) theo đúng thiết kế của modalChoice().
+         */
+        function escapeHtml(str) {
+            return String(str == null ? '' : str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        /**
+         * alertModal(text, options?) — Thay thế CHO alert() ở mọi nơi trong app (FIX runtime: alert()
+         * là API đồng bộ-CHẶN của trình duyệt, có thể bị 1 số WebView/trình duyệt mobile chặn hẳn
+         * hoặc gây cảm giác "đứng app"/treo khung hình đang dở dang — đặc biệt nguy hiểm nếu gọi
+         * trong lúc 1 #loading-shield khác đang hiển thị, vì alert() chặn cả luồng render của
+         * shield đó luôn). Tận dụng LẠI modalChoice() đã có sẵn (xem file này) — KHÔNG dùng
+         * withLoadingShield(): đã xác nhận loading-shield chỉ là spinner + 1 dòng text, không có
+         * chỗ cho nút bấm, không phù hợp để hiện thông báo cần người dùng đọc + xác nhận đã đọc.
+         *
+         * Khác alert() ở chỗ KHÔNG chặn luồng JS — code gọi sau nó vẫn chạy tiếp ngay (modal chỉ là
+         * 1 lớp DOM hiện ra, đóng bằng cách bấm nút). Những nơi code cũ dựa vào tính "chặn" của
+         * alert() (ví dụ `alert(...); return;` để dừng hành động ngay) vẫn hoạt động đúng vì lệnh
+         * `return` đứng ngay sau, không phụ thuộc gì vào việc modal đã đóng hay chưa. Những nơi cần
+         * CHỜ người dùng bấm "OK" rồi mới chạy tiếp (hiếm) có thể `await alertModal(...)` vì hàm trả
+         * về 1 Promise, resolve ngay khi nút OK được bấm.
+         *
+         * - text: chuỗi nội dung thông báo. PHẢI tự escapeHtml() phần nào không phải do code app tự
+         *   dựng (tên file, message lỗi gốc) TRƯỚC khi truyền vào đây — alertModal() không tự
+         *   escape vì nhiều chỗ gọi cần giữ HTML đơn giản hợp lệ từ chuỗi dịch (in đậm, xuống dòng).
+         * - options.title: tiêu đề tuỳ chọn (giống modalChoice()).
+         * - options.okLabel: chữ trên nút (mặc định t('common.ok') nếu hàm t() đã sẵn sàng, fallback 'OK').
+         */
+        function alertModal(text, options) {
+            options = options || {};
+            const okLabel = options.okLabel || (typeof t === 'function' ? t('common.ok') : 'OK');
+            return new Promise((resolve) => {
+                modalChoice(
+                    text,
+                    [
+                        {
+                            label: okLabel,
+                            className: 'flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold transition-colors',
+                            onClick: () => resolve()
+                        }
+                    ],
+                    { title: options.title }
+                );
+            });
+        }
+
         function modalChoice(text, buttons, options) {
             options = options || {};
             // Tự đóng modalChoice cũ (nếu lỡ có, hiếm khi xảy ra vì mỗi lần đều xoá hẳn DOM ngay
@@ -68,7 +136,7 @@
             }
 
             const textEl = document.createElement('p');
-            textEl.className = 'text-sm text-slate-300 leading-relaxed';
+            textEl.className = 'text-sm text-slate-300 leading-relaxed whitespace-pre-line';
             textEl.innerHTML = text; // cho phép <b>/<br> đơn giản (ví dụ in đậm tên bài hát) — nội dung luôn do code app tự dựng, không lấy trực tiếp từ input người dùng chưa qua escape
             textEl.id = 'modal-choice-text'; // cho phép code bên ngoài cập nhật lại nội dung sau khi mở (ví dụ thay tiêu đề tạm bằng tên bài thật khi load xong)
             card.appendChild(textEl);

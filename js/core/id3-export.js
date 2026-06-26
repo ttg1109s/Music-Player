@@ -33,13 +33,13 @@
         async function exportSongWithTag(key) {
             return withLoadingShield(t('common.loading.exportingFile'), async () => {
                 const record = await getSongRecord(key);
-                if (!record) { alert(t('common.export.notFound')); return; }
+                if (!record) { await alertModal(t('common.export.notFound')); return; }
                 try {
                     const taggedBlob = await buildTaggedBlob(record);
                     triggerDownload(taggedBlob, record.filename);
                 } catch (e) {
                     console.error('[id3-export] Lỗi ghi tag:', e);
-                    alert(t('common.export.tagWriteFailed'));
+                    await alertModal(t('common.export.tagWriteFailed'));
                     triggerDownload(record.blob, record.filename);
                 }
             });

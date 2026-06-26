@@ -61,30 +61,30 @@
                     try {
                         parsed = JSON.parse(evt.target.result);
                     } catch (err) {
-                        alert(tFormat('settingsLanguage.upload.parseError', { message: err && err.message ? err.message : String(err) }));
+                        await alertModal(tFormat('settingsLanguage.upload.parseError', { message: escapeHtml(err && err.message ? err.message : String(err)) }));
                         return;
                     }
                     const result = await saveLanguagePack(parsed);
                     if (!result.ok) {
-                        alert(t('settingsLanguage.upload.invalidFile'));
+                        await alertModal(t('settingsLanguage.upload.invalidFile'));
                         return;
                     }
                     await applySavedLanguage(result.code);
                     applyLanguageToDom();
                     await renderLanguageOptions();
-                    alert(tFormat('settingsLanguage.upload.success', { name: result.name }));
+                    await alertModal(tFormat('settingsLanguage.upload.success', { name: escapeHtml(result.name) }));
                 };
-                reader.onerror = () => {
-                    alert(tFormat('settingsLanguage.upload.parseError', { message: t('common.unknownError') }));
+                reader.onerror = async () => {
+                    await alertModal(tFormat('settingsLanguage.upload.parseError', { message: t('common.unknownError') }));
                 };
                 reader.readAsText(file);
             });
         }
 
         if (settingLanguageDelete) {
-            settingLanguageDelete.addEventListener('click', () => {
+            settingLanguageDelete.addEventListener('click', async () => {
                 const code = settingLanguageSelect ? settingLanguageSelect.value : null;
-                if (!code || code === 'en') { alert(t('settingsLanguage.cannotDeleteEnglish')); return; }
+                if (!code || code === 'en') { await alertModal(t('settingsLanguage.cannotDeleteEnglish')); return; }
                 const option = settingLanguageSelect.querySelector(`option[value="${code}"]`);
                 const name = option ? option.textContent : code;
                 modalChoice(

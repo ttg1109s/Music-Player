@@ -12,23 +12,18 @@
         // thể (đầu file core đầu tiên, NGAY SAU components/main.js) để bắt được lỗi của chính các
         // file core/playlist/visualizer nạp SAU nó. Chỉ alert 1 LẦN DUY NHẤT (qua cờ `_hasShownFatalErrorAlert`)
         // để tránh spam nhiều hộp thoại liên tiếp khi 1 lỗi gốc kéo theo nhiều lỗi phụ.
+        // FIX (patch alert -> silent): trước đây còn alert() text lỗi cho người dùng — bỏ hẳn theo
+        // yêu cầu, giữ SILENT hoàn toàn ở tầng global error handler này. Lý do: đây là handler bắt
+        // MỌI lỗi runtime chưa được catch ở bất kỳ đâu trong app (window.addEventListener('error')),
+        // có thể bắn ra rất nhiều lần liên tiếp với các lỗi vụn vặt không ảnh hưởng người dùng (ví
+        // dụ lỗi từ 1 extension trình duyệt, lỗi nguồn ngoài không phải code app) — hiện hộp thoại
+        // cho mọi trường hợp này dễ gây phiền hơn là giúp ích. console.error(...) ngay trên vẫn ghi
+        // đầy đủ context+err vào console — đủ để dev tự mở DevTools kiểm tra khi cần debug, không
+        // mất thông tin, chỉ không làm phiền người dùng cuối bằng hộp thoại nữa.
         let _hasShownFatalErrorAlert = false;
         function _reportFatalError(context, err) {
             console.error(`[FATAL] ${context}:`, err);
-            if (!_hasShownFatalErrorAlert) {
-                _hasShownFatalErrorAlert = true;
-                try {
-                    const message = err && err.message ? err.message : err;
-                    // Guard: lang.js PHẢI nạp trước config.js (xem index.html), nhưng nếu vì lý do
-                    // nào đó tFormat chưa tồn tại lúc lỗi xảy ra (ví dụ chính lang.js bị lỗi tải),
-                    // fallback về chuỗi tiếng Việt cứng thay vì throw thêm 1 lỗi mới ngay trong
-                    // chính hàm báo lỗi (sẽ làm im lặng hoàn toàn, không alert được gì cả).
-                    const text = (typeof tFormat === 'function')
-                        ? tFormat('common.fatalError.alert', { context, message })
-                        : `Đã xảy ra lỗi không mong muốn (${context}). Vui lòng tải lại trang (F5).\n\nChi tiết: ${message}`;
-                    alert(text);
-                } catch (alertErr) { /* alert có thể bị chặn ở 1 số trình duyệt — bỏ qua, log vẫn còn ở console */ }
-            }
+            _hasShownFatalErrorAlert = true; // giữ lại cờ phòng trường hợp code khác đang đọc biến này
         }
         window.addEventListener('error', (e) => {
             _reportFatalError(`${e.filename || 'script'}:${e.lineno || '?'}`, e.error || e.message);

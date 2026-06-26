@@ -143,6 +143,7 @@
             'common.appRecovery.restoreDefaultsBody': 'Restore default settings? Colors, effects, EQ, and all other display customizations will return to their original defaults. Your uploaded music and playlist will NOT be deleted.',
             'common.appRecovery.restoreDefaultsConfirmBtn': 'Restore defaults',
             'common.cancel': 'Cancel',
+            'common.ok': 'OK',
             'common.btn.upload': 'Upload',
 
             'common.resumeModal.title': 'Resume playback?',

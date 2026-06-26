@@ -135,13 +135,13 @@
                 saveConfig();
             });
         }
-        videoUploadInput.addEventListener('change', (e) => {
+        videoUploadInput.addEventListener('change', async (e) => {
             const file = e.target.files[0]; if (!file) return;
             e.target.value = '';
             // (3c) Chỉ chấp nhận định dạng video phổ biến (mp4/webm/ogg/mov) — xem
             // upload-validation.js. Chặn TRƯỚC khi đụng tới IndexedDB/blob URL.
             const check = validateVideoFile(file);
-            if (!check.valid) { alert(check.reason); return; }
+            if (!check.valid) { await alertModal(check.reason); return; }
             withLoadingShield(t('common.loading.savingVideoBg'), async () => {
                 await setMeta('videoBg', file);
                 if (vizConfig.videoBgUrl && vizConfig.videoBgUrl.startsWith('blob:')) URL.revokeObjectURL(vizConfig.videoBgUrl);
