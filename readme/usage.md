@@ -61,4 +61,15 @@ test đủ kỹ để coi là final** — đặc biệt video nền vẫn chưa 
 vị trí (`currentTime`) sau khi quay lại tab, xem mục "Nợ kỹ thuật" trong
 log đó.
 
+**Lưu ý mới (batch i18n — đa ngôn ngữ):** app giờ mặc định hiển thị
+**English** (đổi từ tiếng Việt) — đây là lựa chọn tạm thời cho bản test này,
+để xác nhận cơ chế dịch đã chạy đúng (không nhầm với cache file cũ). Vào
+Settings → mục "Ngôn ngữ" để: chọn lại ngôn ngữ đang hiển thị, tải lên 1 file
+ngôn ngữ mới (`.json`, đúng format xem `lang/vi.json` đi kèm trong project),
+hoặc xóa 1 ngôn ngữ đã tải lên (không xóa được English — luôn có sẵn). Muốn
+dùng tiếng Việt: vào Settings → "Ngôn ngữ" → "Tải lên ngôn ngữ mới (.json)"
+→ chọn file `lang/vi.json` đi kèm → chọn lại "Tiếng Việt" trong danh sách.
+**Batch này CHƯA test trên browser thật** — chỉ qua test harness Node, xem
+mục "Nợ kỹ thuật" trong [changelog/v10-lang-test.md](../changelog/v10-lang-test.md).
+
 ← [Quay lại README](../README.md)

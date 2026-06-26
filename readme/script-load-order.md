@@ -1,15 +1,28 @@
 # Thứ tự nạp script — QUAN TRỌNG, không thay đổi
 
-`index.html` nạp script theo đúng 4 bước, không được đảo:
+`index.html` nạp script theo đúng 5 bước, không được đảo:
 
 0. **CDN trong `<head>`**: Tailwind, jsmediatags, NoSleep.js, Three.js (như cũ)
    + **idb-keyval** (wrapper IndexedDB) và **browser-id3-writer** (ghi ID3 tag
    mới lúc Export) — thêm ở ver 5.
+0.5. **`js/core/lang.js`** (mới ở batch i18n) — nạp NGAY ĐẦU `<body>`, TRƯỚC
+   TOÀN BỘ `components/*.js` ở bước 1. Đây là TRƯỜNG HỢP DUY NHẤT 1 file
+   `core/*.js` nạp TRƯỚC bước 1 (component) — lý do: các template `TPL_*` ở
+   bước 1 gọi `t()`/`tFormat()` NGAY LÚC PARSE (template literal cấp module,
+   chạy đồng bộ ngay khi file được nạp, sớm hơn cả `DOMContentLoaded`), nên
+   2 hàm đó phải tồn tại sẵn trước khi bất kỳ file component nào chạy.
+   `lang.js` tự đứng độc lập, KHÔNG cần `db.js`/DOM có mặt lúc định nghĩa —
+   các hàm cần IndexedDB (`saveLanguagePack`/`applySavedLanguage`/
+   `listAvailableLanguages`) chỉ thực sự gọi tới khi người dùng tương tác
+   (luôn sau khi `db.js` ở bước 3 đã nạp xong từ lâu).
 1. **components/*.js** — chỉ định nghĩa biến `TPL_...` (chuỗi HTML), chưa
    đụng vào DOM. **Từ ver 8:** 5 file trong `components/settings/` PHẢI nạp
    TRƯỚC `components/settings-drawer.js` — file đó giờ chỉ là object điều
    phối `SettingsDrawer.build()` ghép 5 biến `TPL_SETTINGS_*` (định nghĩa ở
    5 file con) lại thành `TPL_SETTINGS_DRAWER`, gọi đồng bộ ngay khi nạp.
+   **Từ batch i18n:** thêm `components/settings/language.js` (định nghĩa
+   `TPL_SETTINGS_LANGUAGE`, section "Ngôn ngữ") vào CÙNG NHÓM 5 file trên,
+   cũng PHẢI nạp TRƯỚC `settings-drawer.js` (giờ ghép 6 biến `TPL_SETTINGS_*`).
 2. **main.js** — chèn toàn bộ `TPL_...` vào `<div id="app-root">`. Sau bước
    này, mọi phần tử có `id="..."` mới thực sự tồn tại trong DOM.
 3. **core/*.js** — các file này gọi `document.getElementById(...)` ngay khi
@@ -47,6 +60,14 @@
    `stats-panel-toggle.js` nạp SAU `dom-refs.js`/`main.js` (cần ref DOM của
    nút mới + HTML thật đã chèn) — `stats-panel-toggle.js` còn phải nạp
    TRƯỚC `audio-analysis.js` (file đó đọc biến `isStatsPanelVisible`).
+   **Từ batch i18n (⚠️ CHƯA test trên browser thật):** `language-settings.js`
+   nạp SAU `app-recovery.js` (cùng nhóm "cần ref DOM của nút mới + HTML thật
+   đã chèn" như `app-recovery.js`/`stats-panel-toggle.js` ở trên) — gọi
+   `document.getElementById('setting-language-select'/'-upload'/'-delete')`
+   ngay khi nạp, và cần `saveLanguagePack`/`applySavedLanguage`/
+   `listAvailableLanguages` (từ `lang.js`, đã có từ bước 0.5) +
+   `deleteLanguagePack` (từ `db.js`, bước 3 phía trên) + `modalChoice()`
+   (từ `modal-choice.js`, đã nạp trước đó).
 4. **visualizers/draw-helpers.js**, rồi **visualizers/types/\*.js** (mỗi
    visual một file, không phụ thuộc thứ tự lẫn nhau), rồi cuối cùng
    **visualizers/draw-visualizer.js** — file này gọi tới các hàm `draw*`
@@ -77,5 +98,15 @@
 > nó. Đây vẫn là *classic Worker* (không `type: 'module'`) để chạy được qua
 > `file://`, đồng bộ với chủ trương "không build step, không ES6 module" của
 > toàn bộ project (xem [why-no-es6-module.md](./why-no-es6-module.md)).
+
+> **⚠️ Lưu ý batch i18n — CHƯA test trên browser thật:** việc chèn `lang.js`
+> vào bước 0.5 (trước cả bước 1) là thay đổi DUY NHẤT trong lịch sử project
+> phá vỡ quy tắc "4 bước cố định" đã giữ nguyên từ ver 5 tới giờ. Mọi kiểm
+> chứng cho bước này hiện chỉ chạy qua Node `vm`/`require` (mock `document`/
+> `indexedDB`), CHƯA xác nhận trên trình duyệt thật rằng việc thêm 1 script
+> chen vào trước `loading-shield.js` (file component đầu tiên) không gây
+> tác dụng phụ nào với cách trình duyệt parse/thực thi các `<script>` tiếp
+> theo. Xem mục "Nợ kỹ thuật" trong
+> [changelog/v10-lang-test.md](../changelog/v10-lang-test.md).
 
 ← [Quay lại README](../README.md)

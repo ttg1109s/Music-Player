@@ -1,14 +1,22 @@
 # Mục lục Changelog
 
-Bản hiện tại (**ver 10**, cộng thêm mini-fix sau đó) gồm 4 phần chính ở
+Bản hiện tại (**ver 10**, cộng thêm 2 batch mini-fix sau đó) gồm 4 phần chính ở
 ver 10: dồn toàn bộ `setInterval`/`setTimeout` của project qua 1
 `TaskManager` tập trung duy nhất, sửa lỗi "Xoá hết dữ liệu" không cập nhật
 UI + thêm phòng thủ khi bị gián đoạn, dọn 2 icon Sort/Grid khỏi header
 Playlist vào Settings, và tính năng mới Tự động đổi hiệu ứng Visualizer
-theo thời gian. Sau đó có thêm 1 loạt mini-fix (xem
-[v10-mini-not-full-fix.md](../changelog/v10-mini-not-full-fix.md)) — **log
-đó chưa test đủ kỹ để coi là final, còn nợ kỹ thuật.**
+theo thời gian. Sau đó có 2 batch riêng, ĐỀU CHƯA test đủ kỹ để coi là
+final, còn nợ kỹ thuật:
 
+- [v10-mini-not-full-fix.md](../changelog/v10-mini-not-full-fix.md) — các fix lẻ
+  (logo mobile, vị trí UI auto-switch, viết lại cơ chế ẩn tab, Khắc phục sự cố,
+  toggle BPM/Pitch/Energy).
+- [v10-lang-test.md](../changelog/v10-lang-test.md) — khung đa ngôn ngữ (i18n)
+  cho toàn bộ app, English làm gốc cứng RAM, mọi ngôn ngữ khác (kể cả tiếng
+  Việt) qua IndexedDB do người dùng tự upload, UI Settings chọn/upload/xóa
+  ngôn ngữ.
+
+- [changelog/v10-lang-test.md](../changelog/v10-lang-test.md) — ⚠️ chưa final, xem mục "Nợ kỹ thuật"
 - [changelog/v10-mini-not-full-fix.md](../changelog/v10-mini-not-full-fix.md) — ⚠️ chưa final, xem mục "Nợ kỹ thuật"
 - [changelog/v10.md](../changelog/v10.md)
 - [changelog/v9.md](../changelog/v9.md)

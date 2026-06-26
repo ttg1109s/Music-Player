@@ -15,10 +15,13 @@ visual-master/
 │   ├── v8.md
 │   ├── v9.md
 │   ├── v10.md
-│   └── v10-mini-not-full-fix.md   ← log nhỏ, chưa test đủ để coi là final (xem mục cuối log)
+│   ├── v10-mini-not-full-fix.md   ← log nhỏ, chưa test đủ để coi là final (xem mục cuối log)
+│   └── v10-lang-test.md          ← khung đa ngôn ngữ (i18n), CHƯA test browser thật (xem mục cuối log)
 ├── index.html                  ← Mở file này để chạy ứng dụng
 ├── css/
 │   └── styles.css               (toàn bộ CSS gốc, không đổi)
+├── lang/                        (★★★★★★★★★★★ mới ở batch i18n — file ngôn ngữ MẪU để test upload)
+│   └── vi.json                  (bản dịch tiếng Việt đầy đủ, đúng format {meta, keys} — KHÔNG tự nạp lúc khởi động, chỉ để Giang tự upload qua Settings > Ngôn ngữ)
 └── js/
     ├── components/
     │   ├── loading-shield.js    (★★★★★ ver 5 — đổi cơ chế ẩn/hiện sang opacity)
@@ -31,9 +34,10 @@ visual-master/
     │   │   ├── visualizer-geometry-color.js (TPL_SETTINGS_VISUALIZER — chất lượng render, hình học + màu sắc; ★★★★★★★★★★ ver 10 — gộp toggle "Hiện Visual" vào đây; card "Tự động đổi hiệu ứng" sau đó CHUYỂN sang visualizer-settings-drawer.js, xem changelog mini-fix)
     │   │   ├── audio-eq.js                  (TPL_SETTINGS_AUDIO_EQ — âm lượng, preset EQ, dải tần số thủ công)
     │   │   ├── subtitle-style.js            (TPL_SETTINGS_SUBTITLE_STYLE — style khung/chữ phụ đề)
-    │   │   └── misc.js                      (TPL_SETTINGS_MISC — giữ màn hình sáng, mở About Drawer; ★★★★★★★★★★ ver 10 mini-fix — thêm section "Khắc phục sự cố": Khởi động lại app / Khôi phục cài đặt mặc định)
+    │   │   ├── misc.js                      (TPL_SETTINGS_MISC — giữ màn hình sáng, mở About Drawer; ★★★★★★★★★★ ver 10 mini-fix — thêm section "Khắc phục sự cố": Khởi động lại app / Khôi phục cài đặt mặc định)
+    │   │   └── language.js                  (★★★★★★★★★★★ mới ở batch i18n — TPL_SETTINGS_LANGUAGE, section "Ngôn ngữ": select chọn + upload .json + xóa, đặt SAU CÙNG sau "Khác")
     │   ├── visualizer-settings-drawer.js (★★★★★★★★ ver 8 — drawer "Tùy chỉnh Visualizer"; ★★★★★★★★★★ ver 10 mini-fix — thêm card "Tự động đổi hiệu ứng", chuyển vào từ visualizer-geometry-color.js)
-    │   ├── settings-drawer.js   (★ ver 1, ★★★ ver 3, ★★★★ ver 4, ★★★★★ ver 5, ★★★★★★ ver 6 — toggle "Giữ màn hình sáng"; ★★★★★★★ ver 7 — accept= khớp whitelist ảnh/video; ★★★★★★★★ ver 8 — VIẾT LẠI HOÀN TOÀN: chỉ còn object điều phối `SettingsDrawer.build()` ghép 5 file trong settings/, không tự chứa HTML)
+    │   ├── settings-drawer.js   (★ ver 1, ★★★ ver 3, ★★★★ ver 4, ★★★★★ ver 5, ★★★★★★ ver 6 — toggle "Giữ màn hình sáng"; ★★★★★★★ ver 7 — accept= khớp whitelist ảnh/video; ★★★★★★★★ ver 8 — VIẾT LẠI HOÀN TOÀN: chỉ còn object điều phối `SettingsDrawer.build()` ghép 5 file trong settings/, không tự chứa HTML; ★★★★★★★★★★★ batch i18n — ghép thêm TPL_SETTINGS_LANGUAGE [6 section], text node header dùng t())
     │   ├── storage-drawer.js    (★★★★★★ ver 6 — mô tả nút xoá: chỉ xoá bài hát)
     │   └── about-drawer.js      (★★★★★ mới ở ver 5 — thống kê, giới thiệu, cảnh báo IndexedDB)
     ├── main.js                  (★★★★★ ver 5 — ghép thêm TPL_ABOUT_DRAWER)
@@ -43,7 +47,9 @@ visual-master/
     │   ├── task-manager.js      (★★★★★★★★★★ mới ở ver 10 — lớp `Loop`/`TaskManager` quản lý TẬP TRUNG mọi setInterval/setTimeout của app, kể cả timeout bắn-1-lần qua `taskManager.once()`; instance global `taskManager` duy nhất)
     │   ├── auto-switch-visual.js (★★★★★★★★★★ mới ở ver 10 — Tự động đổi hiệu ứng Visualizer theo thời gian: 2 nhánh cơ chế khác hẳn nhau cho "Cố định"/"Ngẫu nhiên" [đồng hồ độc lập] vs "Theo độ dài bài hát" [mốc tuyệt đối theo currentTime, mỗi mốc tự nhớ visual]; ver 10 mini-fix — khoá #btn-cycle-mode khi auto-switch bật, sửa race condition 'play' bắn trước 'loadedmetadata' làm mất marks đã phục hồi)
     │   ├── modal-choice.js      (★★★★★★★★★ mới ở ver 9 — modalChoice(text, buttons, options?): hàm dùng CHUNG cho mọi modal "hỏi quyết định" tuỳ biến số nút/nhãn/hành động, tự dựng DOM động + tự xoá hẳn sau khi chọn, KHÔNG cần template HTML tĩnh riêng cho từng case; dùng cho modal "Tiếp tục nghe?" — xem player-controls.js; ver 10 mini-fix — hỗ trợ `disabled`/`dataset` trên từng nút)
-    │   ├── db.js                (★★★★★ mới ở ver 5 — IndexedDB: slugify/resolveKey/CRUD; ★★★★★★★★★ ver 9 — viết lại cơ chế mở connection: tự phát hiện + tự mở lại connection mới khi trình duyệt tự đóng connection cũ qua 2 lớp bảo vệ (sự kiện `close` + retry trong `makeStoreAccessor()`) — fix gốc rễ lỗi "không ra tiếng" sau khi quay lại tab trên iOS)
+    │   ├── db.js                (★★★★★ mới ở ver 5 — IndexedDB: slugify/resolveKey/CRUD; ★★★★★★★★★ ver 9 — viết lại cơ chế mở connection: tự phát hiện + tự mở lại connection mới khi trình duyệt tự đóng connection cũ qua 2 lớp bảo vệ (sự kiện `close` + retry trong `makeStoreAccessor()`) — fix gốc rễ lỗi "không ra tiếng" sau khi quay lại tab trên iOS; ★★★★★★★★★★★ batch i18n — DB_VERSION 2→3, thêm store `languages` + 4 hàm CRUD getLanguagePack/setLanguagePack/deleteLanguagePack/getAllLanguageCodes)
+    │   ├── lang.js               (★★★★★★★★★★★ mới ở batch i18n — bộ điều phối i18n: LANG_EN_KEYS [311 key, cứng RAM, gốc/fallback] + t()/tFormat() + validateLanguagePack()/saveLanguagePack()/applySavedLanguage()/listAvailableLanguages()/applyLanguageToDom(); nạp NGAY ĐẦU <body>, TRƯỚC TOÀN BỘ components/*.js — xem mục 2 changelog/v10-lang-test.md)
+    │   ├── language-settings.js  (★★★★★★★★★★★ mới ở batch i18n — xử lý UI section "Ngôn ngữ": renderLanguageOptions(), listener chọn/upload/xóa ngôn ngữ qua language.js settings)
     │   ├── resume-state-storage.js (★★★★★★★★★★ mới ở ver 10 mini-fix — lưu/đọc state phát nhạc qua localStorage khi tab ẩn, cờ + snapshot TÁCH RIÊNG; xem changelog mini-fix)
     │   ├── app-recovery.js      (★★★★★★★★★★ mới ở ver 10 mini-fix — xử lý "Khởi động lại app"/"Khôi phục cài đặt mặc định" trong Settings)
     │   ├── stats-panel-toggle.js (★★★★★★★★★★ mới ở ver 10 mini-fix — toggle ẩn/hiện dải BPM/Pitch/Energy trong Control Center)
@@ -88,8 +94,19 @@ visual-master/
 (★ = có thay đổi ở ver 1, ★★ = thêm ở ver 2, ★★★ = thêm ở ver 3, ★★★★ = thêm
 ở ver 4, ★★★★★ = thêm ở ver 5, ★★★★★★ = thêm ở ver 6, ★★★★★★★ = thêm ở
 ver 7, ★★★★★★★★ = thêm ở ver 8, ★★★★★★★★★ = thêm ở ver 9, ★★★★★★★★★★ = thêm
-ở ver 10 (bao gồm cả các mini-fix sau ver 10); file không đánh dấu giữ
-nguyên 100% so với bản chia module gốc.)
+ở ver 10 (bao gồm cả các mini-fix sau ver 10), ★★★★★★★★★★★ = thêm ở batch
+i18n (v10-lang-test); file không đánh dấu giữ nguyên 100% so với bản chia
+module gốc.)
+
+> **Lưu ý batch i18n (CHƯA test browser thật — xem mục "Nợ kỹ thuật" trong
+> [changelog/v10-lang-test.md](../changelog/v10-lang-test.md)):** `js/core/lang.js`
+> nạp NGAY ĐẦU `<body>`, TRƯỚC TOÀN BỘ `js/components/*.js` — đây là thay đổi
+> thứ tự nạp script DUY NHẤT trong cả project (mọi file khác vẫn giữ đúng
+> thứ tự 3 bước cũ ở [readme/script-load-order.md](script-load-order.md)).
+> `en` (311 key) nằm cứng RAM trong `LANG_EN_KEYS` — là ngôn ngữ GỐC/fallback
+> duy nhất không qua IndexedDB. Mọi ngôn ngữ khác (kể cả tiếng Việt,
+> `lang/vi.json`) đều phải qua UI Settings > Ngôn ngữ > Tải lên, KHÔNG có
+> ngôn ngữ nào khác `en` được tự động nạp lúc khởi động.
 
 > **Lưu ý ver 10 mini-fix:** xem [changelog/v10-mini-not-full-fix.md](../changelog/v10-mini-not-full-fix.md)
 > để biết đầy đủ các thay đổi mới nhất — log này CHƯA được test đủ kỹ để
