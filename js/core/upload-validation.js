@@ -55,20 +55,20 @@
             const mime = (file.type || '').toLowerCase();
             if (mime) {
                 if (mimeWhitelist.has(mime)) return { valid: true };
-                return { valid: false, reason: `Định dạng không được hỗ trợ (${mime || 'không rõ'}). Chỉ chấp nhận ${typeLabel}.` };
+                return { valid: false, reason: tFormat('common.validate.unsupportedMime', { mime: mime || t('common.validate.unsupportedMimeUnknown'), typeLabel }) };
             }
             // MIME rỗng -> fallback theo đuôi file.
             const ext = getFileExtension(file.name);
             if (extWhitelist.has(ext)) return { valid: true };
-            return { valid: false, reason: `Không xác định được định dạng file "${file.name}". Chỉ chấp nhận ${typeLabel}.` };
+            return { valid: false, reason: tFormat('common.validate.unknownFormat', { filename: file.name, typeLabel }) };
         }
 
         function validateAudioFile(file) {
-            return validateFileType(file, VALID_AUDIO_MIME_TYPES, VALID_AUDIO_EXTENSIONS, 'file nhạc (mp3, wav, ogg, m4a, aac, flac)');
+            return validateFileType(file, VALID_AUDIO_MIME_TYPES, VALID_AUDIO_EXTENSIONS, t('common.validate.typeLabel.audio'));
         }
         function validateImageFile(file) {
-            return validateFileType(file, VALID_IMAGE_MIME_TYPES, VALID_IMAGE_EXTENSIONS, 'ảnh PNG, JPG hoặc WEBP');
+            return validateFileType(file, VALID_IMAGE_MIME_TYPES, VALID_IMAGE_EXTENSIONS, t('common.validate.typeLabel.image'));
         }
         function validateVideoFile(file) {
-            return validateFileType(file, VALID_VIDEO_MIME_TYPES, VALID_VIDEO_EXTENSIONS, 'video MP4, WEBM, OGG hoặc MOV');
+            return validateFileType(file, VALID_VIDEO_MIME_TYPES, VALID_VIDEO_EXTENSIONS, t('common.validate.typeLabel.video'));
         }

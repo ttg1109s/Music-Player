@@ -18,7 +18,15 @@
             if (!_hasShownFatalErrorAlert) {
                 _hasShownFatalErrorAlert = true;
                 try {
-                    alert(`Đã xảy ra lỗi không mong muốn (${context}). Vui lòng tải lại trang (F5).\n\nChi tiết: ${err && err.message ? err.message : err}`);
+                    const message = err && err.message ? err.message : err;
+                    // Guard: lang.js PHẢI nạp trước config.js (xem index.html), nhưng nếu vì lý do
+                    // nào đó tFormat chưa tồn tại lúc lỗi xảy ra (ví dụ chính lang.js bị lỗi tải),
+                    // fallback về chuỗi tiếng Việt cứng thay vì throw thêm 1 lỗi mới ngay trong
+                    // chính hàm báo lỗi (sẽ làm im lặng hoàn toàn, không alert được gì cả).
+                    const text = (typeof tFormat === 'function')
+                        ? tFormat('common.fatalError.alert', { context, message })
+                        : `Đã xảy ra lỗi không mong muốn (${context}). Vui lòng tải lại trang (F5).\n\nChi tiết: ${message}`;
+                    alert(text);
                 } catch (alertErr) { /* alert có thể bị chặn ở 1 số trình duyệt — bỏ qua, log vẫn còn ở console */ }
             }
         }

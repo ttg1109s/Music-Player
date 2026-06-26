@@ -61,7 +61,9 @@
  *      (tránh loop nếu lỗi thật là do dữ liệu/quyền, không phải do connection chết).
  */
         const DB_NAME = 'musicPlayerDB';
-        const DB_VERSION = 2; // tăng lên 2 để buộc onupgradeneeded chạy lại cho DB cũ (v1) bị thiếu store
+        // ver lang.js (batch i18n): tăng lên 3 để buộc onupgradeneeded chạy lại, tự bổ sung store
+        // 'languages' còn thiếu cho DB cũ (v1/v2) — KHÔNG mất dữ liệu songs/meta đã có.
+        const DB_VERSION = 3;
 
         /** Mở 1 connection IndexedDB mới — tách hàm riêng để có thể gọi lại khi connection cũ chết. */
         function openDatabase() {
@@ -71,6 +73,11 @@
                     const db = request.result;
                     if (!db.objectStoreNames.contains('songs')) db.createObjectStore('songs');
                     if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta');
+                    // 'languages' (lang.js, batch i18n): key = mã ngôn ngữ (vd 'vi', 'fr'), value =
+                    // { meta: {code, name}, keys: {...} } đã validate (diff với en default — xem
+                    // saveLanguagePack() ở lang.js). 'en' KHÔNG nằm trong store này — nó nằm cứng
+                    // trong RAM (const trong lang.js), không qua IndexedDB.
+                    if (!db.objectStoreNames.contains('languages')) db.createObjectStore('languages');
                 };
                 request.onsuccess = () => {
                     const db = request.result;
@@ -121,6 +128,16 @@
 
         const songsStore = makeStoreAccessor('songs');
         const metaStore = makeStoreAccessor('meta');
+        const languagesStore = makeStoreAccessor('languages');
+
+        /** CRUD cho store 'languages' — dùng bởi lang.js (saveLanguagePack/applySavedLanguage/
+         * deleteLanguagePack). Key luôn là mã ngôn ngữ (vd 'vi'), KHÔNG bao giờ là 'en' (en nằm
+         * cứng trong RAM, không qua IndexedDB — xem comment đầu lang.js). */
+        function getLanguagePack(code) { return idbKeyval.get(code, languagesStore); }
+        function setLanguagePack(code, pack) { return idbKeyval.set(code, pack, languagesStore); }
+        function deleteLanguagePack(code) { return idbKeyval.del(code, languagesStore); }
+        function getAllLanguageCodes() { return idbKeyval.keys(languagesStore); }
+
 
         /**
          * slugify: hạ thường, bỏ dấu tiếng Việt, bỏ ký tự đặc biệt, nối bằng "-".

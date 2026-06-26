@@ -25,15 +25,15 @@
         if (typeof btnRestartApp !== 'undefined' && btnRestartApp) {
             btnRestartApp.addEventListener('click', () => {
                 modalChoice(
-                    'Khởi động lại app? Trình phát sẽ tải lại từ đầu. Nhạc, playlist, và cài đặt đã lưu sẽ KHÔNG bị mất.',
+                    t('common.appRecovery.restartBody'),
                     [
                         {
-                            label: 'Huỷ',
+                            label: t('common.cancel'),
                             className: 'flex-1 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-sm font-semibold transition-colors',
                             onClick: () => {}
                         },
                         {
-                            label: 'Khởi động lại',
+                            label: t('common.appRecovery.restartConfirmBtn'),
                             className: 'flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-sm font-semibold transition-colors',
                             onClick: () => {
                                 // Dọn sạch state RAM TẠM (resume snapshot + cờ) — KHÔNG đụng tới
@@ -46,7 +46,7 @@
                             }
                         }
                     ],
-                    { title: 'Khởi động lại app' }
+                    { title: t('common.appRecovery.restartTitle') }
                 );
             });
         }
@@ -54,15 +54,15 @@
         if (typeof btnRestoreDefaults !== 'undefined' && btnRestoreDefaults) {
             btnRestoreDefaults.addEventListener('click', () => {
                 modalChoice(
-                    'Khôi phục cài đặt mặc định? Màu sắc, hiệu ứng, EQ, và mọi tuỳ chỉnh hiển thị khác sẽ về mặc định gốc. Nhạc và playlist đã upload sẽ KHÔNG bị xoá.',
+                    t('common.appRecovery.restoreDefaultsBody'),
                     [
                         {
-                            label: 'Huỷ',
+                            label: t('common.cancel'),
                             className: 'flex-1 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-sm font-semibold transition-colors',
                             onClick: () => {}
                         },
                         {
-                            label: 'Khôi phục mặc định',
+                            label: t('common.appRecovery.restoreDefaultsConfirmBtn'),
                             className: 'flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-sm font-semibold transition-colors',
                             onClick: () => {
                                 // CHỈ reset vizConfig — không đụng resume snapshot/cờ (không liên
@@ -73,7 +73,7 @@
                             }
                         }
                     ],
-                    { title: 'Khôi phục cài đặt mặc định' }
+                    { title: t('common.appRecovery.restoreDefaultsTitle') }
                 );
             });
         }

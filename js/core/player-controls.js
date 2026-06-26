@@ -151,10 +151,10 @@
             const needsPlaylist = !_isPlaylistReadyForResumeModal; // playlist chưa load xong -> khoá tạm 2 nút cần playSong()
 
             modalChoice(
-                `Bạn có muốn tiếp tục nghe bài <b>${title}</b> không?`,
+                tFormat('common.resumeModal.question', { title }),
                 [
                     {
-                        label: 'Không',
+                        label: t('common.resumeModal.btnNo'),
                         className: 'flex-1 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-sm font-semibold transition-colors',
                         // "Không" KHÔNG cần playlist load xong — chỉ tắt cờ/dọn snapshot, không gọi
                         // playSong() nào cả — luôn bấm được ngay từ lúc modal vừa mở.
@@ -164,7 +164,7 @@
                         }
                     },
                     {
-                        label: 'Tiếp tục phát',
+                        label: t('common.resumeModal.btnResume'),
                         className: 'flex-1 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-sm font-semibold transition-colors',
                         disabled: needsPlaylist,
                         dataset: { resumeNeedsPlaylist: '1' }, // querySelector bởi enableResumeModalButtonsWhenPlaylistReady() (resume-state-storage.js)
@@ -181,7 +181,7 @@
                         }
                     },
                     {
-                        label: 'Nghe lại',
+                        label: t('common.resumeModal.btnRestart'),
                         className: 'flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold transition-colors',
                         disabled: needsPlaylist,
                         dataset: { resumeNeedsPlaylist: '1' },
@@ -196,7 +196,7 @@
                         }
                     }
                 ],
-                { title: 'Đang phát tiếp?' }
+                { title: t('common.resumeModal.title') }
             );
 
             // Cache lại key/title hiện tại để updateResumeModalTitleIfPending() (gọi sau khi
@@ -223,7 +223,7 @@
             if (!textEl) return; // modal đã đóng (người dùng bấm trước khi load xong) -> không có gì để sửa
             const cached = (typeof playlistCache !== 'undefined') ? playlistCache.get(key) : null;
             const title = cached && cached.tag && cached.tag.title ? cached.tag.title : key;
-            textEl.innerHTML = `Bạn có muốn tiếp tục nghe bài <b>${title}</b> không?`;
+            textEl.innerHTML = tFormat('common.resumeModal.question', { title });
         }
 
         function switchToVisualizer() {
@@ -468,7 +468,7 @@
             // IndexedDB/blob URL, không đổi gì khác trong luồng cũ nếu file hợp lệ.
             const check = validateImageFile(file);
             if (!check.valid) { alert(check.reason); return; }
-            withLoadingShield("Đang lưu ảnh nền...", async () => {
+            withLoadingShield(t('common.loading.savingImageBg'), async () => {
                 await setMeta('bgImage', file);
                 if (vizConfig.bgImage && vizConfig.bgImage.startsWith('blob:')) URL.revokeObjectURL(vizConfig.bgImage);
                 vizConfig.bgImage = URL.createObjectURL(file);
@@ -478,7 +478,7 @@
         });
         bgImageEnableToggle.addEventListener('change', (e) => {
             vizConfig.bgImageEnabled = e.target.checked;
-            withLoadingShield(vizConfig.bgImageEnabled ? "Đang xử lý..." : "Đang xóa ảnh nền...", async () => {
+            withLoadingShield(vizConfig.bgImageEnabled ? t('common.loading.generic') : t('common.loading.deletingImageBg'), async () => {
                 if (!vizConfig.bgImageEnabled) {
                     await delMeta('bgImage');
                     if (vizConfig.bgImage && vizConfig.bgImage.startsWith('blob:')) URL.revokeObjectURL(vizConfig.bgImage);

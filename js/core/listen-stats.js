@@ -87,9 +87,9 @@
         /** Định dạng thời gian nghe thân thiện: "1 giờ 5 phút", "12 phút 30 giây", "45 giây". */
         function formatListenTime(totalSeconds) {
             const s = Math.floor(totalSeconds || 0);
-            if (s <= 0) return '0 giây';
+            if (s <= 0) return t('common.listenTime.zero');
             const h = Math.floor(s / 3600); const m = Math.floor((s % 3600) / 60); const sec = s % 60;
-            if (h > 0) return `${h} giờ ${m} phút`;
-            if (m > 0) return `${m} phút ${sec} giây`;
-            return `${sec} giây`;
+            if (h > 0) return tFormat('common.listenTime.hourMinute', { h, m });
+            if (m > 0) return tFormat('common.listenTime.minuteSecond', { m, s: sec });
+            return tFormat('common.listenTime.secondOnly', { s: sec });
         }

@@ -115,7 +115,7 @@
         videoEnableToggle.addEventListener('change', (e) => {
             vizConfig.videoBgEnabled = e.target.checked;
             if (!vizConfig.videoBgEnabled) {
-                withLoadingShield("Đang xóa video nền...", async () => {
+                withLoadingShield(t('common.loading.deletingVideoBg'), async () => {
                     await delMeta('videoBg');
                     if (vizConfig.videoBgUrl && vizConfig.videoBgUrl.startsWith('blob:')) URL.revokeObjectURL(vizConfig.videoBgUrl);
                     vizConfig.videoBgUrl = '';
@@ -142,7 +142,7 @@
             // upload-validation.js. Chặn TRƯỚC khi đụng tới IndexedDB/blob URL.
             const check = validateVideoFile(file);
             if (!check.valid) { alert(check.reason); return; }
-            withLoadingShield("Đang lưu video nền...", async () => {
+            withLoadingShield(t('common.loading.savingVideoBg'), async () => {
                 await setMeta('videoBg', file);
                 if (vizConfig.videoBgUrl && vizConfig.videoBgUrl.startsWith('blob:')) URL.revokeObjectURL(vizConfig.videoBgUrl);
                 vizConfig.videoBgUrl = URL.createObjectURL(file);

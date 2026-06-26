@@ -31,15 +31,15 @@
         }
 
         async function exportSongWithTag(key) {
-            return withLoadingShield("Đang xuất file...", async () => {
+            return withLoadingShield(t('common.loading.exportingFile'), async () => {
                 const record = await getSongRecord(key);
-                if (!record) { alert("Không đọc được bài hát này, dữ liệu có thể đã lỗi."); return; }
+                if (!record) { alert(t('common.export.notFound')); return; }
                 try {
                     const taggedBlob = await buildTaggedBlob(record);
                     triggerDownload(taggedBlob, record.filename);
                 } catch (e) {
                     console.error('[id3-export] Lỗi ghi tag:', e);
-                    alert("Không thể ghi tag vào file, đang xuất file gốc thay thế.");
+                    alert(t('common.export.tagWriteFailed'));
                     triggerDownload(record.blob, record.filename);
                 }
             });

@@ -46,7 +46,7 @@
          */
         async function buildAllSongsZipBlob(onProgress) {
             if (typeof JSZip === 'undefined') {
-                throw new Error('Thư viện JSZip chưa nạp được (kiểm tra kết nối mạng tới CDN).');
+                throw new Error(t('common.storage.zipLibMissing'));
             }
             const zip = new JSZip();
             const keys = await getAllSongKeys();
@@ -115,7 +115,7 @@
                 if (typeof killAllAutoSwitchVisualTasks === 'function') killAllAutoSwitchVisualTasks();
                 if (currentObjectURL) { URL.revokeObjectURL(currentObjectURL); currentObjectURL = null; }
                 if (currentCoverObjectURL) { URL.revokeObjectURL(currentCoverObjectURL); currentCoverObjectURL = null; }
-                playerTitle.textContent = 'Chưa chọn bài'; playerArtist.textContent = '---';
+                playerTitle.textContent = t('bottomPlayer.noSongSelected'); playerArtist.textContent = '---';
                 updateShuffleArray();
                 renderPlaylistFull();
                 // updateEmptyState() đã được renderPlaylistFull() gọi -> tự bật #playlist-empty đúng lúc.
@@ -140,29 +140,29 @@
         const btnDownloadThenClear = document.getElementById('btn-storage-download-then-clear');
         if (btnDownloadThenClear) {
             btnDownloadThenClear.addEventListener('click', () => {
-                const ok = confirm('Tải toàn bộ nhạc thành 1 file zip, sau đó XÓA toàn bộ BÀI HÁT khỏi thiết bị này? (Ảnh/video nền vẫn được giữ lại.) Hành động xóa không thể hoàn tác sau khi tải xong.');
+                const ok = confirm(t('common.storage.downloadThenClearConfirm'));
                 if (!ok) return;
-                withLoadingShield('Đang đóng gói file zip (0%)...', async () => {
+                withLoadingShield(t('common.storage.zippingStart'), async () => {
                     const keys = await getAllSongKeys();
-                    if (keys.length === 0) { alert('Chưa có bài hát nào để tải.'); return; }
+                    if (keys.length === 0) { alert(t('common.storage.noSongsToDownload')); return; }
                     let zipBlob;
                     try {
                         zipBlob = await buildAllSongsZipBlob((done, total, percent) => {
                             const pct = percent != null ? Math.round(percent) : Math.round((done / total) * 100);
-                            loadingText.textContent = `Đang đóng gói file zip (${pct}%)...`;
+                            loadingText.textContent = tFormat('common.storage.zippingProgress', { percent: pct });
                         });
                     } catch (err) {
                         console.error('[storage-manager] Lỗi đóng gói zip:', err);
-                        alert(`Không tạo được file zip: ${err.message || err}`);
+                        alert(tFormat('common.storage.zipBuildError', { message: err.message || err }));
                         return;
                     }
                     const dateStr = new Date().toISOString().slice(0, 10);
                     triggerDownload(zipBlob, `nhac-da-luu-${dateStr}.zip`);
 
-                    loadingText.textContent = 'Đang xóa dữ liệu...';
+                    loadingText.textContent = t('common.storage.deletingData');
                     await clearAllStoredData();
                     renderStorageStats();
-                    alert('Đã tải xong file zip và xóa toàn bộ bài hát. Ảnh/video nền vẫn được giữ lại.');
+                    alert(t('common.storage.downloadThenClearDone'));
                 });
             });
         }
@@ -170,12 +170,12 @@
         const btnClearNoDownload = document.getElementById('btn-storage-clear-no-download');
         if (btnClearNoDownload) {
             btnClearNoDownload.addEventListener('click', () => {
-                const ok = confirm('Xóa toàn bộ BÀI HÁT đã lưu trên thiết bị này? (Ảnh/video nền vẫn được giữ lại.) Hành động này KHÔNG thể hoàn tác.');
+                const ok = confirm(t('common.storage.clearNoDownloadConfirm'));
                 if (!ok) return;
-                withLoadingShield('Đang xóa dữ liệu...', async () => {
+                withLoadingShield(t('common.storage.deletingData'), async () => {
                     await clearAllStoredData();
                     renderStorageStats();
-                    alert('Đã xóa toàn bộ bài hát. Ảnh/video nền vẫn được giữ lại.');
+                    alert(t('common.storage.clearNoDownloadDone'));
                 });
             });
         }
@@ -194,12 +194,12 @@
          *       Quét, và lúc playSong() gặp lỗi 'error' thật trên audioPlayer (player-controls.js).
          */
         async function isRecordCorrupted(record) {
-            if (!record || !record.blob) return { corrupted: true, reason: 'Không có dữ liệu file (blob trống)' };
+            if (!record || !record.blob) return { corrupted: true, reason: t('common.storage.scanReasonBrokenBlob') };
             if (!isQuickValidMime(record.blob.type)) {
-                return { corrupted: true, reason: `Định dạng không phải mp3 (MIME: "${record.blob.type || '(rỗng)'}")` };
+                return { corrupted: true, reason: tFormat('common.storage.scanReasonBadMime', { mime: record.blob.type || t('common.storage.scanReasonBadMimeEmpty') }) };
             }
             const duration = await readAudioDuration(record.blob);
-            if (!duration || duration <= 0) return { corrupted: true, reason: 'Trình duyệt không đọc/decode được nội dung audio' };
+            if (!duration || duration <= 0) return { corrupted: true, reason: t('common.storage.scanReasonNoDecode') };
             return { corrupted: false };
         }
 
@@ -214,17 +214,17 @@
         const btnScanBroken = document.getElementById('btn-storage-scan-broken');
         if (btnScanBroken) {
             btnScanBroken.addEventListener('click', () => {
-                withLoadingShield('Đang quét dữ liệu...', async () => {
+                withLoadingShield(t('common.storage.scanning'), async () => {
                     const keys = await getAllSongKeys();
                     const results = [];
                     for (let i = 0; i < keys.length; i++) {
                         const key = keys[i];
-                        loadingText.textContent = `Đang quét ${i + 1} / ${keys.length}...`;
+                        loadingText.textContent = tFormat('common.storage.scanningProgress', { n: i + 1, total: keys.length });
                         const record = await getSongRecord(key);
                         if (confirmedBrokenKeys.has(key)) {
                             // Đã được người dùng xác nhận "Giữ lại" lúc phát lỗi trước đó — không cần
                             // decode lại (tốn thời gian vô ích, đã biết chắc là lỗi), liệt kê thẳng.
-                            results.push({ key, filename: record ? record.filename : key, reason: 'Lỗi lúc phát — đã chọn "Giữ lại" để xử lý sau' });
+                            results.push({ key, filename: record ? record.filename : key, reason: t('common.storage.scanReasonKeptFromError') });
                             continue;
                         }
                         const check = await isRecordCorrupted(record);
@@ -245,11 +245,11 @@
             const deleteBtn = document.getElementById('btn-storage-delete-broken');
             resultBox.classList.remove('hidden');
             if (results.length === 0) {
-                summary.textContent = 'Không tìm thấy file lỗi nào — toàn bộ dữ liệu hợp lệ.';
+                summary.textContent = t('common.storage.scanNoneFound');
                 list.innerHTML = '';
                 deleteBtn.classList.add('hidden');
             } else {
-                summary.textContent = `Tìm thấy ${results.length} file có vấn đề:`;
+                summary.textContent = tFormat('common.storage.scanFoundCount', { n: results.length });
                 list.innerHTML = results.map(r => `<div class="truncate"><span class="text-amber-400">●</span> ${r.filename} — ${r.reason}</div>`).join('');
                 deleteBtn.classList.remove('hidden');
             }
@@ -259,9 +259,9 @@
         if (btnDeleteBroken) {
             btnDeleteBroken.addEventListener('click', () => {
                 if (lastScanResults.length === 0) return;
-                const ok = confirm(`Xóa ${lastScanResults.length} file lỗi đã tìm thấy? Không thể hoàn tác.`);
+                const ok = confirm(tFormat('common.storage.deleteBrokenConfirm', { n: lastScanResults.length }));
                 if (!ok) return;
-                withLoadingShield('Đang xóa file lỗi...', async () => {
+                withLoadingShield(t('common.storage.deletingBroken'), async () => {
                     for (const { key } of lastScanResults) {
                         if (key === currentKey) continue; // không xóa bài đang phát, giữ đúng quy tắc chung của removeSong
                         await deleteSongRecord(key);
@@ -270,7 +270,7 @@
                     }
                     resetScanResultUI();
                     renderStorageStats();
-                    alert('Đã xóa xong các file lỗi.');
+                    alert(t('common.storage.deleteBrokenDone'));
                 });
             });
         }

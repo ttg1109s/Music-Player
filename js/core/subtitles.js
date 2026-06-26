@@ -45,11 +45,11 @@
                                     <span class="text-slate-500">--></span>
                                     <input type="text" id="edit-end-${sub.id}" value="${sub.endStr}" class="w-32 text-center text-sky-300 bg-black/60 border border-slate-600 rounded" placeholder="00:00:00,000">
                                 </div>
-                                <textarea id="edit-text-${sub.id}" rows="2" class="w-full text-white bg-black/60 border border-slate-600 rounded resize-none" placeholder="Nhập nội dung sub...">${sub.text}</textarea>
+                                <textarea id="edit-text-${sub.id}" rows="2" class="w-full text-white bg-black/60 border border-slate-600 rounded resize-none" placeholder="${t('subtitleModal.editor.placeholder')}">${sub.text}</textarea>
                             </div>
                             <div class="flex sm:flex-col gap-2 shrink-0 justify-end sm:justify-start mt-2 sm:mt-0">
-                                <button onclick="saveSubItem('${sub.id}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded shadow transition-colors">Lưu</button>
-                                <button onclick="deleteSubItem('${sub.id}')" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded shadow transition-colors">Xóa</button>
+                                <button onclick="saveSubItem('${sub.id}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded shadow transition-colors">${t('subtitleModal.editor.btnSave')}</button>
+                                <button onclick="deleteSubItem('${sub.id}')" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded shadow transition-colors">${t('subtitleModal.editor.btnDelete')}</button>
                             </div>
                         </div>`;
                 } else {
@@ -94,7 +94,7 @@
             } else {
                 let endTime = audioPlayer.currentTime;
                 if (endTime < autoSubStartTime) { let temp = autoSubStartTime; autoSubStartTime = endTime; endTime = temp; }
-                let newSub = { id: Date.now().toString(), start: autoSubStartTime, end: endTime, startStr: secToStr(autoSubStartTime), endStr: secToStr(endTime), text: "(Nhập nội dung...)" };
+                let newSub = { id: Date.now().toString(), start: autoSubStartTime, end: endTime, startStr: secToStr(autoSubStartTime), endStr: secToStr(endTime), text: t('subtitleModal.autoTiming.defaultText') };
                 subtitles.push(newSub); resetAutoSub(); renderSubList();
                 taskManager.once(() => { document.getElementById('sub-list-container').scrollTop = document.getElementById('sub-list-container').scrollHeight; }, 100);
             }
@@ -102,13 +102,13 @@
 
         btnAddSub.addEventListener('click', () => {
             let lastSub = subtitles[subtitles.length - 1]; let newStart = lastSub ? lastSub.end + 0.1 : 0; let newEnd = newStart + 2;
-            let newSub = { id: Date.now().toString(), start: newStart, end: newEnd, startStr: secToStr(newStart), endStr: secToStr(newEnd), text: "Dòng phụ đề mới..." };
+            let newSub = { id: Date.now().toString(), start: newStart, end: newEnd, startStr: secToStr(newStart), endStr: secToStr(newEnd), text: t('subtitleModal.newLine.defaultText') };
             subtitles.push(newSub); editingSubId = newSub.id; renderSubList();
             taskManager.once(() => { document.getElementById('sub-list-container').scrollTop = document.getElementById('sub-list-container').scrollHeight; }, 100);
         });
 
         btnExportSrt.addEventListener('click', () => {
-            if(subtitles.length === 0) { alert("Chưa có phụ đề để xuất!"); return; }
+            if(subtitles.length === 0) { alert(t('common.subtitle.exportEmpty')); return; }
             const blob = new Blob([buildSRTString()], { type: "text/plain;charset=utf-8" });
             const url = URL.createObjectURL(blob); const a = document.createElement('a');
             const cached = currentKey ? playlistCache.get(currentKey) : null;

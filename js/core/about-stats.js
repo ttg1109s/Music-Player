@@ -13,8 +13,8 @@
         function formatDurationLong(totalSeconds) {
             const s = Math.floor(totalSeconds || 0);
             const h = Math.floor(s / 3600); const m = Math.floor((s % 3600) / 60);
-            if (h > 0) return `${h} giờ ${m} phút`;
-            return `${m} phút`;
+            if (h > 0) return tFormat('common.durationLong.hourMinute', { h, m });
+            return tFormat('common.durationLong.minuteOnly', { m });
         }
 
         async function computeStats() {
