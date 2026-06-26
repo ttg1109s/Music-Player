@@ -186,7 +186,7 @@
                 // NHƯNG lúc đó currentKey vẫn còn giá trị cũ (dòng này mới set null) -> hàm đó chỉ
                 // pause() task thay vì kill() hẳn. Dọn dứt điểm ở đây — không còn bài nào đang phát
                 // thì task auto-switch-visual không có lý do gì tồn tại (pause hờ) nữa.
-                if (typeof taskManager !== 'undefined' && typeof AUTO_SWITCH_VISUAL_TASK !== 'undefined') taskManager.kill(AUTO_SWITCH_VISUAL_TASK);
+                if (typeof killAllAutoSwitchVisualTasks === 'function') killAllAutoSwitchVisualTasks();
                 // Reset UI player về ĐÚNG trạng thái ban đầu — xem bottom-player.js (TPL_BOTTOM_PLAYER)
                 // để biết giá trị gốc lúc chưa chọn bài nào.
                 playerTitle.textContent = 'Chưa chọn bài'; playerArtist.textContent = '---';

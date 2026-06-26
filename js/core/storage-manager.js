@@ -112,7 +112,7 @@
                 if (currentKey) { audioPlayer.pause(); audioPlayer.src = ''; currentKey = null; }
                 // ver 10: cùng lý do như resetPlayerToIdle() (player-controls.js) — audioPlayer.pause()
                 // ở trên bắn event 'pause' trước khi currentKey kịp về null, dọn dứt điểm task ở đây.
-                if (typeof taskManager !== 'undefined' && typeof AUTO_SWITCH_VISUAL_TASK !== 'undefined') taskManager.kill(AUTO_SWITCH_VISUAL_TASK);
+                if (typeof killAllAutoSwitchVisualTasks === 'function') killAllAutoSwitchVisualTasks();
                 if (currentObjectURL) { URL.revokeObjectURL(currentObjectURL); currentObjectURL = null; }
                 if (currentCoverObjectURL) { URL.revokeObjectURL(currentCoverObjectURL); currentCoverObjectURL = null; }
                 playerTitle.textContent = 'Chưa chọn bài'; playerArtist.textContent = '---';
