@@ -44,29 +44,42 @@
     <audio id="audio-player" style="display: none;" playsinline></audio>
 
     <!-- =====================================================================
+         0) I18N (batch i18n, mới): lang.js định nghĩa t()/tFormat() — PHẢI nạp TRƯỚC TOÀN BỘ
+            components/*.js (bước 1 dưới đây), vì các template TPL_* gọi t() NGAY LÚC PARSE
+            (template literal cấp module, chạy đồng bộ ngay khi file được nạp). saveLanguagePack/
+            applySavedLanguage/listAvailableLanguages (cần db.js: getLanguagePack/setLanguagePack/
+            deleteLanguagePack/getAllLanguageCodes) ĐỊNH NGHĨA được bình thường ở đây dù db.js nạp
+            sau — JS không resolve tham chiếu lúc định nghĩa hàm, chỉ lúc hàm thực sự được GỌI
+            (luôn sau khi người dùng tương tác, lúc đó toàn bộ trang đã nạp xong từ lâu). Xem
+            comment đầu file lang.js để biết đầy đủ kiến trúc. -->
+    <script src="js/core/lang.js?v=20260626v1"></script>
+
+    <!-- =====================================================================
          1) COMPONENTS: mỗi file chỉ định nghĩa một biến TPL_* chứa chuỗi HTML.
             Chưa có gì được vẽ ra DOM ở bước này.
          ===================================================================== -->
     <script src="js/components/loading-shield.js?v=20260625v8e"></script>
-    <script src="js/components/playlist-view.js?v=20260625v10"></script>
-    <script src="js/components/visualizer-overlay.js?v=20260625v8e"></script>
-    <script src="js/components/subtitle-modal.js?v=20260625v8e"></script>
-    <script src="js/components/bottom-player.js?v=20260625v8e"></script>
-    <!-- Settings Drawer (ver 8): 5 "section" HTML nhỏ PHẢI nạp TRƯỚC settings-drawer.js — file
-         đó chỉ còn là bộ điều phối (object SettingsDrawer) ghép 5 biến TPL_SETTINGS_* dưới đây
-         lại thành TPL_SETTINGS_DRAWER, không tự chứa HTML nào. -->
-    <script src="js/components/settings/playlist-background.js?v=20260625v10"></script>
-    <script src="js/components/settings/visualizer-geometry-color.js?v=20260625v10"></script>
-    <script src="js/components/settings/audio-eq.js?v=20260625v8e"></script>
-    <script src="js/components/settings/subtitle-style.js?v=20260625v8e"></script>
-    <script src="js/components/settings/misc.js?v=20260625v8e"></script>
-    <script src="js/components/settings-drawer.js?v=20260625v8e"></script>
-    <script src="js/components/about-drawer.js?v=20260625v8e"></script>
-    <script src="js/components/storage-drawer.js?v=20260625v8e"></script>
+    <script src="js/components/playlist-view.js?v=20260626v1"></script>
+    <script src="js/components/visualizer-overlay.js?v=20260626v1"></script>
+    <script src="js/components/subtitle-modal.js?v=20260626v1"></script>
+    <script src="js/components/bottom-player.js?v=20260626v1"></script>
+    <!-- Settings Drawer (ver 8): 6 "section" HTML nhỏ PHẢI nạp TRƯỚC settings-drawer.js — file
+         đó chỉ còn là bộ điều phối (object SettingsDrawer) ghép 6 biến TPL_SETTINGS_* dưới đây
+         lại thành TPL_SETTINGS_DRAWER, không tự chứa HTML nào. Batch i18n (mới): thêm
+         settings/language.js (TPL_SETTINGS_LANGUAGE — section "Ngôn ngữ") vào cuối nhóm. -->
+    <script src="js/components/settings/playlist-background.js?v=20260626v1"></script>
+    <script src="js/components/settings/visualizer-geometry-color.js?v=20260626v1"></script>
+    <script src="js/components/settings/audio-eq.js?v=20260626v1"></script>
+    <script src="js/components/settings/subtitle-style.js?v=20260626v1"></script>
+    <script src="js/components/settings/misc.js?v=20260626v1"></script>
+    <script src="js/components/settings/language.js?v=20260626v1"></script>
+    <script src="js/components/settings-drawer.js?v=20260626v1"></script>
+    <script src="js/components/about-drawer.js?v=20260626v1"></script>
+    <script src="js/components/storage-drawer.js?v=20260626v1"></script>
     <!-- Visualizer/Subtitle Settings Drawer (ver 8 refine, mục 3) — cùng pattern navigation
          stack với About/Storage Drawer, mở chồng lên #drawer-settings. -->
-    <script src="js/components/visualizer-settings-drawer.js?v=20260625v10"></script>
-    <script src="js/components/subtitle-settings-drawer.js?v=20260625v8e"></script>
+    <script src="js/components/visualizer-settings-drawer.js?v=20260626v1"></script>
+    <script src="js/components/subtitle-settings-drawer.js?v=20260626v1"></script>
 
     <!-- =====================================================================
          2) MAIN (bootstrap): lắp toàn bộ component vào #app-root.
@@ -94,7 +107,7 @@
     <!-- modalChoice() — hàm dùng chung cho mọi modal "hỏi quyết định" (text + N nút tuỳ biến),
          tự dựng/xoá DOM động (không cần template tĩnh) — xem comment đầu file để biết cách dùng. -->
     <script src="js/core/modal-choice.js?v=20260625v9"></script>
-    <script src="js/core/db.js?v=20260625v8e"></script>
+    <script src="js/core/db.js?v=20260626v1"></script>
     <!-- Resume State Storage (ver 10 refine #3) — lưu/đọc trạng thái phát qua localStorage khi tab
          bị ẩn, dùng để "reload trang thật" lúc quay lại tab thay cho cố giữ runtime cũ sống sót
          qua việc ẩn tab (xem comment đầu file). PHẢI nạp TRƯỚC wakelock.js (file đó gọi
@@ -140,6 +153,13 @@
          đã có ref + HTML thật đã chèn), resume-state-storage.js, config.js, equalizer-settings.js,
          modal-choice.js. Xem comment đầu file app-recovery.js. -->
     <script src="js/core/app-recovery.js?v=20260625v10"></script>
+    <!-- Settings "Ngôn ngữ" (batch i18n, mới) — xử lý <select>/upload/xóa ngôn ngữ. PHẢI nạp SAU
+         dom-refs.js/main.js (cần ref DOM của select/input/button + HTML thật đã chèn), lang.js
+         (cần saveLanguagePack/applySavedLanguage/listAvailableLanguages/applyLanguageToDom/
+         currentLangCode — lang.js đã nạp từ đầu <body>, luôn có mặt), db.js (cần
+         deleteLanguagePack), modal-choice.js (cần modalChoice() hỏi xác nhận trước khi xóa). Xem
+         comment đầu file language-settings.js. -->
+    <script src="js/core/language-settings.js?v=20260626v1"></script>
     <script src="js/core/id3-export.js?v=20260625v8e"></script>
     <script src="js/core/storage-manager.js?v=20260625v10"></script>
 
