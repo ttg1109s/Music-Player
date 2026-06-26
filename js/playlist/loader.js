@@ -53,7 +53,7 @@
                 else failedFiles.push(`${file.name} — ${check.reason}`);
             }
             if (files.length === 0) {
-                if (failedFiles.length > 0) alert(`Không nạp được ${failedFiles.length} file:\n\n${failedFiles.join('\n\n')}`);
+                if (failedFiles.length > 0) alert(tFormat('common.upload.failedList', { n: failedFiles.length, list: failedFiles.join('\n\n') }));
                 return;
             }
             // TỐI ƯU (v7): trước đây dùng `playlistOrder.includes(key)` NGAY TRONG vòng `for` qua
@@ -71,14 +71,14 @@
             // xong, không thấy gì xảy ra, không có lỗi nào để biết nguyên nhân. Theo dõi qua biến cờ
             // riêng để log + alert rõ ràng thay vì im lặng bỏ qua.
             let shieldRan = false;
-            await withLoadingShield(`Đang nạp 1 / ${files.length}...`, async () => {
+            await withLoadingShield(tFormat('common.upload.loadingProgress', { done: 1, total: files.length }), async () => {
                 shieldRan = true;
                 for (let i = 0; i < files.length; i++) {
                     const file = files[i];
-                    loadingText.textContent = `Đang nạp ${i + 1} / ${files.length}...`;
+                    loadingText.textContent = tFormat('common.upload.loadingProgress', { done: i + 1, total: files.length });
 
                     try {
-                        let tag = { title: file.name.replace(/\.[^/.]+$/, ""), artist: "Không rõ nghệ sĩ", album: "" };
+                        let tag = { title: file.name.replace(/\.[^/.]+$/, ""), artist: t('common.song.unknownArtist'), album: "" };
                         let cover = null;
 
                         await new Promise(resolve => {
@@ -148,7 +148,7 @@
                         confirmedBrokenKeys.delete(key);
                     } catch (err) {
                         console.error(`[playlist] Không nạp được "${file.name}":`, err);
-                        const errMsg = (err && err.name && err.message) ? `${err.name}: ${err.message}` : String(err && err.message || err || 'Lỗi không xác định');
+                        const errMsg = (err && err.name && err.message) ? `${err.name}: ${err.message}` : String(err && err.message || err || t('common.unknownError'));
                         failedFiles.push(`${file.name} — ${errMsg}`);
                     }
                 }
@@ -162,16 +162,16 @@
                 // withLoadingShield() đã bỏ qua lệnh gọi này vì đang bận tác vụ khác — KHÔNG có file
                 // nào được xử lý dù người dùng đã chọn xong. Báo rõ thay vì im lặng.
                 console.warn('[upload] handleAudioFiles bị bỏ qua: đang có 1 tác vụ khác dùng loading shield (isShieldBusy=true). Hãy thử lại sau khi tác vụ hiện tại xong.');
-                alert('Đang xử lý 1 tác vụ khác, vui lòng đợi rồi thử thêm nhạc lại.');
+                alert(t('common.upload.shieldBusy'));
                 return;
             }
 
             if (failedFiles.length > 0) {
-                alert(`Không nạp được ${failedFiles.length} file:\n\n${failedFiles.join('\n\n')}`);
+                alert(tFormat('common.upload.failedList', { n: failedFiles.length, list: failedFiles.join('\n\n') }));
             }
           } catch (err) {
               console.error('[upload] Lỗi không xác định trong handleAudioFiles:', err);
-              alert(`Đã xảy ra lỗi không xác định khi nạp nhạc:\n\n${err && err.message ? err.message : err}`);
+              alert(tFormat('common.upload.genericError', { message: err && err.message ? err.message : err }));
           }
         }
 
@@ -199,7 +199,7 @@
                 await handleAudioFiles(fileList);
             } catch (err) {
                 console.error('[upload] Lỗi không xác định khi xử lý file đã chọn (#audio-upload):', err);
-                alert(`Đã xảy ra lỗi khi nạp file nhạc:\n\n${err && err.message ? err.message : err}`);
+                alert(tFormat('common.upload.fileError', { message: err && err.message ? err.message : err }));
             }
         });
 
@@ -210,13 +210,13 @@
                 console.log(`[upload] #audio-upload-folder change: ${fileList.length} file được chọn (toàn bộ thư mục + thư mục con).`);
                 if (fileList.length === 0) {
                     console.warn('[upload] #audio-upload-folder: FileList rỗng sau khi chọn thư mục — trình duyệt không trả về file nào (thư mục trống, hoặc bị chặn quyền đọc thư mục).');
-                    alert('Không đọc được file nào trong thư mục đã chọn. Thư mục có thể trống, hoặc trình duyệt/thiết bị chặn quyền đọc thư mục này.');
+                    alert(t('common.upload.folderEmpty'));
                     return;
                 }
                 await handleAudioFiles(fileList);
             } catch (err) {
                 console.error('[upload] Lỗi không xác định khi xử lý thư mục đã chọn (#audio-upload-folder):', err);
-                alert(`Đã xảy ra lỗi khi nạp thư mục nhạc:\n\n${err && err.message ? err.message : err}`);
+                alert(tFormat('common.upload.folderError', { message: err && err.message ? err.message : err }));
             }
         });
 
@@ -299,7 +299,7 @@
             // thời điểm gọi, dù được ĐỊNH NGHĨA ở file nạp sau file này.
             const wasClearing = await getMeta('clearingInProgress');
             if (wasClearing) {
-                await withLoadingShield('Đang dọn dữ liệu dở từ lần trước...', async () => {
+                await withLoadingShield(t('common.playlist.cleaningUpPrevious'), async () => {
                     await clearAllStoredData();
                 });
             }

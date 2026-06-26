@@ -27,7 +27,7 @@
 
         window.removeSong = function(key) {
             if (key === currentKey) return;
-            withLoadingShield("Đang xóa...", async () => {
+            withLoadingShield(t('common.loading.deleting'), async () => {
                 await deleteSongRecord(key);
                 removeSongStats(key); // dọn luôn thống kê nghe của bài đã xoá
                 removeKeyFromDisplay(key);
@@ -53,7 +53,7 @@
             // Sau khi db.js đã tự retry, trường hợp này hiếm xảy ra hơn nhiều, nhưng vẫn cần lớp
             // bảo vệ cuối: nếu thật sự thất bại (retry cũng lỗi, hoặc lỗi khác hẳn), alert() đúng
             // nguyên văn lỗi thay vì im lặng — cùng tinh thần đã áp dụng cho luồng upload.
-            return withLoadingShield("Đang chuyển bài...", async () => {
+            return withLoadingShield(t('common.loading.switchingSong'), async () => {
                 if (currentObjectURL) { URL.revokeObjectURL(currentObjectURL); currentObjectURL = null; }
                 if (currentCoverObjectURL) { URL.revokeObjectURL(currentCoverObjectURL); currentCoverObjectURL = null; }
                 audioPlayer.pause();
@@ -62,7 +62,7 @@
                 const record = await getSongRecord(key);
                 if (!record) {
                     removeKeyFromDisplay(key);
-                    alert("Không đọc được bài hát này, dữ liệu có thể đã bị xóa.");
+                    alert(t('common.playSong.notFound'));
                     return;
                 }
 
@@ -113,7 +113,7 @@
                 clearAllActiveSubBlocks(); resetAutoSub(); renderSubList();
             }, false).catch(err => {
                 console.error(`[playlist] playSong("${key}") lỗi không xác định, nhạc có thể không phát ra tiếng được:`, err);
-                alert(`Lỗi khi phát bài hát:\n\n${err && err.name ? err.name + ': ' : ''}${err && err.message ? err.message : String(err)}`);
+                alert(tFormat('common.playSong.error', { message: `${err && err.name ? err.name + ': ' : ''}${err && err.message ? err.message : String(err)}` }));
             });
         };
 
@@ -188,7 +188,7 @@
             const key = playbackErrorKey;
             playbackErrorModal.classList.add('hidden');
             playbackErrorKey = null;
-            withLoadingShield("Đang xóa...", async () => {
+            withLoadingShield(t('common.loading.deleting'), async () => {
                 await deleteSongRecord(key);
                 removeSongStats(key);
                 removeKeyFromDisplay(key);
@@ -291,12 +291,12 @@
         document.getElementById('song-edit-cancel').addEventListener('click', closeSongEditModal);
         document.getElementById('song-edit-save').addEventListener('click', async () => {
             const key = songEditCurrentKey; if (!key) return;
-            const newTag = { title: songEditTitleInput.value.trim() || '(Không tên)', artist: songEditArtistInput.value.trim() || 'Không rõ nghệ sĩ', album: songEditAlbumInput.value.trim() };
+            const newTag = { title: songEditTitleInput.value.trim() || t('common.songEdit.defaultTitle'), artist: songEditArtistInput.value.trim() || t('common.songEdit.defaultArtist'), album: songEditAlbumInput.value.trim() };
             const pendingCover = songEditPendingCover; // chụp lại trước khi closeSongEditModal() reset về null
 
-            await withLoadingShield("Đang lưu thông tin...", async () => {
+            await withLoadingShield(t('common.loading.savingInfo'), async () => {
                 const record = await getSongRecord(key);
-                if (!record) { alert("Không đọc được bài hát này, dữ liệu có thể đã lỗi."); return; }
+                if (!record) { alert(t('common.songEdit.notFound')); return; }
                 record.tag = { ...record.tag, ...newTag };
                 // Ảnh bìa: File mới -> ghi thẳng Blob (File là 1 dạng Blob, lưu IndexedDB được luôn,
                 // giống cách record.cover đã được ghi từ jsmediatags lúc nạp file ban đầu). 'remove'
@@ -367,13 +367,14 @@
             const cached = playlistCache.get(key); if (!cached) return;
             songInfoCurrentKey = key;
             const stats = getSongStats(key); // { count, totalTime }
+            const emptyVal = t('playlistView.songInfo.empty');
             songInfoBody.innerHTML =
-                songInfoRowHtml('M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM3 9a9 9 0 0118 0', 'bg-sky-500/15 text-sky-400', 'Tên bài', cached.tag.title || '—') +
-                songInfoRowHtml('M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z', 'bg-violet-500/15 text-violet-400', 'Nghệ sĩ', cached.tag.artist || '—') +
-                songInfoRowHtml('M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM3 9a9 9 0 0118 0', 'bg-emerald-500/15 text-emerald-400', 'Album', cached.tag.album || '—') +
-                songInfoRowHtml('M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', 'bg-amber-500/15 text-amber-400', 'Thời lượng', formatTime(cached.duration)) +
-                songInfoRowHtml('M9 19V6l12-3v13M5 21a2 2 0 100-4 2 2 0 000 4zm12-2a2 2 0 100-4 2 2 0 000 4z', 'bg-rose-500/15 text-rose-400', 'Số lần nghe', `${stats.count} lần`) +
-                songInfoRowHtml('M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', 'bg-indigo-500/15 text-indigo-400', 'Đã nghe', formatListenTime(stats.totalTime));
+                songInfoRowHtml('M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM3 9a9 9 0 0118 0', 'bg-sky-500/15 text-sky-400', t('playlistView.songInfo.fieldTitle'), cached.tag.title || emptyVal) +
+                songInfoRowHtml('M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z', 'bg-violet-500/15 text-violet-400', t('playlistView.songInfo.fieldArtist'), cached.tag.artist || emptyVal) +
+                songInfoRowHtml('M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM3 9a9 9 0 0118 0', 'bg-emerald-500/15 text-emerald-400', t('playlistView.songInfo.fieldAlbum'), cached.tag.album || emptyVal) +
+                songInfoRowHtml('M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', 'bg-amber-500/15 text-amber-400', t('playlistView.songInfo.fieldDuration'), formatTime(cached.duration)) +
+                songInfoRowHtml('M9 19V6l12-3v13M5 21a2 2 0 100-4 2 2 0 000 4zm12-2a2 2 0 100-4 2 2 0 000 4z', 'bg-rose-500/15 text-rose-400', t('playlistView.songInfo.fieldPlayCount'), tFormat('playlistView.songInfo.fieldPlayCountValue', { n: stats.count })) +
+                songInfoRowHtml('M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', 'bg-indigo-500/15 text-indigo-400', t('playlistView.songInfo.fieldListened'), formatListenTime(stats.totalTime));
             songInfoModal.classList.remove('hidden');
         }
         document.getElementById('song-info-close').addEventListener('click', () => songInfoModal.classList.add('hidden'));

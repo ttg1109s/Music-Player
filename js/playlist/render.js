@@ -11,7 +11,7 @@
  */
 
         function songActionMenuButtonHtml(key) {
-            return `<button data-action="menu" data-key="${key}" class="p-2 text-slate-400 hover:text-white transition-colors z-10" title="Tùy chọn">
+            return `<button data-action="menu" data-key="${key}" class="p-2 text-slate-400 hover:text-white transition-colors z-10" title="${t('playlistView.songMenu.title')}">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 6a2 2 0 110-4 2 2 0 010 4zm0 8a2 2 0 110-4 2 2 0 010 4zm0 8a2 2 0 110-4 2 2 0 010 4z"/></svg>
             </button>`;
         }
@@ -105,7 +105,7 @@
         }
         function updatePlaylistLoading(done, total) {
             const txt = document.getElementById('playlist-loading-text');
-            if (txt) txt.textContent = total ? `Đang nạp dữ liệu ${done} / ${total} bài...` : 'Đang nạp dữ liệu...';
+            if (txt) txt.textContent = total ? tFormat('playlistView.loading.withCount', { done, total }) : t('playlistView.loading.generic');
         }
         function hidePlaylistLoading() {
             const el = document.getElementById('playlist-loading-list');
