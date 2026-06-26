@@ -7,34 +7,40 @@ chạy được trực tiếp khi mở `index.html` bằng cách double-click (f
 không cần server, không cần build step.
 
 Ngoài việc chia module, project đã qua nhiều lượt cải tiến tính năng/visual.
-Bản hiện tại (**ver 9**) tập trung sửa lỗi thực tế phát hiện khi dùng trên
-iOS (đặc biệt khi chuyển tab/ẩn trình duyệt) và thêm 1 tính năng nhỏ:
+Bản hiện tại (**ver 10**) gồm 4 phần: dồn toàn bộ `setInterval`/`setTimeout`
+của project qua 1 `TaskManager` tập trung duy nhất, sửa lỗi "Xoá hết dữ liệu"
+không cập nhật UI + thêm phòng thủ khi bị gián đoạn, dọn 2 icon Sort/Grid khỏi
+header Playlist vào Settings, và tính năng mới Tự động đổi hiệu ứng
+Visualizer theo thời gian:
 
-- **Sửa lỗi upload im lặng:** 2 listener `'change'` (chọn file/chọn thư
-  mục) và listener mở menu "Thêm nhạc" giờ có try/catch riêng,
-  `alert()` đúng nguyên văn lỗi thật (không tự đặt lại câu chung) nếu có
-  exception ngoài dự kiến — trước đây lỗi bay thẳng ra console, người
-  dùng không thấy gì xảy ra.
-- **Sửa lỗi reset không hoàn chỉnh khi chuyển tab/ẩn trình duyệt trên
-  iOS:** thêm `'pagehide'` làm tín hiệu dự phòng cho `'visibilitychange'`
-  (không đáng tin cậy trên iOS khi chuyển app), `resetPlayerToIdle()`
-  giờ chống gọi chồng + tự giải phóng khoá `isShieldBusy` nếu bị kẹt +
-  tự chuyển UI về màn Playlist.
-- **Sửa nguyên nhân gốc rễ của "không ra tiếng" sau khi quay lại tab:**
-  2 lỗi độc lập cộng lại — (a) `AudioContext` trên iOS chuyển sang trạng
-  thái riêng `'interrupted'` (không phải `'suspended'`) mà code cũ không
-  resume, và (b) (nguyên nhân chính) **connection IndexedDB bị trình
-  duyệt tự đóng** khi tab bị ẩn lâu mà không có cơ chế tự mở lại —
-  `js/core/db.js` giờ tự phát hiện + tự mở connection mới (2 lớp bảo vệ:
-  sự kiện `close` + tự retry khi `transaction()` throw).
-- **Thêm modal "Tiếp tục nghe?"** khi quay lại tab sau khi nhạc đã bị
-  dừng: hỏi Không / Tiếp tục phát (đúng vị trí cũ) / Nghe lại (từ đầu).
-  Dùng `modalChoice()` (`js/core/modal-choice.js`) — hàm dựng/xoá modal
-  hỏi-quyết-định ĐỘNG dùng chung cho nhiều tình huống khác (không riêng
-  case này), thay cho việc phải khai báo 1 template HTML tĩnh riêng cho
-  mỗi modal mới.
+- **`TaskManager` quản lý tập trung mọi timer** (`js/core/task-manager.js`,
+  mới): mọi `setInterval`/`setTimeout` trong project — kể cả loại bắn-một-lần
+  — giờ đăng ký qua `taskManager`, để pause/resume hàng loạt (vd lúc ẩn/quay
+  lại tab) chỉ cần 1 lệnh. Phát hiện và sửa 2 bug trong lúc viết: `Loop.resume()`
+  bắn dư 1 tick (double-tick), và cờ `running` không tự đồng bộ khi 1 task tự
+  hết `count` — thêm `isTaskRunning()` để đọc đúng trạng thái thật.
+- **Sửa "Xoá hết dữ liệu" không cập nhật UI current/next/prev:** tách hàm
+  `forceBackToPlaylistUI()` dùng chung để đưa UI về Playlist ngay sau khi xoá
+  xong. Thêm 2 lớp phòng thủ khi việc xoá bị gián đoạn — cờ RAM tránh phá khoá
+  giữa lúc đang xoá (ẩn tab), và cờ bền trong IndexedDB để tự dọn tiếp phần
+  còn sót nếu bị đóng tab/crash giữa chừng.
+- **Dọn header Playlist:** bỏ 2 icon Sort/Grid, dồn vào Settings (section
+  "Danh sách phát & Nền") dưới dạng `<select>`; gộp toggle "Hiện Visual" vào
+  đúng 1 chỗ (section "Visualizer").
+- **Tính năng mới — Tự động đổi hiệu ứng Visualizer theo thời gian:** 2 mode
+  chọn kiểu (Tuần tự/Ngẫu nhiên) độc lập với 2 nhánh cơ chế tính thời gian
+  khác hẳn nhau — "Cố định"/"Ngẫu nhiên trong khoảng" là đồng hồ độc lập
+  không quan tâm bài đang phát; "Theo độ dài bài hát" gắn với khung thời gian
+  thật của bài, dùng mảng mốc tuyệt đối để mỗi đoạn tự nhớ hiệu ứng của nó —
+  tua tới/lùi vẫn nhất quán, không đổi ngẫu nhiên khi quay lại đoạn đã qua.
 
-Chi tiết đầy đủ (kèm cách kiểm chứng từng lỗi) ở
+Chi tiết đầy đủ (kèm cách kiểm chứng từng phần) ở
+[changelog/v10.md](./changelog/v10.md). Ver 9 trước đó tập trung sửa lỗi thực
+tế phát hiện khi dùng trên iOS (đặc biệt khi chuyển tab/ẩn trình duyệt):
+sửa lỗi upload im lặng, lỗi reset không hoàn chỉnh khi chuyển tab, nguyên
+nhân gốc rễ của "không ra tiếng" sau khi quay lại tab (AudioContext chuyển
+`'interrupted'` + IndexedDB connection bị trình duyệt tự đóng không tự mở
+lại), và modal "Tiếp tục nghe?" khi quay lại tab. Chi tiết đầy đủ ở
 [changelog/v9.md](./changelog/v9.md). Ver 8 trước đó tập trung vào chỉnh
 sửa metadata bài hát và dọn kiến trúc file: modal "Sửa thông tin bài hát"
 có thêm tab "Ảnh bìa" (upload/xem trước/xóa cover ngay trong app, tự ghi
@@ -55,6 +61,7 @@ bài. Ver 5 là thay đổi lớn nhất — toàn bộ playlist (nhạc, tag, c
 đề, ảnh/video nền) persist qua **IndexedDB**. Lịch sử các bản cũ hơn nằm ở
 changelog riêng từng bản, gom trong thư mục [changelog/](./changelog/).
 
+- [changelog/v10.md](./changelog/v10.md)
 - [changelog/v9.md](./changelog/v9.md)
 - [changelog/v8.md](./changelog/v8.md)
 - [changelog/v7.md](./changelog/v7.md)
@@ -87,20 +94,21 @@ visual-master/
 │   ├── v6.md
 │   ├── v7.md
 │   ├── v8.md
-│   └── v9.md
+│   ├── v9.md
+│   └── v10.md
 ├── index.html                  ← Mở file này để chạy ứng dụng
 ├── css/
 │   └── styles.css               (toàn bộ CSS gốc, không đổi)
 └── js/
     ├── components/
     │   ├── loading-shield.js    (★★★★★ ver 5 — đổi cơ chế ẩn/hiện sang opacity)
-    │   ├── playlist-view.js     (★★★★★ ver 5, ★★★★★★ ver 6 — ô tìm kiếm, z-index, bỏ sort random; ★★★★★★★★ ver 8 — logo wordmark SAV trượt ngang, tab "Ảnh bìa" trong modal sửa thông tin, 2 modal thiết kế lại theo `glass-modal`, menu "Chọn file/Chọn cả thư mục")
+    │   ├── playlist-view.js     (★★★★★ ver 5, ★★★★★★ ver 6 — ô tìm kiếm, z-index, bỏ sort random; ★★★★★★★★ ver 8 — logo wordmark SAV trượt ngang, tab "Ảnh bìa" trong modal sửa thông tin, 2 modal thiết kế lại theo `glass-modal`, menu "Chọn file/Chọn cả thư mục"; ★★★★★★★★★★ ver 10 — xoá #btn-toggle-view, #btn-sort-display + dropdown khỏi header, dồn vào Settings)
     │   ├── visualizer-overlay.js
     │   ├── subtitle-modal.js
     │   ├── bottom-player.js
     │   ├── settings/            (★★★★★★★★ mới ở ver 8 — 5 section HTML tách từ settings-drawer.js cũ)
-    │   │   ├── playlist-background.js       (TPL_SETTINGS_PLAYLIST_BG — Video BG, ảnh nền Playlist + blur)
-    │   │   ├── visualizer-geometry-color.js (TPL_SETTINGS_VISUALIZER — chất lượng render, hình học + màu sắc)
+    │   │   ├── playlist-background.js       (TPL_SETTINGS_PLAYLIST_BG — Video BG, ảnh nền Playlist + blur; ★★★★★★★★★★ ver 10 — thêm select "Kiểu xem"/"Sắp xếp", xoá section "Hiệu ứng Visualizer" riêng)
+    │   │   ├── visualizer-geometry-color.js (TPL_SETTINGS_VISUALIZER — chất lượng render, hình học + màu sắc; ★★★★★★★★★★ ver 10 — gộp toggle "Hiện Visual" vào đây, thêm card "Tự động đổi hiệu ứng")
     │   │   ├── audio-eq.js                  (TPL_SETTINGS_AUDIO_EQ — âm lượng, preset EQ, dải tần số thủ công)
     │   │   ├── subtitle-style.js            (TPL_SETTINGS_SUBTITLE_STYLE — style khung/chữ phụ đề)
     │   │   └── misc.js                      (TPL_SETTINGS_MISC — giữ màn hình sáng, mở About Drawer)
@@ -109,38 +117,40 @@ visual-master/
     │   └── about-drawer.js      (★★★★★ mới ở ver 5 — thống kê, giới thiệu, cảnh báo IndexedDB)
     ├── main.js                  (★★★★★ ver 5 — ghép thêm TPL_ABOUT_DRAWER)
     ├── core/
-    │   ├── config.js            (★ ver 1, ★★★ ver 3, ★★★★ ver 4, ★★★★★ ver 5, ★★★★★★ ver 6 — thêm keepScreenOn)
-    │   ├── dom-refs.js          (★ ver 1, ★★★ ver 3, ★★★★ ver 4, ★★★★★ ver 5, ★★★★★★ ver 6 — ref keepScreenOnToggle; ★★★★★★★★ ver 8 — ref savLogo, folderInput, btnUploadAudio, uploadActionMenu)
+    │   ├── config.js            (★ ver 1, ★★★ ver 3, ★★★★ ver 4, ★★★★★ ver 5, ★★★★★★ ver 6 — thêm keepScreenOn; ★★★★★★★★★★ ver 10 — hằng AUTO_SWITCH_VISUAL_MIN_SECONDS, 6 field cấu hình mới cho Tự động đổi hiệu ứng)
+    │   ├── dom-refs.js          (★ ver 1, ★★★ ver 3, ★★★★ ver 4, ★★★★★ ver 5, ★★★★★★ ver 6 — ref keepScreenOnToggle; ★★★★★★★★ ver 8 — ref savLogo, folderInput, btnUploadAudio, uploadActionMenu; ★★★★★★★★★★ ver 10 — xoá 3 ref btnToggleView/iconGridView/iconListView không còn dùng)
+    │   ├── task-manager.js      (★★★★★★★★★★ mới ở ver 10 — lớp `Loop`/`TaskManager` quản lý TẬP TRUNG mọi setInterval/setTimeout của app, kể cả timeout bắn-1-lần qua `taskManager.once()`; instance global `taskManager` duy nhất)
+    │   ├── auto-switch-visual.js (★★★★★★★★★★ mới ở ver 10 — Tự động đổi hiệu ứng Visualizer theo thời gian: 2 nhánh cơ chế khác hẳn nhau cho "Cố định"/"Ngẫu nhiên" [đồng hồ độc lập] vs "Theo độ dài bài hát" [mốc tuyệt đối theo currentTime, mỗi mốc tự nhớ visual])
     │   ├── modal-choice.js      (★★★★★★★★★ mới ở ver 9 — modalChoice(text, buttons, options?): hàm dùng CHUNG cho mọi modal "hỏi quyết định" tuỳ biến số nút/nhãn/hành động, tự dựng DOM động + tự xoá hẳn sau khi chọn, KHÔNG cần template HTML tĩnh riêng cho từng case; dùng cho modal "Tiếp tục nghe?" — xem player-controls.js)
     │   ├── db.js                (★★★★★ mới ở ver 5 — IndexedDB: slugify/resolveKey/CRUD; ★★★★★★★★★ ver 9 — viết lại cơ chế mở connection: tự phát hiện + tự mở lại connection mới khi trình duyệt tự đóng connection cũ qua 2 lớp bảo vệ (sự kiện `close` + retry trong `makeStoreAccessor()`) — fix gốc rễ lỗi "không ra tiếng" sau khi quay lại tab trên iOS)
     │   ├── upload-validation.js (★★★★★★★ mới ở ver 7 — validate MIME/đuôi file cho nhạc/ảnh nền/video nền; tái dùng ở ver 8 cho ảnh bìa bài hát)
-    │   ├── loading-shield-util.js (★★★★★ mới ở ver 5 — withLoadingShield dùng chung; ★★★★★★★★★ ver 9 — console.warn khi bị chặn do isShieldBusy, dễ dò khi nghi ngờ bị "kẹt" khoá)
+    │   ├── loading-shield-util.js (★★★★★ mới ở ver 5 — withLoadingShield dùng chung; ★★★★★★★★★ ver 9 — console.warn khi bị chặn do isShieldBusy, dễ dò khi nghi ngờ bị "kẹt" khoá; ★★★★★★★★★★ ver 10 — setTimeout chờ fade-out chuyển sang taskManager.once())
     │   ├── three-vortex.js      (★ ver 1, ★★ ver 2)
-    │   ├── state-and-video-bg.js (★★★★★ ver 5, ★★★★★★ ver 6 — handleVideoBackground viết lại, bám nhạc không bám màn hình; ★★★★★★★ ver 7 — validate định dạng video lúc upload)
-    │   ├── subtitles.js         (★★★★★ ver 5 — persist subtitles khi Apply)
-    │   ├── equalizer-settings.js (★ ver 1, ★★★ ver 3, ★★★★ ver 4, ★★★★★ ver 5, ★★★★★★ ver 6 — nạp/đồng bộ keepScreenOn; ★★★★★★★ ver 7 — backup config sang IndexedDB debounce + fallback phục hồi khi mất localStorage)
-    │   ├── subtitle-display.js
+    │   ├── state-and-video-bg.js (★★★★★ ver 5, ★★★★★★ ver 6 — handleVideoBackground viết lại, bám nhạc không bám màn hình; ★★★★★★★ ver 7 — validate định dạng video lúc upload; ★★★★★★★★★★ ver 10 — xoá listener btnToggleView [chuyển sang playlist/main.js], 1 setTimeout debounce chuyển sang taskManager.once())
+    │   ├── subtitles.js         (★★★★★ ver 5 — persist subtitles khi Apply; ★★★★★★★★★★ ver 10 — 2 chỗ scroll-to-bottom chuyển sang taskManager.once())
+    │   ├── equalizer-settings.js (★ ver 1, ★★★ ver 3, ★★★★ ver 4, ★★★★★ ver 5, ★★★★★★ ver 6 — nạp/đồng bộ keepScreenOn; ★★★★★★★ ver 7 — backup config sang IndexedDB debounce + fallback phục hồi khi mất localStorage; ★★★★★★★★★★ ver 10 — migrate/validate 6 field Tự động đổi hiệu ứng, gọi initAutoSwitchVisualUI(), debounce scheduleConfigBackup() chuyển sang taskManager.once())
+    │   ├── subtitle-display.js  (★★★★★★★★★★ ver 10 — timeout xoá active subtitle block chuyển sang taskManager.once())
     │   ├── wakelock.js          (★★★★★ ver 5, ★★★★★★ ver 6 — gate theo keepScreenOn, resume AudioContext khi visible; ★★★★★★★★★ ver 9 — thêm 'pagehide'/'pageshow' làm tín hiệu dự phòng cho 'visibilitychange' [không đáng tin cậy trên iOS], hiện modal "Tiếp tục nghe?" lúc quay lại tab, .catch() cho promise chain totalListenSeconds trong listener beforeunload)
     │   ├── color-utils.js       (★★★★★★ ver 6 — nền đen thay transparent khi bật video, chống chớp trắng)
     │   ├── canvas-scene-setup.js (★ ver 1, ★★ ver 2, ★★★ ver 3, ★★★★ ver 4)
-    │   ├── listen-stats.js      (★★★★★★ mới ở ver 6 — số lần nghe + thời gian nghe riêng từng bài, key {count,totalTime} trong meta.songStats)
-    │   ├── player-controls.js   (★★★ ver 3, ★★★★ ver 4, ★★★★★ ver 5, ★★★★★★ ver 6 — video bám theo nhạc, cộng dồn giờ nghe/bài, gate wake lock; ★★★★★★★ ver 7 — validate định dạng ảnh nền lúc upload; ★★★★★★★★★ ver 9 — resetPlayerToIdle() chống gọi chồng + giải phóng cứng isShieldBusy + chuyển UI về Playlist + cache lastStoppedKey/lastStoppedTime; showResumeChoiceModal() mới (modal "Tiếp tục nghe?"); playPauseBtn/setupAudioContext resume cả AudioContext.state 'interrupted' [không chỉ 'suspended']; .catch() cho promise chain totalListenSeconds trong _listenTick())
+    │   ├── listen-stats.js      (★★★★★★ mới ở ver 6 — số lần nghe + thời gian nghe riêng từng bài, key {count,totalTime} trong meta.songStats; ★★★★★★★★★★ ver 10 — debounce/throttle scheduleSongStatsSave() chuyển sang taskManager)
+    │   ├── player-controls.js   (★★★ ver 3, ★★★★ ver 4, ★★★★★ ver 5, ★★★★★★ ver 6 — video bám theo nhạc, cộng dồn giờ nghe/bài, gate wake lock; ★★★★★★★ ver 7 — validate định dạng ảnh nền lúc upload; ★★★★★★★★★ ver 9 — resetPlayerToIdle() chống gọi chồng + giải phóng cứng isShieldBusy + chuyển UI về Playlist + cache lastStoppedKey/lastStoppedTime; showResumeChoiceModal() mới (modal "Tiếp tục nghe?"); playPauseBtn/setupAudioContext resume cả AudioContext.state 'interrupted' [không chỉ 'suspended']; .catch() cho promise chain totalListenSeconds trong _listenTick(); ★★★★★★★★★★ ver 10 — tách forceBackToPlaylistUI() dùng chung với storage-manager.js; vá isShieldBusy ép cứng theo cờ isDestructiveTaskInProgress; _listenTickHandle chuyển sang Loop qua taskManager; móc auto-switch-visual vào listener play/pause/loadedmetadata)
     │   ├── audio-engine.js      (★★★★★★★ ver 7 — detectPitchYIN() dời sang pitch-worker.js; chỉ còn cầu nối postMessage/onmessage; ★★★★★★★★★ ver 9 — setupAudioContext() resume cả AudioContext.state 'interrupted' [trạng thái riêng của iOS Safari khi tab bị ẩn, khác 'suspended'])
     │   ├── audio-analysis.js   (★★★★★★★ ver 7 — đọc kết quả pitch bất đồng bộ từ worker thay vì gọi hàm đồng bộ)
     │   ├── pitch-worker.js      (★★★★★★★ mới ở ver 7 — Web Worker thuần CPU cho thuật toán YIN, tách khỏi main thread/draw loop)
     │   ├── rubik-math.js
     │   ├── about-stats.js       (★★★★★ mới ở ver 5 — computeStats() cho About Drawer)
     │   ├── id3-export.js        (★★★★★ mới ở ver 5 — export/restore gắn tag mới qua ID3Writer; ảnh bìa sửa ở ver 8 tự được ghi vào APIC, không cần sửa file này)
-    │   └── storage-manager.js   (★★★★★★ ver 6 — "Xoá hết" chỉ xoá bài hát, GIỮ ảnh/video nền)
+    │   └── storage-manager.js   (★★★★★★ ver 6 — "Xoá hết" chỉ xoá bài hát, GIỮ ảnh/video nền; ★★★★★★★★★★ ver 10 — clearAllStoredData() thêm cờ isDestructiveTaskInProgress + meta.clearingInProgress + gọi forceBackToPlaylistUI() + killAllAutoSwitchVisualTasks())
     ├── playlist/                (★★★★★★ mới ở ver 6 — tách từ core/playlist.js cũ thành module nhiều file, kiểu object-function)
     │   ├── state.js             (state dùng chung: playlistOrder / displayOrder [hàng đợi phát] / renderOrder [danh sách hiển thị] tách rời)
     │   ├── order.js             (sort default/az/za — KHÔNG còn random; lọc tìm kiếm; pending-append hàng đợi khi đang phát; ★★★★★★★ ver 7 — applyNewSongsToDisplayOrder() dùng Set tra cứu O(1) thay .includes() O(n); ★★★★★★★★ ver 8 — matchesSearch() lọc thêm theo album)
-    │   ├── render.js            (vẽ diff theo renderOrder; trạng thái rỗng #playlist-empty / #playlist-search-empty thuần theo dữ liệu)
-    │   ├── loader.js            (đọc duration, nạp file mới, quét/khởi tạo playlist từ IndexedDB; ★★★★★★★ ver 7 — validate định dạng nhạc trước khi xử lý, Set tra cứu O(1) thay .includes() O(n) trong vòng lặp nạp file; ★★★★★★★★ ver 8 — tách `handleAudioFiles()` dùng chung cho input file rời + input "Chọn cả thư mục", thêm menu nhỏ cho nút Thêm nhạc; ★★★★★★★★★ ver 9 — try/catch quanh 2 listener 'change' + listener mở menu, alert() đúng nguyên văn lỗi thật khi có exception ngoài dự kiến)
+    │   ├── render.js            (vẽ diff theo renderOrder; trạng thái rỗng #playlist-empty / #playlist-search-empty thuần theo dữ liệu; ★★★★★★★★★★ ver 10 — 1 timeout fade-out chuyển sang taskManager.once())
+    │   ├── loader.js            (đọc duration, nạp file mới, quét/khởi tạo playlist từ IndexedDB; ★★★★★★★ ver 7 — validate định dạng nhạc trước khi xử lý, Set tra cứu O(1) thay .includes() O(n) trong vòng lặp nạp file; ★★★★★★★★ ver 8 — tách `handleAudioFiles()` dùng chung cho input file rời + input "Chọn cả thư mục", thêm menu nhỏ cho nút Thêm nhạc; ★★★★★★★★★ ver 9 — try/catch quanh 2 listener 'change' + listener mở menu, alert() đúng nguyên văn lỗi thật khi có exception ngoài dự kiến; ★★★★★★★★★★ ver 10 — initPlaylistFromDB() thêm resume-on-boot check clearingInProgress; 2 race-timeout + timeout đóng menu chuyển sang taskManager)
     │   ├── actions.js           (playSong, xoá/sửa/info bài, menu thao tác — info hiện số lần nghe + giờ nghe riêng; ★★★★★★★ ver 7 — reset trạng thái pitch worker khi đổi bài; ★★★★★★★★ ver 8 — tab "Ảnh bìa" trong modal sửa: upload/xem trước/xóa cover, lưu cùng lúc với title/artist/album; ★★★★★★★★★ ver 9 — playSong() thêm .catch() làm lớp bảo vệ cuối, alert() lỗi thật nếu IndexedDB connection chết mà cả 2 lớp tự phục hồi ở db.js đều không cứu được)
-    │   └── main.js              (object `PlaylistMain`: initSortMenu + initSearch + init(); tự gọi init ở cuối)
+    │   └── main.js              (object `PlaylistMain`: initSortMenu + initSearch + init(); tự gọi init ở cuối; ★★★★★★★★★★ ver 10 — initSortMenu() viết lại đọc/ghi qua <select> thay dropdown nổi; thêm initViewMode() mới [chuyển logic grid/list từ state-and-video-bg.js])
     └── visualizers/
-        ├── draw-helpers.js      (★★★ ver 3, ★★★★ ver 4)
+        ├── draw-helpers.js      (★★★ ver 3, ★★★★ ver 4; ★★★★★★★★★★ ver 10 — timeout xoá note bay chuyển sang taskManager.once())
         ├── draw-visualizer.js   (★ ver 1, ★★ ver 2, ★★★ ver 3, ★★★★ ver 4, ★★★★★ ver 5, ★★★★★★ ver 6 — thêm loadSongStats() lúc khởi động)
         └── types/               (★★★★ mới ở ver 4 — mỗi visual một file riêng)
             ├── bar.js              (visual "Bar": kiểu Phản chiếu cánh bướm + kiểu Thác đổ)
@@ -153,8 +163,13 @@ visual-master/
 
 (★ = có thay đổi ở ver 1, ★★ = thêm ở ver 2, ★★★ = thêm ở ver 3, ★★★★ = thêm
 ở ver 4, ★★★★★ = thêm ở ver 5, ★★★★★★ = thêm ở ver 6, ★★★★★★★ = thêm ở
-ver 7, ★★★★★★★★ = thêm ở ver 8; file không đánh dấu giữ nguyên 100% so với
-bản chia module gốc.)
+ver 7, ★★★★★★★★ = thêm ở ver 8, ★★★★★★★★★ = thêm ở ver 9, ★★★★★★★★★★ = thêm
+ở ver 10; file không đánh dấu giữ nguyên 100% so với bản chia module gốc.)
+
+> **Lưu ý ver 10:** `js/core/task-manager.js` là instance global DUY NHẤT
+> (`taskManager`) — mọi timer lặp/bắn-một-lần khác trong project PHẢI đăng ký
+> qua đây, không tự gọi `setInterval`/`setTimeout` trần ở file mới nào nữa
+> (xem comment đầu file để biết cách dùng `addNew`/`once`/`pause`/`resume`).
 
 > **Lưu ý ver 8:** `js/components/settings-drawer.js` KHÔNG còn chứa HTML
 > trực tiếp — toàn bộ nội dung gốc được tách sang thư mục
@@ -204,7 +219,14 @@ bản chia module gốc.)
    modal "hỏi quyết định" động) nạp NGAY SAU `dom-refs.js` — không cần ref
    DOM nào đặc biệt (tự dựng/xoá DOM riêng vào `document.body`), nhưng cần
    có mặt TRƯỚC `player-controls.js` vì `showResumeChoiceModal()` ở đó gọi
-   `modalChoice()`.
+   `modalChoice()`. **Từ ver 10:** `task-manager.js` (lớp `Loop`/`TaskManager`,
+   tạo instance global `taskManager`) nạp NGAY SAU `dom-refs.js`, TRƯỚC cả
+   `modal-choice.js`/`db.js` — đây là file core PHẢI có mặt sớm nhất trong
+   số các file mới, vì hầu hết file core khác gọi `taskManager.once()`/
+   `addNew()` ngay khi gắn listener lúc parse (không phải lúc DOM ready).
+   `auto-switch-visual.js` (logic Tự động đổi hiệu ứng) nạp SAU
+   `player-controls.js` — cần `MODES`/`currentModeIndex`/`updateTypeUI`/
+   `saveConfig`/`audioPlayer` đã có ref, và cần `taskManager` đã tồn tại.
 4. **visualizers/draw-helpers.js**, rồi **visualizers/types/\*.js** (mỗi
    visual một file, không phụ thuộc thứ tự lẫn nhau), rồi cuối cùng
    **visualizers/draw-visualizer.js** — file này gọi tới các hàm `draw*`
@@ -266,6 +288,21 @@ diễn biến điều tra dẫn tới các fix liên quan (AudioContext bị chu
 thái `'interrupted'` trên iOS, IndexedDB connection bị trình duyệt tự đóng
 mà không tự kết nối lại).
 
+**Lưu ý mới (ver 10):** "Xoá hết dữ liệu" (Quản lý dung lượng) giờ đưa UI về
+đúng màn Playlist ngay sau khi xoá xong, bất kể đang đứng ở màn Visualizer
+hay Playlist lúc bấm — trước đây có thể thấy current/next/prev cũ còn sót
+trên màn Visualizer dù đã xoá hết. Việc xoá cũng AN TOÀN hơn nếu bị gián
+đoạn: đóng tab/crash giữa lúc đang xoá sẽ tự dọn tiếp phần còn sót ở lần mở
+app kế tiếp (hiện loading shield riêng báo "Đang dọn dữ liệu dở từ lần
+trước..."), không để sót dữ liệu nửa vời. 2 icon Sort/Grid trước nằm ở
+header Playlist giờ chuyển vào Settings (section "Danh sách phát & Nền").
+Có thêm tính năng **Tự động đổi hiệu ứng Visualizer** (Settings → mục
+Visualizer) — bật lên sẽ tự đổi sang hiệu ứng khác sau mỗi khoảng thời gian,
+3 cách tính khoảng thời gian khác nhau (Cố định / Ngẫu nhiên trong khoảng /
+Theo độ dài bài hát — xem mục 4 trong [changelog/v10.md](./changelog/v10.md)
+để biết sự khác biệt quan trọng giữa 2 nhóm cách tính này, đặc biệt liên
+quan tới việc tua bài).
+
 ## Muốn sửa gì thì sửa ở đâu?
 
 | Muốn sửa... | Vào file... |
@@ -276,6 +313,11 @@ mà không tự kết nối lại).
 | Menu "Chọn file nhạc / Chọn cả thư mục" cho nút Thêm nhạc | `js/components/playlist-view.js` (HTML `#upload-action-menu`), `js/playlist/loader.js` (mở/đóng menu, `handleAudioFiles()` dùng chung cho 2 input) |
 | Modal hỏi quyết định dùng chung (text + N nút tuỳ biến, tự dựng/xoá DOM động) | `js/core/modal-choice.js` (hàm `modalChoice(text, buttons, options?)` — xem comment đầu file để biết cách dùng) |
 | Modal "Tiếp tục nghe?" lúc quay lại tab sau khi nhạc bị dừng | `js/core/player-controls.js` (`showResumeChoiceModal()`, `lastStoppedKey`/`lastStoppedTime` cache trong `resetPlayerToIdle()`), `js/core/wakelock.js` (gọi hàm này lúc `visibilitychange`→visible/`pageshow`) |
+| Mọi timer lặp/bắn-một-lần (interval, timeout, debounce, throttle) | `js/core/task-manager.js` (instance global `taskManager` — `addNew`/`once`/`pause`/`resume`/`kill`/`isTaskRunning`, xem comment đầu file để biết cách dùng) |
+| "Xoá hết dữ liệu" / tải nhạc về rồi xoá / an toàn khi bị gián đoạn lúc xoá | `js/core/storage-manager.js` (hàm `clearAllStoredData`, cờ `isDestructiveTaskInProgress` + `meta.clearingInProgress`), UI ở `js/components/storage-drawer.js`, resume-on-boot ở `js/playlist/loader.js` (`initPlaylistFromDB`) |
+| Đưa UI về màn Playlist (dùng chung giữa nút Quay lại / reset khi ẩn tab / Clear All) | `js/core/player-controls.js` (hàm `forceBackToPlaylistUI()`) |
+| Kiểu xem (Danh sách/Lưới) + Sắp xếp Playlist | `js/components/settings/playlist-background.js` (HTML 2 `<select>`), `js/playlist/main.js` (`PlaylistMain.initViewMode()`/`initSortMenu()`) |
+| Tự động đổi hiệu ứng Visualizer theo thời gian | `js/core/auto-switch-visual.js` (2 nhánh cơ chế — xem comment đầu file để biết sự khác biệt giữa "Cố định"/"Ngẫu nhiên" và "Theo độ dài bài hát"), UI ở `js/components/settings/visualizer-geometry-color.js` (card "Tự động đổi hiệu ứng") |
 | Giao diện ngăn cài đặt — khung ngoài + thứ tự ghép section | `js/components/settings-drawer.js` (object điều phối `SettingsDrawer`) |
 | Giao diện ngăn cài đặt — nội dung từng khối (Playlist & Nền / Visualizer / Audio EQ / Phụ đề / Khác) | `js/components/settings/*.js` (1 file = 1 khối, xem bảng cấu trúc thư mục) |
 | Visual "Bar" (kiểu Phản chiếu cánh bướm / kiểu Thác đổ) | `js/visualizers/types/bar.js` |
@@ -289,11 +331,10 @@ mà không tự kết nối lại).
 | Validate định dạng file upload (nhạc/ảnh nền/video nền/ảnh bìa bài hát) | `js/core/upload-validation.js` (`validateAudioFile`/`validateImageFile`/`validateVideoFile`) |
 | Che màn hình khi xử lý (nạp nhạc/chuyển bài/lưu ảnh nền/lưu ảnh bìa...) | `js/core/loading-shield-util.js` (hàm `withLoadingShield`) |
 | Sửa tag/info/ảnh bìa/export gắn tag mới của 1 bài | `js/playlist/actions.js` (modal sửa — tab Thông tin + tab Ảnh bìa; modal info — số lần nghe + giờ nghe), `js/core/id3-export.js` (export, tự ghi `record.cover` vào APIC) |
-| Sắp xếp danh sách / ô tìm kiếm (lọc theo tên/nghệ sĩ/album) / tách danh-sách-hiển-thị khỏi hàng-đợi-phát | `js/playlist/order.js` (sort + `matchesSearch`), `js/playlist/render.js` (vẽ + trạng thái rỗng), `js/playlist/main.js` (gắn menu sort + ô tìm kiếm) |
+| Thuật toán sort (default/az/za) / ô tìm kiếm (lọc theo tên/nghệ sĩ/album) / tách danh-sách-hiển-thị khỏi hàng-đợi-phát | `js/playlist/order.js` (sort + `matchesSearch`), `js/playlist/render.js` (vẽ + trạng thái rỗng), `js/playlist/main.js` (gắn UI sort/kiểu xem + ô tìm kiếm) |
 | Số lần nghe / thời gian nghe riêng từng bài | `js/core/listen-stats.js` (lưu `meta.songStats`), cộng dồn ở `js/core/player-controls.js` (timeupdate) |
 | Giữ màn hình sáng (wake lock) / cố giữ nhạc chạy nền | `js/core/wakelock.js` (gate theo `vizConfig.keepScreenOn`, resume AudioContext khi quay lại tab), toggle UI ở `js/components/settings/misc.js` |
 | Video nền (bật/tắt, gán src, chống chớp trắng) | `js/core/state-and-video-bg.js` (hàm `handleVideoBackground`) |
-| "Xoá hết dữ liệu" / tải nhạc về rồi xoá | `js/core/storage-manager.js` (hàm `clearAllStoredData`), UI ở `js/components/storage-drawer.js` |
 | Thống kê "Về trình phát" (About Drawer) | `js/core/about-stats.js`, `js/components/about-drawer.js` |
 | Hiện/ẩn các khối setting theo kiểu visualizer/kiểu Bar đang chọn | `js/core/player-controls.js` (hàm `updateTypeUI`, `updateBarStyleUI`) |
 | Equalizer, cấu hình lưu localStorage | `js/core/equalizer-settings.js`, UI ở `js/components/settings/audio-eq.js` |
