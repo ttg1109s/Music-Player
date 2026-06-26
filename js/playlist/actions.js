@@ -56,6 +56,7 @@
             // FIX (patch alert -> alertModal): trước đây dùng alert() native (chặn luồng JS) — đổi
             // sang alertModal() (modal-choice.js) để không bị chặn/crash khi gọi đúng lúc 1
             // #loading-shield khác đang chạy (alert() native từng gây "đứng" cảm giác app crash).
+            let notFoundAlert = false; // cờ mang ra ngoài withLoadingShield — KHÔNG await alertModal() ngay trong fn() của shield (xem giải thích dưới)
             return withLoadingShield(t('common.loading.switchingSong'), async () => {
                 if (currentObjectURL) { URL.revokeObjectURL(currentObjectURL); currentObjectURL = null; }
                 if (currentCoverObjectURL) { URL.revokeObjectURL(currentCoverObjectURL); currentCoverObjectURL = null; }
@@ -65,7 +66,16 @@
                 const record = await getSongRecord(key);
                 if (!record) {
                     removeKeyFromDisplay(key);
-                    await alertModal(t('common.playSong.notFound'));
+                    // FIX (xung đột shield/modal): KHÔNG await alertModal() ở đây — fn() này còn đang
+                    // chạy TRONG withLoadingShield(), và isShieldBusy chỉ được giải phóng ở finally
+                    // SAU KHI fn() resolve (xem loading-shield-util.js). alertModal() trả Promise chỉ
+                    // resolve khi người dùng bấm OK -> nếu await ngay tại đây, #loading-shield (lớp
+                    // che z-[200], phủ kín màn hình) sẽ TIẾP TỤC hiện + chặn pointer-events suốt thời
+                    // gian modal đang mở (modalChoice() chỉ z-[130], thấp hơn, nằm DƯỚI lớp che) —
+                    // người dùng thấy modal nhưng không bấm được nút OK, shield "treo" vô thời hạn vì
+                    // đang tự chờ chính cái modal mà nó đang che. Đặt cờ, return ngay để fn() (và do
+                    // đó isShieldBusy) đóng lại HẲN trước, rồi mới hiện modal ở ngoài (xem dưới).
+                    notFoundAlert = true;
                     return;
                 }
 
@@ -114,7 +124,11 @@
 
                 subtitles = record.subtitles ? record.subtitles.slice() : [];
                 clearAllActiveSubBlocks(); resetAutoSub(); renderSubList();
-            }, false).catch(async err => {
+            }, false).then(async () => {
+                // Shield đã đóng HẲN (isShieldBusy = false) tới đây — an toàn để hiện modal, không
+                // còn lớp che z-[200] nào đè lên modalChoice() (z-[130]) nữa.
+                if (notFoundAlert) await alertModal(t('common.playSong.notFound'));
+            }).catch(async err => {
                 console.error(`[playlist] playSong("${key}") lỗi không xác định, nhạc có thể không phát ra tiếng được:`, err);
                 const rawMsg = `${err && err.name ? err.name + ': ' : ''}${err && err.message ? err.message : String(err)}`;
                 await alertModal(tFormat('common.playSong.error', { message: escapeHtml(rawMsg) }));
@@ -298,9 +312,10 @@
             const newTag = { title: songEditTitleInput.value.trim() || t('common.songEdit.defaultTitle'), artist: songEditArtistInput.value.trim() || t('common.songEdit.defaultArtist'), album: songEditAlbumInput.value.trim() };
             const pendingCover = songEditPendingCover; // chụp lại trước khi closeSongEditModal() reset về null
 
+            let notFoundAlert = false; // cờ mang ra ngoài withLoadingShield — xem giải thích chi tiết ở playSong() phía trên
             await withLoadingShield(t('common.loading.savingInfo'), async () => {
                 const record = await getSongRecord(key);
-                if (!record) { await alertModal(t('common.songEdit.notFound')); return; }
+                if (!record) { notFoundAlert = true; return; }
                 record.tag = { ...record.tag, ...newTag };
                 // Ảnh bìa: File mới -> ghi thẳng Blob (File là 1 dạng Blob, lưu IndexedDB được luôn,
                 // giống cách record.cover đã được ghi từ jsmediatags lúc nạp file ban đầu). 'remove'
@@ -337,6 +352,9 @@
                     }
                 }
             });
+
+            // Shield đã đóng HẲN tới đây — an toàn để hiện modal (xem giải thích ở playSong() phía trên).
+            if (notFoundAlert) await alertModal(t('common.songEdit.notFound'));
 
             closeSongEditModal();
             refreshSongNode(key); // vẽ lại ảnh/tên mới ngay trong danh sách (ảnh cũ trong DOM không tự đổi)
