@@ -74,13 +74,19 @@
             //   - autoSwitchVisualEnabled : bật/tắt tổng.
             //   - autoSwitchVisualMode    : 'sequential' (tuần tự/cố định theo MODES) | 'random'.
             //   - autoSwitchVisualTimeMode: 'fixed' (c1) | 'random' (c2) | 'duration' (c3).
-            //   - autoSwitchVisualSeconds : số giây người dùng điền — dùng cho 'fixed' (chính là
-            //     khoảng cố định) và 'random' (là cận TRÊN của khoảng [10, X]). KHÔNG dùng cho
-            //     'duration' (c3 không cho người dùng điền gì, luôn chia cố định cho 10).
+            //   - 3 field SỐ GIÂY RIÊNG cho từng mode — KHÔNG dùng chung 1 field, vì mỗi mode diễn
+            //     giải số khác hẳn nhau (khoảng cố định / cận TRÊN của random / số chia cho độ dài
+            //     bài) — dùng chung sẽ bị GHI ĐÈ mất giá trị của mode khác mỗi khi người dùng đổi
+            //     qua đổi lại giữa các mode (đã xảy ra ở bản đầu, sửa lại ở đây):
+            //     autoSwitchVisualSecondsFixed (c1), autoSwitchVisualSecondsRandom (c2, cận trên —
+            //     cận dưới luôn AUTO_SWITCH_VISUAL_MIN_SECONDS cố định), autoSwitchVisualSecondsDuration
+            //     (c3, số chia trong công thức duration/X — tự kẹp ≤ round(duration/2) lúc build mốc).
             autoSwitchVisualEnabled: false,
             autoSwitchVisualMode: 'sequential',
             autoSwitchVisualTimeMode: 'fixed',
-            autoSwitchVisualSeconds: 30,
+            autoSwitchVisualSecondsFixed: 30,
+            autoSwitchVisualSecondsRandom: 30,
+            autoSwitchVisualSecondsDuration: 30,
             // Hiện/ẩn phụ đề (ver 8 refine) — chuyển từ biến in-memory isSubtitlesEnabled (mất khi
             // tải lại trang) sang field lưu trong vizConfig, đồng bộ với mọi setting khác.
             subtitlesEnabled: true,

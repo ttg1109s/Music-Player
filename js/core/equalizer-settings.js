@@ -119,9 +119,22 @@
             if (vizConfig.autoSwitchVisualEnabled == null) vizConfig.autoSwitchVisualEnabled = false;
             if (vizConfig.autoSwitchVisualMode !== 'sequential' && vizConfig.autoSwitchVisualMode !== 'random') vizConfig.autoSwitchVisualMode = 'sequential';
             if (!['fixed', 'random', 'duration'].includes(vizConfig.autoSwitchVisualTimeMode)) vizConfig.autoSwitchVisualTimeMode = 'fixed';
-            if (typeof vizConfig.autoSwitchVisualSeconds !== 'number' || vizConfig.autoSwitchVisualSeconds < AUTO_SWITCH_VISUAL_MIN_SECONDS) {
-                vizConfig.autoSwitchVisualSeconds = Math.max(AUTO_SWITCH_VISUAL_MIN_SECONDS, DEFAULT_VIZ_CONFIG.autoSwitchVisualSeconds);
+            // 3 field RIÊNG cho từng mode (xem giải thích ở config.js) — validate ĐỘC LẬP từng cái,
+            // không dùng chung 1 field nữa (bug bản đầu: đổi mode A rồi mode B sẽ ghi đè mất giá
+            // trị đã lưu của mode A). MIGRATE field cũ `autoSwitchVisualSeconds` (nếu config cũ từ
+            // trước khi tách field còn sót lại trong localStorage/IndexedDB) sang cả 3 field mới —
+            // dùng đúng giá trị cũ làm điểm khởi đầu cho cả 3, hợp lý hơn reset về default cứng.
+            if (typeof vizConfig.autoSwitchVisualSeconds === 'number') {
+                if (vizConfig.autoSwitchVisualSecondsFixed == null) vizConfig.autoSwitchVisualSecondsFixed = vizConfig.autoSwitchVisualSeconds;
+                if (vizConfig.autoSwitchVisualSecondsRandom == null) vizConfig.autoSwitchVisualSecondsRandom = vizConfig.autoSwitchVisualSeconds;
+                if (vizConfig.autoSwitchVisualSecondsDuration == null) vizConfig.autoSwitchVisualSecondsDuration = vizConfig.autoSwitchVisualSeconds;
+                delete vizConfig.autoSwitchVisualSeconds; // dọn field cũ, không lưu lại nữa từ lần saveConfig() kế tiếp
             }
+            ['autoSwitchVisualSecondsFixed', 'autoSwitchVisualSecondsRandom', 'autoSwitchVisualSecondsDuration'].forEach((field) => {
+                if (typeof vizConfig[field] !== 'number' || vizConfig[field] < AUTO_SWITCH_VISUAL_MIN_SECONDS) {
+                    vizConfig[field] = Math.max(AUTO_SWITCH_VISUAL_MIN_SECONDS, DEFAULT_VIZ_CONFIG[field]);
+                }
+            });
             // Dữ liệu cũ (trước ver 8) có thể còn field `videoHideVisual` (đã loại bỏ, thay bằng
             // `visualEnabled` độc lập khỏi video nền) — không cần migrate giá trị qua, vì ý nghĩa
             // 2 field khác nhau (cũ: ẩn visual CHỈ khi có video; mới: ẩn visual LUÔN LUÔN khi tắt).

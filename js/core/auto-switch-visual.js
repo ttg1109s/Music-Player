@@ -33,8 +33,9 @@
  *       2 task riêng (tên khác nhau trong taskManager), không bao giờ chạy đồng thời.
  *
  * Build lại marks (nhánh 2) khi: đổi bài (loadedmetadata, vì duration mới khác hẳn), hoặc đổi
- * autoSwitchVisualSeconds. Reset đồng hồ (nhánh 1) khi: bật tính năng, đổi autoSwitchVisualTimeMode
- * sang 'fixed'/'random', hoặc đổi autoSwitchVisualSeconds — KHÔNG reset khi đổi bài (đặc điểm cốt
+ * autoSwitchVisualSecondsFixed/Random/Duration (field tương ứng nhánh đang chạy). Reset đồng hồ
+ * (nhánh 1) khi: bật tính năng, đổi autoSwitchVisualTimeMode sang 'fixed'/'random', hoặc đổi field
+ * giây tương ứng — KHÔNG reset khi đổi bài (đặc điểm cốt
  * lõi của nhánh 1: không quan tâm bài nào đang phát).
  *
  * PHẢI nạp SAU: config.js (AUTO_SWITCH_VISUAL_MIN_SECONDS, MODES), dom-refs.js (currentModeIndex,
@@ -70,12 +71,12 @@
 
         /** Tính số giây (ms) cho LẦN ĐẾM KẾ TIẾP — chỉ gọi lúc bắt đầu 1 vòng đếm mới. */
         function computeAutoSwitchVisualTimerDelayMs() {
-            const maxSeconds = Math.max(AUTO_SWITCH_VISUAL_MIN_SECONDS, vizConfig.autoSwitchVisualSeconds);
             if (vizConfig.autoSwitchVisualTimeMode === 'random') {
                 // (c2) Random LẠI mỗi vòng trong [10, X người điền] — không phải 1 số cố định.
+                const maxSeconds = Math.max(AUTO_SWITCH_VISUAL_MIN_SECONDS, vizConfig.autoSwitchVisualSecondsRandom);
                 return (AUTO_SWITCH_VISUAL_MIN_SECONDS + Math.random() * (maxSeconds - AUTO_SWITCH_VISUAL_MIN_SECONDS)) * 1000;
             }
-            return maxSeconds * 1000; // (c1) 'fixed' — khoảng cố định
+            return Math.max(AUTO_SWITCH_VISUAL_MIN_SECONDS, vizConfig.autoSwitchVisualSecondsFixed) * 1000; // (c1) 'fixed' — khoảng cố định
         }
 
         /**
@@ -113,7 +114,7 @@
 
         /**
          * Build mảng mốc MỚI cho bài đang phát (nhánh 2 — 'duration' — DUY NHẤT mode dùng tới
-         * mảng này). X (vizConfig.autoSwitchVisualSeconds) là SỐ CHIA trong (duration / X), tự kẹp
+         * mảng này). X (vizConfig.autoSwitchVisualSecondsDuration) là SỐ CHIA trong (duration / X), tự kẹp
          * không vượt round(duration/2) để đảm bảo tối thiểu 1 lần đổi thật sự xảy ra giữa bài —
          * nếu không kẹp, X quá lớn (gần/vượt duration) sẽ cho (duration/X) ra một khoảng còn lớn
          * hơn cả bài, tức 0 lần đổi nào xảy ra — vô nghĩa với 1 tính năng "tự động đổi".
@@ -128,7 +129,7 @@
             if (duration <= 0) { autoSwitchVisualMarks = marks; return; } // chưa có duration hợp lệ -> chỉ 1 mốc, không đổi gì cho tới khi build lại
 
             const maxAllowed = Math.round(duration / 2);
-            const step = Math.max(AUTO_SWITCH_VISUAL_MIN_SECONDS, Math.min(vizConfig.autoSwitchVisualSeconds, maxAllowed));
+            const step = Math.max(AUTO_SWITCH_VISUAL_MIN_SECONDS, Math.min(vizConfig.autoSwitchVisualSecondsDuration, maxAllowed));
             let t = step;
             while (t < duration) { marks.push({ time: t, visual: null }); t += step; }
             autoSwitchVisualMarks = marks;
@@ -179,10 +180,10 @@
         /**
          * Bắt đầu ĐÚNG 1 nhánh theo vizConfig.autoSwitchVisualTimeMode hiện tại — luôn kill cả 2
          * task trước (đảm bảo không bao giờ có 2 nhánh chạy song song), rồi khởi động lại nhánh
-         * tương ứng từ đầu. Gọi khi: bật tính năng, đổi autoSwitchVisualTimeMode, đổi
-         * autoSwitchVisualSeconds (cả 2 nhánh đều bị ảnh hưởng bởi field này), đổi bài (chỉ nhánh
-         * 2 cần build lại marks — nhánh 1 KHÔNG được reset khi đổi bài, xem startAutoSwitchVisual()
-         * gọi có điều kiện ở onAutoSwitchVisualSongChanged()).
+         * tương ứng từ đầu. Gọi khi: bật tính năng, đổi autoSwitchVisualTimeMode, đổi field giây
+         * riêng của nhánh đang chạy (autoSwitchVisualSecondsFixed/Random/Duration), đổi bài (chỉ
+         * nhánh 2 cần build lại marks — nhánh 1 KHÔNG được reset khi đổi bài, xem
+         * onAutoSwitchVisualSongChanged() gọi có điều kiện).
          */
         function startAutoSwitchVisualBranch() {
             killAllAutoSwitchVisualTasks();
@@ -258,13 +259,12 @@
             elOptions.classList.toggle('hidden', !elEnable.checked);
             elMode.value = vizConfig.autoSwitchVisualMode;
             elTimeMode.value = vizConfig.autoSwitchVisualTimeMode;
-            // Cùng 1 field vizConfig.autoSwitchVisualSeconds dùng chung cho cả 3 ô input (chỉ 1 ô
-            // hiển thị tại 1 thời điểm theo đúng elTimeMode.value — xem syncTimeModeBlocks()) —
-            // mỗi mode DIỄN GIẢI số này theo nghĩa khác nhau (khoảng cố định / cận trên / số chia
-            // cho duration), nhưng vẫn LƯU CHUNG 1 chỗ, không cần 3 field riêng trong vizConfig.
-            if (elSecondsFixed) elSecondsFixed.value = vizConfig.autoSwitchVisualSeconds;
-            if (elSecondsRandom) elSecondsRandom.value = vizConfig.autoSwitchVisualSeconds;
-            if (elSecondsDuration) elSecondsDuration.value = vizConfig.autoSwitchVisualSeconds;
+            // 3 field RIÊNG cho từng mode (xem config.js) — mỗi input đọc/ghi ĐÚNG field của
+            // riêng nó, KHÔNG dùng chung 1 field nữa (bug đã sửa: dùng chung sẽ ghi đè mất giá trị
+            // của mode khác mỗi khi đổi qua đổi lại giữa các mode).
+            if (elSecondsFixed) elSecondsFixed.value = vizConfig.autoSwitchVisualSecondsFixed;
+            if (elSecondsRandom) elSecondsRandom.value = vizConfig.autoSwitchVisualSecondsRandom;
+            if (elSecondsDuration) elSecondsDuration.value = vizConfig.autoSwitchVisualSecondsDuration;
             syncTimeModeBlocks();
 
             if (_autoSwitchVisualUiBound) return; // listener đã gắn ở lượt init() đầu tiên — không gắn lại
@@ -292,17 +292,18 @@
                 startAutoSwitchVisualBranch(); // đổi NHÁNH hẳn -> kill nhánh cũ, khởi động nhánh mới từ đầu
             });
 
-            const onSecondsInput = (e) => {
+            /** Tạo handler riêng cho 1 field cụ thể — mỗi input ghi đúng field của NÓ, không lẫn sang field khác. */
+            const makeSecondsInputHandler = (fieldName) => (e) => {
                 let v = parseInt(e.target.value, 10);
                 if (!Number.isFinite(v) || v < AUTO_SWITCH_VISUAL_MIN_SECONDS) v = AUTO_SWITCH_VISUAL_MIN_SECONDS;
                 e.target.value = v;
-                vizConfig.autoSwitchVisualSeconds = v;
+                vizConfig[fieldName] = v;
                 saveConfig();
                 startAutoSwitchVisualBranch(); // đổi X giây -> áp dụng lại từ đầu cho nhánh đang chạy
             };
-            if (elSecondsFixed) elSecondsFixed.addEventListener('change', onSecondsInput);
-            if (elSecondsRandom) elSecondsRandom.addEventListener('change', onSecondsInput);
-            if (elSecondsDuration) elSecondsDuration.addEventListener('change', onSecondsInput);
+            if (elSecondsFixed) elSecondsFixed.addEventListener('change', makeSecondsInputHandler('autoSwitchVisualSecondsFixed'));
+            if (elSecondsRandom) elSecondsRandom.addEventListener('change', makeSecondsInputHandler('autoSwitchVisualSecondsRandom'));
+            if (elSecondsDuration) elSecondsDuration.addEventListener('change', makeSecondsInputHandler('autoSwitchVisualSecondsDuration'));
         }
 
         // ===================== Liên kết với trạng thái phát nhạc =====================
