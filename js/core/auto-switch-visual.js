@@ -227,6 +227,38 @@
         // ===================== UI binding (Settings, section "Tự động đổi hiệu ứng") =====================
 
         /**
+         * Đồng bộ trạng thái khoá/mở của nút "Đổi hiệu ứng" (#btn-cycle-mode, Control Center màn
+         * Visualizer) theo ĐÚNG vizConfig.autoSwitchVisualEnabled hiện tại.
+         *
+         * YÊU CẦU MỚI: khi tự động đổi hiệu ứng đang BẬT, nút này phải vô hiệu HOÀN TOÀN — không
+         * bấm được, bấm cũng không có tác dụng — tránh xung đột giữa đổi tự động (theo giờ) và
+         * đổi tay (theo ý người dùng) cùng lúc. Trước đây nút luôn hoạt động bất kể auto-switch
+         * đang bật hay tắt, đây CHÍNH là hành vi gây xung đột cần sửa.
+         *
+         * Đặt thuộc tính HTML `disabled` THẬT (không chỉ class CSS mờ) — input/button có
+         * `disabled` tự động không nhận click/focus/keyboard ở tầng trình duyệt, là lớp chặn đáng
+         * tin cậy nhất. player-controls.js (btnCycleMode click listener) vẫn tự kiểm tra thêm
+         * `vizConfig.autoSwitchVisualEnabled` làm lớp chặn THỨ HAI — phòng trường hợp nút bị gọi
+         * `.click()` bằng JS từ nơi khác (lúc đó thuộc tính `disabled` không chặn được vì đó chỉ
+         * chặn tương tác CHUỘT/BÀN PHÍM THẬT của người dùng, không chặn gọi hàm JS trực tiếp).
+         *
+         * Gọi hàm này ở MỌI nơi autoSwitchVisualEnabled có thể thay đổi: đồng bộ UI lúc
+         * initAutoSwitchVisualUI() chạy (kể cả mỗi lần loadConfig() — đảm bảo đúng trạng thái
+         * ngay từ lúc mở app, không cần đợi người dùng vào Settings trước), và lúc listener
+         * 'change' của toggle bật/tắt chạy.
+         */
+        function updateCycleModeButtonState() {
+            if (typeof btnCycleMode === 'undefined' || !btnCycleMode) return;
+            const locked = vizConfig.autoSwitchVisualEnabled === true;
+            btnCycleMode.disabled = locked;
+            btnCycleMode.classList.toggle('opacity-40', locked);
+            btnCycleMode.classList.toggle('cursor-not-allowed', locked);
+            btnCycleMode.title = locked
+                ? 'Đổi hiệu ứng (đang khoá — tắt "Tự động đổi hiệu ứng" trong Cài đặt để bấm tay)'
+                : 'Đổi hiệu ứng';
+        }
+
+        /**
          * Đồng bộ TOÀN BỘ UI auto-switch-visual theo vizConfig hiện tại + gắn listener (idempotent
          * — addEventListener trùng lặp do gọi initAutoSwitchVisualUI() nhiều lần, ví dụ mỗi lần
          * loadConfig() chạy lại, sẽ KHÔNG xảy ra vì hàm này chỉ gắn listener ĐÚNG 1 LẦN nhờ cờ
@@ -266,6 +298,7 @@
             if (elSecondsRandom) elSecondsRandom.value = vizConfig.autoSwitchVisualSecondsRandom;
             if (elSecondsDuration) elSecondsDuration.value = vizConfig.autoSwitchVisualSecondsDuration;
             syncTimeModeBlocks();
+            updateCycleModeButtonState(); // đồng bộ khoá/mở #btn-cycle-mode ngay từ lúc loadConfig()
 
             if (_autoSwitchVisualUiBound) return; // listener đã gắn ở lượt init() đầu tiên — không gắn lại
             _autoSwitchVisualUiBound = true;
@@ -274,6 +307,7 @@
                 vizConfig.autoSwitchVisualEnabled = e.target.checked;
                 elOptions.classList.toggle('hidden', !e.target.checked);
                 saveConfig();
+                updateCycleModeButtonState(); // khoá/mở #btn-cycle-mode NGAY khi người dùng bật/tắt
                 startAutoSwitchVisualBranch(); // bật -> khởi động đúng nhánh; tắt -> hàm tự kill hết vì shouldRun=false
             });
 

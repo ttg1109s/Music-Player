@@ -57,11 +57,42 @@
         const drawerSubtitleSettings = document.getElementById('drawer-subtitle-settings');
         const btnOpenSubtitleSettings = document.getElementById('setting-open-subtitle-settings');
         const btnBackSubtitleSettings = document.getElementById('btn-back-subtitle-settings');
-        // Logo "SAV" góc trái Playlist (đối xứng với cụm icon góc phải) — hiệu ứng trượt chữ khi
-        // hover/unhover xử lý THUẦN BẰNG CSS (transition max-width ở chính class trong HTML, xem
-        // playlist-view.js), không cần xử lý JS nào ở đây. Khai báo ref dù không dùng trực tiếp,
-        // để nhất quán với quy ước "mọi #id quan trọng đều có ref ở dom-refs.js" của project.
+        // Logo "SAV" góc trái Playlist (đối xứng với cụm icon góc phải).
+        //
+        // FIX (bug "bấm logo không ăn, có lúc bị zoom vào trang" — xem giải thích đầy đủ ở
+        // comment trong playlist-view.js): bản trước dùng THUẦN CSS `:hover`/`group-hover`. Trên
+        // mobile, phần tử này là <div> chữ thường (không phải <button>/<a>) — trình duyệt có thể
+        // hiểu lầm 1 chạm là "double-tap vào đoạn văn bản" và ZOOM trang vào đúng đó, khiến toạ độ
+        // chạm các lần sau lệch khỏi vị trí logo thật (trông như "không bấm được" nữa).
+        //
+        // SỬA: bỏ hẳn :hover/group-hover, chuyển hẳn sang JS — desktop (chuột thật) dùng
+        // 'mouseenter'/'mouseleave' để GIỮ ĐÚNG cảm giác hover như cũ; mobile/cảm ứng dùng 'click'
+        // (1 sự kiện rời rạc, không phải gesture đoán) để toggle mở/thu — không còn tap nào bị
+        // trình duyệt hiểu nhầm thành double-tap nữa. Dùng matchMedia('(hover:hover) and
+        // (pointer:fine)') để chọn đúng cơ chế cho đúng loại thiết bị, không áp cả 2 cùng lúc
+        // (tránh listener thừa/ xung đột nếu thiết bị có cả chuột và cảm ứng).
         const savLogo = document.getElementById('sav-logo');
+        const savLogoExpandSpans = savLogo ? Array.from(savLogo.querySelectorAll('.sav-logo-expand')) : [];
+        function setSavLogoExpanded(expand) {
+            if (!savLogo) return;
+            savLogoExpandSpans.forEach(span => {
+                span.style.maxWidth = expand ? (span.dataset.expandWidth || '0') : '0';
+            });
+        }
+        if (savLogo) {
+            const hasRealHover = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+            if (hasRealHover) {
+                // Desktop có chuột thật — hover tự nhiên như bản gốc, không cần toggle/click.
+                savLogo.addEventListener('mouseenter', () => setSavLogoExpanded(true));
+                savLogo.addEventListener('mouseleave', () => setSavLogoExpanded(false));
+            } else {
+                // Mobile/cảm ứng — 'click' bắn ra từ đúng 1 tap thật (đã qua xử lý double-tap-zoom
+                // của trình duyệt nếu có, vì click chỉ bắn SAU KHI trình duyệt đã quyết định đó
+                // không phải double-tap), nên không bị ảnh hưởng bởi heuristic zoom đoạn văn bản.
+                let savLogoExpanded = false;
+                savLogo.addEventListener('click', () => { savLogoExpanded = !savLogoExpanded; setSavLogoExpanded(savLogoExpanded); });
+            }
+        }
         // Ver 10 refine: KHÔNG còn #btn-toggle-view/#icon-grid-view/#icon-list-view trong HTML —
         // "Kiểu xem" (grid/list) đã chuyển vào Settings (#setting-playlist-view-mode, xem
         // js/playlist/main.js: PlaylistMain.initViewMode()). Đã xoá 3 ref tương ứng ở đây.

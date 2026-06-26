@@ -443,7 +443,19 @@
         btnSettingsPlaylist.addEventListener('click', () => drawerSettings.classList.remove('-translate-y-full'));
         closeDrawer.addEventListener('click', () => { validateVideoBgOnClose(); drawerSettings.classList.add('-translate-y-full'); });
         
-        btnCycleMode.addEventListener('click', () => { currentModeIndex = (currentModeIndex + 1) % MODES.length; updateTypeUI(); saveConfig(); });
+        // FIX (yêu cầu mới): khi "Tự động đổi hiệu ứng" đang BẬT (vizConfig.autoSwitchVisualEnabled),
+        // nút "Đổi hiệu ứng" (#btn-cycle-mode) ở Control Center PHẢI vô hiệu — không bấm được, bấm
+        // cũng không có tác dụng gì. Trước đây nút này luôn hoạt động bất kể auto-switch đang bật
+        // hay tắt, gây xung đột: tự động đang đếm giờ để đổi, nhưng người dùng bấm tay cũng đổi
+        // được luôn, 2 cơ chế dẫm chân nhau. Kiểm tra ĐIỀU KIỆN NGAY ĐẦU listener (không chỉ dựa
+        // vào thuộc tính HTML `disabled` của nút — xem updateCycleModeButtonState() ở
+        // auto-switch-visual.js, nơi đồng bộ CẢ thuộc tính disabled/style THỊ GIÁC lẫn cờ JS này)
+        // để chắc chắn không có đường nào lách qua được, kể cả khi nút được kích hoạt bằng cách
+        // khác ngoài click chuột thật (ví dụ gọi .click() bằng JS từ nơi khác).
+        btnCycleMode.addEventListener('click', () => {
+            if (vizConfig.autoSwitchVisualEnabled) return;
+            currentModeIndex = (currentModeIndex + 1) % MODES.length; updateTypeUI(); saveConfig();
+        });
 
         function updateTypeUI() {
             vizConfig.type = MODES[currentModeIndex]; modeBadge.textContent = `${currentModeIndex + 1}/${MODES.length}`;
