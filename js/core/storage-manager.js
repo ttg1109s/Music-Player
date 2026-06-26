@@ -1,41 +1,28 @@
 /**
- * Quản lý dung lượng (mục 5) — drawer riêng tách khỏi About:
- *   - Thống kê dung lượng + tổng số bài hát (dùng lại computeStats() từ about-stats.js).
- *   - Giải phóng bộ nhớ: tải toàn bộ nhạc gốc thành 1 file .zip rồi xóa, HOẶC xóa thẳng không tải.
- *   - Quét & dọn file lỗi: phát hiện record có blob KHÔNG phải mp3 hợp lệ — kiểm bằng 2 lớp:
- *     (1) MIME type của blob (record.blob.type) không khớp audio/mpeg hoặc các kiểu mp3 phổ biến,
- *     (2) thử đọc duration qua Audio() (dùng lại readAudioDuration() từ playlist.js) — nếu trình
- *     duyệt không decode được (trả về 0/NaN), coi là dữ liệu lỗi. Hỏi xác nhận trước khi xóa, không
- *     tự xóa ngầm.
+ * Quản lý dung lượng (mục 5) — CORE THUẦN (đã tách khỏi mọi addEventListener/confirm/alertModal/
+ * withLoadingShield theo kiến trúc /event/ — xem event/workflow/storage.js để biết nơi các hàm ở
+ * đây được GỌI và bọc shield/modal xung quanh).
+ *
+ * QUY TẮC CỦA FILE NÀY (tầng "core"):
+ *   - Mọi hàm chỉ nhận tham số, trả kết quả (hoặc throw lỗi đọc/viết dữ liệu thật) — KHÔNG biết
+ *     gì về shield, modal, hay UI ngoài việc cập nhật đúng 1 vài phần tử DOM hiển thị THUẦN DỮ
+ *     LIỆU (renderStorageStats, renderScanResultUI, resetScanResultUI) vốn đã thuộc về "hiển thị
+ *     kết quả tính toán", không phải hành vi tương tác.
+ *   - KHÔNG còn addEventListener nào trong file này — toàn bộ đã chuyển sang event/listener/.
+ *   - KHÔNG còn confirm()/alertModal()/withLoadingShield() nào gọi trực tiếp ở đây — các hàm xử
+ *     lý nghiệp vụ (downloadAllSongsThenClear, clearAllSongsNoDownload, scanAllSongsForCorruption,
+ *     deleteCorruptedSongs) trả kết quả CÓ CỜ rõ ràng để workflow tự quyết định hiện modal gì.
  *
  * PHẢI nạp SAU: db.js (CRUD, isQuickValidMime), about-stats.js (computeStats/formatBytes),
  * id3-export.js (triggerDownload), playlist.js (readAudioDuration, playlistOrder,
  * renderPlaylistDiff, removeKeyFromDisplay, songNameIndex, playlistCache, confirmedBrokenKeys).
  */
 
-        const drawerStorage = document.getElementById('drawer-storage');
-        const btnOpenStorage = document.getElementById('setting-open-storage');
-        const btnBackStorage = document.getElementById('btn-back-storage');
-
         async function renderStorageStats() {
-            const statSongs = document.getElementById('stat-storage-total-songs');
-            const statBytes = document.getElementById('stat-storage-total-bytes');
-            statSongs.textContent = '...'; statBytes.textContent = '...';
+            statStorageTotalSongs.textContent = '...'; statStorageTotalBytes.textContent = '...';
             const stats = await computeStats();
-            statSongs.textContent = `${stats.totalSongs}`;
-            statBytes.textContent = formatBytes(stats.totalBytes);
-        }
-
-        if (btnOpenStorage) {
-            btnOpenStorage.addEventListener('click', () => {
-                drawerStorage.classList.remove('translate-y-full');
-                renderStorageStats();
-                resetScanResultUI();
-            });
-        }
-        if (btnBackStorage) {
-            // Back ở đây chỉ ẩn Storage Management — KHÔNG động vào About bên dưới (vẫn mở nguyên).
-            btnBackStorage.addEventListener('click', () => { drawerStorage.classList.add('translate-y-full'); });
+            statStorageTotalSongs.textContent = `${stats.totalSongs}`;
+            statStorageTotalBytes.textContent = formatBytes(stats.totalBytes);
         }
 
         // ===================== Giải phóng bộ nhớ =====================
@@ -110,25 +97,13 @@
                 pendingResortKeys.clear();
                 if (typeof recomputeRenderOrder === 'function') recomputeRenderOrder();
                 if (currentKey) { audioPlayer.pause(); audioPlayer.src = ''; currentKey = null; }
-                // ver 10: cùng lý do như resetPlayerToIdle() (player-controls.js) — audioPlayer.pause()
-                // ở trên bắn event 'pause' trước khi currentKey kịp về null, dọn dứt điểm task ở đây.
                 if (typeof killAllAutoSwitchVisualTasks === 'function') killAllAutoSwitchVisualTasks();
                 if (currentObjectURL) { URL.revokeObjectURL(currentObjectURL); currentObjectURL = null; }
                 if (currentCoverObjectURL) { URL.revokeObjectURL(currentCoverObjectURL); currentCoverObjectURL = null; }
                 playerTitle.textContent = t('bottomPlayer.noSongSelected'); playerArtist.textContent = '---';
                 updateShuffleArray();
                 renderPlaylistFull();
-                // updateEmptyState() đã được renderPlaylistFull() gọi -> tự bật #playlist-empty đúng lúc.
                 saveConfig();
-
-                // FIX (bug "Clear All xong vẫn thấy current/next/prev"): RAM đã reset đúng ở trên,
-                // nhưng UI Visualizer/player-container (current/next/prev, record art cũ...) không
-                // tự ẩn nếu người dùng đang đứng ở màn Visualizer lúc bấm Clear — vì show/hide 2
-                // element đó vốn chỉ nằm ở switchToVisualizer()/btnBackPlaylist (player-controls.js),
-                // clearAllStoredData() trước đây không đụng tới. Ép UI về Playlist NGAY ở đây (dùng
-                // CHUNG hàm với resetPlayerToIdle() — xem player-controls.js) — chạy dưới lớp loading
-                // shield (withLoadingShield() ở nơi gọi hàm này) nên không có khung hình nào lộ ra
-                // UI cũ; đóng Settings ra là thấy Playlist sạch, bất kể đường thoát Settings nào sau.
                 if (typeof forceBackToPlaylistUI === 'function') forceBackToPlaylistUI();
 
                 await delMeta('clearingInProgress'); // chỉ xoá cờ SAU KHI mọi bước trên đã xong hoàn toàn
@@ -137,80 +112,49 @@
             }
         }
 
-        const btnDownloadThenClear = document.getElementById('btn-storage-download-then-clear');
-        if (btnDownloadThenClear) {
-            btnDownloadThenClear.addEventListener('click', async () => {
-                const ok = confirm(t('common.storage.downloadThenClearConfirm'));
-                if (!ok) return;
-                // FIX (xung đột shield/modal): KHÔNG await alertModal() trong fn() của
-                // withLoadingShield() — xem giải thích chi tiết ở playlist/actions.js
-                // (window.playSong). Dùng cờ kết quả mang ra ngoài, hiện modal SAU KHI shield đã
-                // đóng hẳn (isShieldBusy = false), tránh #loading-shield (z-[200]) treo/đè lên trên
-                // modalChoice() (z-[130]) suốt thời gian chờ người dùng bấm OK.
-                let resultFlag = null; // null = thành công | 'noSongs' | 'zipError'
-                let zipErrorMessage = '';
-                await withLoadingShield(t('common.storage.zippingStart'), async () => {
-                    const keys = await getAllSongKeys();
-                    if (keys.length === 0) { resultFlag = 'noSongs'; return; }
-                    let zipBlob;
-                    try {
-                        zipBlob = await buildAllSongsZipBlob((done, total, percent) => {
-                            const pct = percent != null ? Math.round(percent) : Math.round((done / total) * 100);
-                            loadingText.textContent = tFormat('common.storage.zippingProgress', { percent: pct });
-                        });
-                    } catch (err) {
-                        console.error('[storage-manager] Lỗi đóng gói zip:', err);
-                        resultFlag = 'zipError';
-                        zipErrorMessage = escapeHtml(err.message || err);
-                        return;
-                    }
-                    const dateStr = new Date().toISOString().slice(0, 10);
-                    triggerDownload(zipBlob, `nhac-da-luu-${dateStr}.zip`);
+        /**
+         * NGHIỆP VỤ THUẦN: "Tải tất cả rồi xoá" — gộp build zip + download + clearAllStoredData
+         * thành 1 hàm core, KHÔNG biết shield/modal là gì. Trả kết quả qua object có `status` rõ
+         * ràng, KHÔNG throw cho lỗi build zip (đã thống nhất: core luôn resolve, không reject cho
+         * các lỗi nghiệp vụ đã biết trước).
+         *
+         * @param {(percent:number) => void} [onZipProgress]
+         * @returns {Promise<{status:'ok'} | {status:'noSongs'} | {status:'zipError', message:string}>}
+         */
+        async function downloadAllSongsThenClear(onZipProgress) {
+            const keys = await getAllSongKeys();
+            if (keys.length === 0) return { status: 'noSongs' };
 
-                    loadingText.textContent = t('common.storage.deletingData');
-                    await clearAllStoredData();
-                    renderStorageStats();
+            let zipBlob;
+            try {
+                zipBlob = await buildAllSongsZipBlob((done, total, percent) => {
+                    const pct = percent != null ? Math.round(percent) : Math.round((done / total) * 100);
+                    if (onZipProgress) onZipProgress(pct);
                 });
+            } catch (err) {
+                console.error('[storage-manager] Lỗi đóng gói zip:', err);
+                return { status: 'zipError', message: err && err.message ? err.message : String(err) };
+            }
 
-                // Shield đã đóng HẲN tới đây — an toàn để hiện modal.
-                if (resultFlag === 'noSongs') {
-                    await alertModal(t('common.storage.noSongsToDownload'));
-                } else if (resultFlag === 'zipError') {
-                    await alertModal(tFormat('common.storage.zipBuildError', { message: zipErrorMessage }));
-                } else {
-                    await alertModal(t('common.storage.downloadThenClearDone'));
-                }
-            });
+            const dateStr = new Date().toISOString().slice(0, 10);
+            triggerDownload(zipBlob, `nhac-da-luu-${dateStr}.zip`);
+
+            await clearAllStoredData();
+            renderStorageStats();
+            return { status: 'ok' };
         }
 
-        const btnClearNoDownload = document.getElementById('btn-storage-clear-no-download');
-        if (btnClearNoDownload) {
-            btnClearNoDownload.addEventListener('click', async () => {
-                const ok = confirm(t('common.storage.clearNoDownloadConfirm'));
-                if (!ok) return;
-                await withLoadingShield(t('common.storage.deletingData'), async () => {
-                    await clearAllStoredData();
-                    renderStorageStats();
-                });
-                // Shield đã đóng HẲN tới đây — an toàn để hiện modal (xem giải thích ở trên).
-                await alertModal(t('common.storage.clearNoDownloadDone'));
-            });
+        /**
+         * NGHIỆP VỤ THUẦN: "Xoá tất cả, không tải" — chỉ gọi clearAllStoredData() + renderStorageStats().
+         * @returns {Promise<void>}
+         */
+        async function clearAllSongsNoDownload() {
+            await clearAllStoredData();
+            renderStorageStats();
         }
-
 
         // ===================== Quét & dọn file lỗi =====================
 
-        /**
-         * Kiểm tra 1 record có phải dữ liệu lỗi không, theo 2 lớp đã thống nhất:
-         *   (1) MIME type của blob không khớp mp3 hợp lệ (isQuickValidMime, dùng chung với
-         *       scanValidSongsFromDB() trong playlist.js — mp3 giả/đổi đuôi từ file khác).
-         *   (2) Thử decode duration qua Audio() (readAudioDuration, có timeout an toàn) — nếu trả
-         *       về 0 (không đọc được mọi cách, bao gồm cả lỗi 'error' event), coi là lỗi. Một bài mp3
-         *       hợp lệ với duration thật = 0 giây gần như không tồn tại trong thực tế, nên ngưỡng này
-         *       chấp nhận được mà không cần phân tích sâu container hơn. Lớp này KHÔNG chạy ở
-         *       playlist.js lúc khởi động (giữ tốc độ) — chỉ chạy ở đây khi người dùng chủ động bấm
-         *       Quét, và lúc playSong() gặp lỗi 'error' thật trên audioPlayer (player-controls.js).
-         */
         async function isRecordCorrupted(record) {
             if (!record || !record.blob) return { corrupted: true, reason: t('common.storage.scanReasonBrokenBlob') };
             if (!isQuickValidMime(record.blob.type)) {
@@ -221,79 +165,67 @@
             return { corrupted: false };
         }
 
-        let lastScanResults = []; // [{key, filename, reason}]
-
-        function resetScanResultUI() {
-            document.getElementById('storage-scan-result').classList.add('hidden');
-            document.getElementById('storage-scan-list').innerHTML = '';
-            lastScanResults = [];
+        /**
+         * NGHIỆP VỤ THUẦN: quét toàn bộ thư viện tìm record lỗi. KHÔNG tự gán biến toàn cục
+         * lastScanResults, KHÔNG tự render UI — trả kết quả thuần.
+         *
+         * @param {(current:number, total:number) => void} [onScanProgress]
+         * @returns {Promise<Array<{key:string, filename:string, reason:string}>>}
+         */
+        async function scanAllSongsForCorruption(onScanProgress) {
+            const keys = await getAllSongKeys();
+            const results = [];
+            for (let i = 0; i < keys.length; i++) {
+                const key = keys[i];
+                if (onScanProgress) onScanProgress(i + 1, keys.length);
+                const record = await getSongRecord(key);
+                if (confirmedBrokenKeys.has(key)) {
+                    results.push({ key, filename: record ? record.filename : key, reason: t('common.storage.scanReasonKeptFromError') });
+                    continue;
+                }
+                const check = await isRecordCorrupted(record);
+                if (check.corrupted) {
+                    results.push({ key, filename: record ? record.filename : key, reason: check.reason });
+                }
+            }
+            return results;
         }
 
-        const btnScanBroken = document.getElementById('btn-storage-scan-broken');
-        if (btnScanBroken) {
-            btnScanBroken.addEventListener('click', () => {
-                withLoadingShield(t('common.storage.scanning'), async () => {
-                    const keys = await getAllSongKeys();
-                    const results = [];
-                    for (let i = 0; i < keys.length; i++) {
-                        const key = keys[i];
-                        loadingText.textContent = tFormat('common.storage.scanningProgress', { n: i + 1, total: keys.length });
-                        const record = await getSongRecord(key);
-                        if (confirmedBrokenKeys.has(key)) {
-                            // Đã được người dùng xác nhận "Giữ lại" lúc phát lỗi trước đó — không cần
-                            // decode lại (tốn thời gian vô ích, đã biết chắc là lỗi), liệt kê thẳng.
-                            results.push({ key, filename: record ? record.filename : key, reason: t('common.storage.scanReasonKeptFromError') });
-                            continue;
-                        }
-                        const check = await isRecordCorrupted(record);
-                        if (check.corrupted) {
-                            results.push({ key, filename: record ? record.filename : key, reason: check.reason });
-                        }
-                    }
-                    lastScanResults = results;
-                    renderScanResultUI(results);
-                });
-            });
-        }
-
-        function renderScanResultUI(results) {
-            const resultBox = document.getElementById('storage-scan-result');
-            const summary = document.getElementById('storage-scan-summary');
-            const list = document.getElementById('storage-scan-list');
-            const deleteBtn = document.getElementById('btn-storage-delete-broken');
-            resultBox.classList.remove('hidden');
-            if (results.length === 0) {
-                summary.textContent = t('common.storage.scanNoneFound');
-                list.innerHTML = '';
-                deleteBtn.classList.add('hidden');
-            } else {
-                summary.textContent = tFormat('common.storage.scanFoundCount', { n: results.length });
-                list.innerHTML = results.map(r => `<div class="truncate"><span class="text-amber-400">●</span> ${r.filename} — ${r.reason}</div>`).join('');
-                deleteBtn.classList.remove('hidden');
+        /**
+         * NGHIỆP VỤ THUẦN: xoá đúng các record trong scanResults (trừ currentKeyNow đang phát).
+         * KHÔNG tự gọi resetScanResultUI()/renderStorageStats() — quyết định thứ tự đó là của workflow.
+         *
+         * @param {Array<{key:string}>} scanResults
+         * @param {string|null} currentKeyNow
+         * @returns {Promise<void>}
+         */
+        async function deleteCorruptedSongs(scanResults, currentKeyNow) {
+            for (const { key } of scanResults) {
+                if (key === currentKeyNow) continue;
+                await deleteSongRecord(key);
+                confirmedBrokenKeys.delete(key);
+                removeKeyFromDisplay(key);
             }
         }
 
-        const btnDeleteBroken = document.getElementById('btn-storage-delete-broken');
-        if (btnDeleteBroken) {
-            btnDeleteBroken.addEventListener('click', async () => {
-                if (lastScanResults.length === 0) return;
-                const ok = confirm(tFormat('common.storage.deleteBrokenConfirm', { n: lastScanResults.length }));
-                if (!ok) return;
-                await withLoadingShield(t('common.storage.deletingBroken'), async () => {
-                    for (const { key } of lastScanResults) {
-                        if (key === currentKey) continue; // không xóa bài đang phát, giữ đúng quy tắc chung của removeSong
-                        await deleteSongRecord(key);
-                        confirmedBrokenKeys.delete(key); // xoá khỏi IndexedDB rồi thì cũng không cần nhớ "đã giữ lại" nữa
-                        removeKeyFromDisplay(key);
-                    }
-                    resetScanResultUI();
-                    renderStorageStats();
-                });
-                // Shield đã đóng HẲN tới đây — an toàn để hiện modal (xem giải thích ở
-                // btnDownloadThenClear phía trên, cùng nguyên nhân xung đột shield/modal).
-                await alertModal(t('common.storage.deleteBrokenDone'));
-            });
+        function resetScanResultUI() {
+            storageScanResult.classList.add('hidden');
+            storageScanList.innerHTML = '';
         }
 
-        const btnDismissScan = document.getElementById('btn-storage-dismiss-scan');
-        if (btnDismissScan) btnDismissScan.addEventListener('click', resetScanResultUI);
+        function renderScanResultUI(results) {
+            storageScanResult.classList.remove('hidden');
+            if (results.length === 0) {
+                storageScanSummary.textContent = t('common.storage.scanNoneFound');
+                storageScanList.innerHTML = '';
+                btnDeleteBroken.classList.add('hidden');
+            } else {
+                storageScanSummary.textContent = tFormat('common.storage.scanFoundCount', { n: results.length });
+                // FIX: r.filename là tên file NGƯỜI DÙNG TỰ ĐẶT (không phải dữ liệu app tự dựng),
+                // r.reason có thể chứa mime type đọc thẳng từ file (record.blob.type) — cả 2 đều
+                // KHÔNG đáng tin cậy, PHẢI escapeHtml() trước khi nhúng vào innerHTML, cùng nguyên
+                // tắc đã áp dụng cho mọi chỗ tương tự ở patch alert->alertModal trước đó.
+                storageScanList.innerHTML = results.map(r => `<div class="truncate"><span class="text-amber-400">●</span> ${escapeHtml(r.filename)} — ${escapeHtml(r.reason)}</div>`).join('');
+                btnDeleteBroken.classList.remove('hidden');
+            }
+        }

@@ -214,3 +214,22 @@
         
         // System variables cho Vortex Engine
         let tCurrentWarpZ = 0; 
+
+        // ===================== Quản lý dung lượng (Storage Management) =====================
+        // FIX (kiến trúc /event/): toàn bộ getElementById của cụm này TRƯỚC ĐÂY nằm rải rác ngay
+        // trong storage-manager.js — vi phạm quy ước CHUNG của project là dom-refs.js PHẢI là nơi
+        // DUY NHẤT gọi getElementById, mọi file khác chỉ dùng lại biến đã có ở đây. Gom về đúng 1
+        // chỗ, theo đúng style các khối phía trên.
+        const drawerStorage = document.getElementById('drawer-storage');
+        const btnOpenStorage = document.getElementById('setting-open-storage');
+        const btnBackStorage = document.getElementById('btn-back-storage');
+        const statStorageTotalSongs = document.getElementById('stat-storage-total-songs');
+        const statStorageTotalBytes = document.getElementById('stat-storage-total-bytes');
+        const btnDownloadThenClear = document.getElementById('btn-storage-download-then-clear');
+        const btnClearNoDownload = document.getElementById('btn-storage-clear-no-download');
+        const btnScanBroken = document.getElementById('btn-storage-scan-broken');
+        const btnDeleteBroken = document.getElementById('btn-storage-delete-broken');
+        const btnDismissScan = document.getElementById('btn-storage-dismiss-scan');
+        const storageScanResult = document.getElementById('storage-scan-result');
+        const storageScanSummary = document.getElementById('storage-scan-summary');
+        const storageScanList = document.getElementById('storage-scan-list');
