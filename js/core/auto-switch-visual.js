@@ -242,6 +242,7 @@
             const elBlockDuration = document.getElementById('auto-switch-time-duration-block');
             const elSecondsFixed = document.getElementById('setting-auto-switch-seconds-fixed');
             const elSecondsRandom = document.getElementById('setting-auto-switch-seconds-random');
+            const elSecondsDuration = document.getElementById('setting-auto-switch-seconds-duration');
             if (!elEnable || !elOptions || !elMode || !elTimeMode) return; // DOM chưa sẵn sàng — an toàn bỏ qua
 
             /** Hiện ĐÚNG 1 trong 3 khối input theo elTimeMode.value, ẩn 2 khối còn lại. */
@@ -257,8 +258,13 @@
             elOptions.classList.toggle('hidden', !elEnable.checked);
             elMode.value = vizConfig.autoSwitchVisualMode;
             elTimeMode.value = vizConfig.autoSwitchVisualTimeMode;
+            // Cùng 1 field vizConfig.autoSwitchVisualSeconds dùng chung cho cả 3 ô input (chỉ 1 ô
+            // hiển thị tại 1 thời điểm theo đúng elTimeMode.value — xem syncTimeModeBlocks()) —
+            // mỗi mode DIỄN GIẢI số này theo nghĩa khác nhau (khoảng cố định / cận trên / số chia
+            // cho duration), nhưng vẫn LƯU CHUNG 1 chỗ, không cần 3 field riêng trong vizConfig.
             if (elSecondsFixed) elSecondsFixed.value = vizConfig.autoSwitchVisualSeconds;
             if (elSecondsRandom) elSecondsRandom.value = vizConfig.autoSwitchVisualSeconds;
+            if (elSecondsDuration) elSecondsDuration.value = vizConfig.autoSwitchVisualSeconds;
             syncTimeModeBlocks();
 
             if (_autoSwitchVisualUiBound) return; // listener đã gắn ở lượt init() đầu tiên — không gắn lại
@@ -296,6 +302,7 @@
             };
             if (elSecondsFixed) elSecondsFixed.addEventListener('change', onSecondsInput);
             if (elSecondsRandom) elSecondsRandom.addEventListener('change', onSecondsInput);
+            if (elSecondsDuration) elSecondsDuration.addEventListener('change', onSecondsInput);
         }
 
         // ===================== Liên kết với trạng thái phát nhạc =====================
