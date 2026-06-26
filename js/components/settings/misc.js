@@ -15,12 +15,12 @@ const TPL_SETTINGS_MISC = `
 
         <!-- SECTION: VỀ TRÌNH PHÁT -->
         <div>
-            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-2">Khác</h3>
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-2" data-i18n="settingsMisc.sectionTitle">${t('settingsMisc.sectionTitle')}</h3>
             <div class="bg-white/5 rounded-2xl border border-white/10 flex flex-col overflow-hidden">
                 <div class="flex justify-between items-center p-4 border-b border-white/5">
                     <div class="pr-3">
-                        <div class="text-sm font-medium">Giữ màn hình sáng</div>
-                        <div class="text-xs text-slate-400 mt-0.5">Khi đang phát, ngăn màn hình tự tắt. Tắt đi để tiết kiệm pin (nhạc vẫn cố gắng phát ở chế độ nền).</div>
+                        <div class="text-sm font-medium" data-i18n="settingsMisc.keepScreenOn.label">${t('settingsMisc.keepScreenOn.label')}</div>
+                        <div class="text-xs text-slate-400 mt-0.5" data-i18n="settingsMisc.keepScreenOn.hint">${t('settingsMisc.keepScreenOn.hint')}</div>
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer shrink-0">
                         <input type="checkbox" id="setting-keep-screen-on" class="sr-only peer" checked>
@@ -28,7 +28,7 @@ const TPL_SETTINGS_MISC = `
                     </label>
                 </div>
                 <button id="setting-open-about" class="flex justify-between items-center p-4 hover:bg-white/5 transition-colors w-full text-left">
-                    <span class="text-sm font-medium">Về trình phát</span>
+                    <span class="text-sm font-medium" data-i18n="settingsMisc.openAbout.label">${t('settingsMisc.openAbout.label')}</span>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                 </button>
             </div>
@@ -36,19 +36,19 @@ const TPL_SETTINGS_MISC = `
 
         <!-- SECTION: KHẮC PHỤC SỰ CỐ (mới) — xem js/core/app-recovery.js -->
         <div>
-            <h3 class="text-xs font-bold text-rose-400 uppercase tracking-widest mb-2 ml-2">Khắc phục sự cố</h3>
+            <h3 class="text-xs font-bold text-rose-400 uppercase tracking-widest mb-2 ml-2" data-i18n="settingsMisc.troubleshootTitle">${t('settingsMisc.troubleshootTitle')}</h3>
             <div class="bg-white/5 rounded-2xl border border-white/10 flex flex-col overflow-hidden">
                 <button id="setting-restart-app" class="flex justify-between items-center p-4 border-b border-white/5 hover:bg-white/5 transition-colors w-full text-left">
                     <div class="pr-3">
-                        <div class="text-sm font-medium">Khởi động lại app</div>
-                        <div class="text-xs text-slate-400 mt-0.5">Dùng khi trình phát bị treo, kẹt, hoặc hành vi không bình thường. Không ảnh hưởng nhạc/playlist/cài đặt đã lưu.</div>
+                        <div class="text-sm font-medium" data-i18n="settingsMisc.restartApp.label">${t('settingsMisc.restartApp.label')}</div>
+                        <div class="text-xs text-slate-400 mt-0.5" data-i18n="settingsMisc.restartApp.hint">${t('settingsMisc.restartApp.hint')}</div>
                     </div>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                 </button>
                 <button id="setting-restore-defaults" class="flex justify-between items-center p-4 hover:bg-white/5 transition-colors w-full text-left">
                     <div class="pr-3">
-                        <div class="text-sm font-medium">Khôi phục cài đặt mặc định</div>
-                        <div class="text-xs text-slate-400 mt-0.5">Đưa màu sắc, hiệu ứng, EQ, và mọi tuỳ chỉnh hiển thị khác về mặc định gốc. KHÔNG xoá nhạc/playlist đã upload.</div>
+                        <div class="text-sm font-medium" data-i18n="settingsMisc.restoreDefaults.label">${t('settingsMisc.restoreDefaults.label')}</div>
+                        <div class="text-xs text-slate-400 mt-0.5" data-i18n="settingsMisc.restoreDefaults.hint">${t('settingsMisc.restoreDefaults.hint')}</div>
                     </div>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                 </button>

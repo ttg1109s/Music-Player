@@ -34,30 +34,30 @@ const TPL_SETTINGS_VISUALIZER = `
 
         <!-- SECTION: KIỂU HIỆU ỨNG (rút gọn, ver 8 refine) -->
         <div>
-            <h3 class="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-2 ml-2">Visualizer</h3>
+            <h3 class="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-2 ml-2" data-i18n="settingsVisualizer.sectionTitle">${t('settingsVisualizer.sectionTitle')}</h3>
             <div class="bg-white/5 rounded-2xl border border-white/10 flex flex-col overflow-hidden">
                 <div class="flex justify-between items-center p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
-                    <span class="text-sm font-medium">Kiểu hiệu ứng</span>
+                    <span class="text-sm font-medium" data-i18n="settingsVisualizer.type.label">${t('settingsVisualizer.type.label')}</span>
                     <select id="setting-visualizer-type" class="bg-black/50 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white outline-none w-36 text-right">
-                        <option value="bar">Bar (Cột nhạc)</option>
-                        <option value="lightning">Lightning (Sấm chớp)</option>
-                        <option value="rubik">Rubik</option>
-                        <option value="vortex">Vortex (Đường hầm)</option>
-                        <option value="black hole">Black Hole</option>
-                        <option value="rain">Rain (Mưa)</option>
+                        <option value="bar" data-i18n="settingsVisualizer.type.bar">${t('settingsVisualizer.type.bar')}</option>
+                        <option value="lightning" data-i18n="settingsVisualizer.type.lightning">${t('settingsVisualizer.type.lightning')}</option>
+                        <option value="rubik" data-i18n="settingsVisualizer.type.rubik">${t('settingsVisualizer.type.rubik')}</option>
+                        <option value="vortex" data-i18n="settingsVisualizer.type.vortex">${t('settingsVisualizer.type.vortex')}</option>
+                        <option value="black hole" data-i18n="settingsVisualizer.type.blackHole">${t('settingsVisualizer.type.blackHole')}</option>
+                        <option value="rain" data-i18n="settingsVisualizer.type.rain">${t('settingsVisualizer.type.rain')}</option>
                     </select>
                 </div>
                 <button id="setting-open-visualizer-settings" class="flex justify-between items-center p-4 border-b border-white/5 hover:bg-white/5 transition-colors w-full text-left">
                     <div>
-                        <div class="text-sm font-medium">Tùy chỉnh Visualizer</div>
-                        <div class="text-xs text-slate-400 mt-0.5">Chất lượng render, hình học theo từng kiểu, màu sắc, tự động đổi hiệu ứng</div>
+                        <div class="text-sm font-medium" data-i18n="settingsVisualizer.openDrawer.label">${t('settingsVisualizer.openDrawer.label')}</div>
+                        <div class="text-xs text-slate-400 mt-0.5" data-i18n="settingsVisualizer.openDrawer.hint">${t('settingsVisualizer.openDrawer.hint')}</div>
                     </div>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                 </button>
                 <div class="flex justify-between items-center p-4">
                     <div class="pr-3">
-                        <div class="text-sm font-medium">Hiện Visual</div>
-                        <div class="text-xs text-slate-400 mt-0.5">Tắt đi để chỉ xem nền (video/ảnh/màu đã chọn), ẩn hẳn hiệu ứng visualizer mà không cần đụng tới Video Background.</div>
+                        <div class="text-sm font-medium" data-i18n="settingsVisualizer.visualEnable.label">${t('settingsVisualizer.visualEnable.label')}</div>
+                        <div class="text-xs text-slate-400 mt-0.5" data-i18n="settingsVisualizer.visualEnable.hint">${t('settingsVisualizer.visualEnable.hint')}</div>
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer shrink-0">
                         <input type="checkbox" id="setting-visual-enable" class="sr-only peer" checked>
