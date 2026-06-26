@@ -81,16 +81,23 @@
         // tag/cover từng bài (KHÔNG đọc blob) để render danh sách ban đầu — thay cho playlist
         // luôn rỗng lúc load trang như bản cũ (mục 3.2).
         //
-        // FIX (ver 10 refine #3): checkPendingResumeStateOnBoot() (resume-state-storage.js) PHẢI
-        // gọi SAU initPlaylistFromDB() — cần playlistCache đã có dữ liệu thật từ DB để kiểm tra
-        // bài đã lưu (currentKey trong resume state) còn tồn tại hay không trước khi quyết định
-        // hiện modal "Tiếp tục nghe?". Đây là bước DUY NHẤT chạy thêm so với luồng khởi động bình
-        // thường khi không có resume state nào đang chờ (trường hợp phổ biến — mở app lần đầu/mở
-        // lại sau khi đã đóng hẳn tab, không qua "ẩn tab" — hàm tự return ngay, không có gì xảy ra).
+        // FIX (ver 10 refine #3, bổ sung — modal phải hiện NGAY từ đầu, không đợi load playlist
+        // xong): checkPendingResumeStateOnBoot() (resume-state-storage.js) giờ gọi NGAY SAU
+        // loadConfig(), KHÔNG đợi initPlaylistFromDB() như bản trước — modal "Tiếp tục nghe?" hiện
+        // SONG SONG với lúc playlist đang load ngầm (không đợi loading xong mới thấy modal), nhưng
+        // 2 nút "Tiếp tục phát"/"Nghe lại" trong modal đó bị tạm khoá (disabled) cho tới khi
+        // initPlaylistFromDB() chạy xong — playSong(key) cần playlistCache/getSongRecord() sẵn sàng
+        // mới hoạt động đúng. Nút "Không" không bị ảnh hưởng, luôn bấm được ngay từ đầu.
+        //
+        // _isPlaylistReadyForResumeModal=true (player-controls.js) + enableResumeModalButtonsWhenPlaylistReady()
+        // (resume-state-storage.js) chạy SAU initPlaylistFromDB() — mở khoá 2 nút đó (nếu modal vẫn
+        // còn đang mở) + sửa lại tiêu đề tạm (key) thành đúng tên bài thật.
         document.addEventListener('DOMContentLoaded', async () => {
             await loadConfig();
             updateSubToggleUI();
+            if (typeof checkPendingResumeStateOnBoot === 'function') checkPendingResumeStateOnBoot();
             if (typeof loadSongStats === 'function') await loadSongStats();
             await initPlaylistFromDB();
-            if (typeof checkPendingResumeStateOnBoot === 'function') checkPendingResumeStateOnBoot();
+            if (typeof _isPlaylistReadyForResumeModal !== 'undefined') _isPlaylistReadyForResumeModal = true;
+            if (typeof enableResumeModalButtonsWhenPlaylistReady === 'function') enableResumeModalButtonsWhenPlaylistReady();
         });
