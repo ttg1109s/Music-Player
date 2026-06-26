@@ -12,15 +12,35 @@ const TPL_PLAYLIST_VIEW = `
                  (Thêm nhạc + Cài đặt + Đổi giao diện). -->
             <div class="flex justify-between items-center gap-5 text-white mb-3">
                 <!-- Logo "SAV" — không khung/nền/viền, in đậm màu trắng (kiểu logo Facebook).
-                     LUÔN 1 DÒNG NGANG (cả lúc nghỉ và lúc hover). Nghỉ: chỉ hiện "S A V". Hover:
-                     ngay sau mỗi chữ hoa, phần chữ thường còn lại của từ (imple/udio/isualizer)
-                     TRƯỢT RA theo chiều ngang (max-width 0 -> giá trị đích, đúng kiểu logo HTML5
-                     nổi tiếng), nối liền nhau trên cùng 1 dòng thành "Simple Audio Visualizer".
-                     Bỏ hover thì animate NGƯỢC LẠI co về "SAV" — cùng 1 transition nên 2 chiều tự
-                     đối xứng. Mỗi chữ thường delay tăng dần (0/60/120ms) để có cảm giác "trượt nối
-                     tiếp" từ trái qua phải thay vì cả 3 nở cùng lúc. Toàn bộ thuần CSS, không JS. -->
-                <div id="sav-logo" class="group flex items-baseline shrink-0 cursor-default select-none leading-none" title="Simple Audio Visualizer">
-                    <span class="text-base font-extrabold text-white">S</span><span class="text-base font-extrabold text-white whitespace-pre overflow-hidden inline-block max-w-0 group-hover:max-w-[4.2em] transition-all duration-300 ease-in-out">imple </span><span class="text-base font-extrabold text-white">A</span><span class="text-base font-extrabold text-white whitespace-pre overflow-hidden inline-block max-w-0 group-hover:max-w-[3.6em] transition-all duration-300 ease-in-out delay-[60ms]">udio </span><span class="text-base font-extrabold text-white">V</span><span class="text-base font-extrabold text-white whitespace-nowrap overflow-hidden inline-block max-w-0 group-hover:max-w-[6em] transition-all duration-300 ease-in-out delay-[120ms]">isualizer</span>
+                     LUÔN 1 DÒNG NGANG (cả lúc nghỉ và lúc mở rộng). Nghỉ: chỉ hiện "S A V". Mở
+                     rộng: ngay sau mỗi chữ hoa, phần chữ thường còn lại của từ (imple/udio/
+                     isualizer) TRƯỢT RA theo chiều ngang (max-width 0 -> giá trị đích, đúng kiểu
+                     logo HTML5 nổi tiếng), nối liền nhau trên cùng 1 dòng thành "Simple Audio
+                     Visualizer". Thu lại thì animate NGƯỢC LẠI co về "SAV" — cùng 1 transition
+                     nên 2 chiều tự đối xứng. Mỗi chữ thường delay tăng dần (0/60/120ms) để có cảm
+                     giác "trượt nối tiếp" từ trái qua phải thay vì cả 3 nở cùng lúc.
+
+                     FIX (bug "bấm logo không ăn, có lúc còn bị zoom vào trang"): bản trước dùng
+                     THUẦN CSS hover/group-hover — trên mobile Safari/Chrome, phần tử này là 1
+                     div chữ thường (không phải button/a), không có thuộc tính touch-action riêng.
+                     Trình duyệt có thể nhận lầm 1 chạm vào nó là tín hiệu "double-tap vào đoạn
+                     văn bản" và kích hoạt ZOOM trang vào đúng vùng đó (tính năng "double-tap to
+                     zoom paragraph" của WebKit) thay vì coi đó là 1 lượt hover/tap bình thường —
+                     đúng triệu chứng quan sát được. Khi trang đã bị zoom, toạ độ chạm các lần sau
+                     không còn khớp vị trí thật của logo nữa (lệch theo tỉ lệ zoom), trông như
+                     "logo không bấm được" dù các nút khác (vốn là button thật) không bị ảnh
+                     hưởng vì trình duyệt xử lý phần tử tương tác chuẩn khác hẳn.
+
+                     SỬA: bỏ hẳn hover/group-hover, chuyển toggle mở/thu sang JS lắng nghe trực
+                     tiếp (xem dom-refs.js) — desktop (chuột thật, phát hiện qua matchMedia
+                     hover:hover and pointer:fine) dùng mouseenter/mouseleave để giữ ĐÚNG cảm giác
+                     hover như cũ; mobile/cảm ứng dùng click (bắn ra từ 1 tap thật, không phải
+                     gesture đoán) để toggle mở/thu — không tap nào còn bị trình duyệt hiểu nhầm
+                     thành double-tap vì không còn phụ thuộc CSS hover nữa. Thuộc tính
+                     touch-action: manipulation khai báo thêm trực tiếp trên thẻ làm lớp chặn
+                     double-tap-zoom thứ 2 ở tầng trình duyệt. -->
+                <div id="sav-logo" class="flex items-baseline shrink-0 cursor-pointer select-none leading-none" style="touch-action: manipulation;" title="Simple Audio Visualizer">
+                    <span class="text-base font-extrabold text-white">S</span><span class="sav-logo-expand text-base font-extrabold text-white whitespace-pre overflow-hidden inline-block max-w-0 transition-all duration-300 ease-in-out" data-expand-width="4.2em">imple </span><span class="text-base font-extrabold text-white">A</span><span class="sav-logo-expand text-base font-extrabold text-white whitespace-pre overflow-hidden inline-block max-w-0 transition-all duration-300 ease-in-out delay-[60ms]" data-expand-width="3.6em">udio </span><span class="text-base font-extrabold text-white">V</span><span class="sav-logo-expand text-base font-extrabold text-white whitespace-nowrap overflow-hidden inline-block max-w-0 transition-all duration-300 ease-in-out delay-[120ms]" data-expand-width="6em">isualizer</span>
                 </div>
                 <div class="flex items-center gap-5 shrink-0">
                 <button id="btn-return-visual" class="hidden hover:text-emerald-400 transition-colors animate-pulse" title="Đang phát (Quay lại)">
