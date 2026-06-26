@@ -64,78 +64,29 @@
         }
 
         /**
-         * Ver 8 refine (mục 2): dừng hẳn phát nhạc + đưa player về ĐÚNG trạng thái đầu (như chưa
-         * từng chọn bài nào) — dùng khi tab/app bị ẩn (xem wakelock.js), THAY HẲN cho hành vi cũ
-         * "pause tạm, giữ nguyên bài đang chọn, không tự resume". Khác removeKeyFromDisplay() (xoá
-         * 1 bài khỏi playlist): hàm này KHÔNG đụng tới playlistOrder/displayOrder/IndexedDB, chỉ
-         * dừng playback + reset UI player + giải phóng currentKey, playlist vẫn còn nguyên y hệt.
-         *
-         * FIX (log 7->8, mục "chuyển tab/ẩn trình duyệt trên iOS"): bản trước có 3 lỗi liên quan
-         * lẫn nhau, đều bắt nguồn từ việc CHỈ trông cậy vào sự kiện 'visibilitychange' (xem
-         * wakelock.js) — sự kiện này được WebKit/Safari trên iOS xác nhận là KHÔNG đáng tin cậy khi
-         * chuyển app/khoá màn hình (có thể bắn trễ, bắn không đầy đủ, hoặc không bắn — trình duyệt
-         * có thể đã ngưng chạy JS đúng lúc đó). Khi điều đó xảy ra, hàm này có thể chỉ chạy được MỘT
-         * PHẦN hoặc chạy NHIỀU LẦN chồng nhau (gọi từ cả 'visibilitychange' VÀ 'pagehide' làm tín
-         * hiệu dự phòng — xem wakelock.js), gây ra:
-         *   (a) "Thanh tiến trình không bị reset": nếu hàm không chạy/chạy nửa chừng,
-         *       audioPlayer.pause() có thể chưa kịp thực thi -> audio vẫn phát ở dưới (iOS cho phép
-         *       <audio> tiếp tục phát khi tab ẩn), 'timeupdate' vẫn bắn liên tục -> thanh tiến trình
-         *       (và biến isSeeking=false) tiếp tục nhảy theo currentTime thật, trông như "không bị
-         *       reset" dù logic reset có gọi.
-         *   (b) "Không tự chuyển UI Playlist": bản trước CHỈ reset dữ liệu (currentKey, text, ảnh...)
-         *       mà KHÔNG đụng tới class hiển thị của #playlist-view/#visualizer-ui — nếu người dùng
-         *       đang ở màn Visualizer lúc bị ẩn, quay lại vẫn thấy màn Visualizer (trống, không có
-         *       gì để xem) thay vì được đưa về Playlist — đúng tinh thần "như chưa chọn bài nào,
-         *       app nên hiện đúng màn ban đầu (Playlist)".
-         *   (c) "Nút phát không chuyển/nhạc không phát/BPM-Pitch-Energy không hoạt động khi bấm lại":
-         *       nếu hàm reset bị NGẮT GIỮA CHỪNG bởi việc trang bị treo (browser suspend JS), hoặc
-         *       nếu MỘT LƯỢT playSong() trước đó (chạy trong withLoadingShield, xem actions.js) đang
-         *       "bay" đúng lúc tab bị ẩn và promise của nó không bao giờ settle lại được, biến khoá
-         *       isShieldBusy (loading-shield-util.js) có thể bị "kẹt" mãi ở true. Mọi lượt
-         *       playSong()/withLoadingShield() gọi SAU đó (kể cả lúc người dùng bấm lại Play) sẽ bị
-         *       chặn IM LẶNG ngay dòng đầu (`if (isShieldBusy) return;`) — nút Play không đổi icon,
-         *       không có gì phát, các thống kê (BPM/Pitch/Energy) không cập nhật vì playSong() chưa
-         *       từng thực sự chạy lại — ĐÚNG triệu chứng quan sát được, dù thumb thanh trượt vẫn nhảy
-         *       (xem (a) — đó là audio CŨ vẫn đang phát ở dưới, không liên quan tới lượt playSong()
-         *       mới bị chặn).
-         *
-         * Giải pháp — 3 phần, áp dụng NGAY ĐẦU hàm trước khi làm bất cứ gì khác:
-         *   1. Cờ `_resetPlayerToIdleInProgress` chặn việc hàm tự gọi chồng lên chính nó (do cả
-         *      'visibilitychange' VÀ 'pagehide' có thể cùng kích hoạt nó) — KHÔNG chặn việc gọi
-         *      hàm nhiều lần liên tiếp (mỗi lần đều phải làm xong việc của nó), chỉ chặn đè lên nhau
-         *      trong cùng 1 lượt xử lý đồng bộ.
-         *   2. Giải phóng cứng `isShieldBusy = false` — đảm bảo dù lượt playSong()/loadingShield
-         *      nào đó có bị "treo" do trang bị OS suspend, lần phát lại sau khi quay lại tab LUÔN
-         *      được phép chạy, không bị khoá im lặng vĩnh viễn. An toàn vì resetPlayerToIdle() chỉ
-         *      chạy khi tab vừa ẨN/quay lại — không có tác vụ shield nào còn "hợp lệ" để bảo vệ vào
-         *      đúng thời điểm này (nhạc đã được lệnh dừng).
-         *   3. Đưa luôn UI về màn Playlist (gọi đúng chuỗi class đã dùng ở nút "Quay lại" sẵn có –
-         *      btnBackPlaylist – để nhất quán 100% hiệu ứng) + closeControlCenter() phòng panel đó
-         *      còn mở sót.
-         */
-        /**
-         * Cache "bài vừa bị dừng" do resetPlayerToIdle() — dùng cho modalChoice() hỏi người dùng
-         * lúc quay lại tab (xem wakelock.js, showResumeChoiceModal()). KHÁC `previousKey` cục bộ
-         * trong resetPlayerToIdle() (biến đó chỉ sống trong phạm vi hàm, dùng để refreshSongNode):
-         * 2 biến dưới đây sống XUYÊN SUỐT đến khi modal xử lý xong (Không/Tiếp tục phát/Nghe lại),
-         * rồi mới bị xoá. `lastStoppedTime` lưu ĐÚNG `audioPlayer.currentTime` tại thời điểm bị
-         * dừng (trước khi resetPlayerToIdle() đưa nó về 0) — để "Tiếp tục phát" phát đúng từ chỗ
-         * cũ, "Nghe lại" phát lại từ đầu.
+         * Cache "bài vừa bị dừng" lúc tab/app bị ẩn (xem wakelock.js, saveResumeStateToLocalStorage())
+         * — dùng cho modalChoice() hỏi người dùng lúc khởi động lại trang sau reload (xem
+         * resume-state-storage.js, checkPendingResumeStateOnBoot() gán lại 2 biến này từ snapshot đã
+         * lưu trước khi gọi showResumeChoiceModal()). `lastStoppedTime` là đúng `audioPlayer.currentTime`
+         * tại thời điểm bị dừng — để "Tiếp tục phát" phát đúng từ chỗ cũ, "Nghe lại" phát lại từ đầu.
          */
         let lastStoppedKey = null;
         let lastStoppedTime = 0;
 
         /**
-         * Đưa UI về màn Playlist, ẩn Visualizer/player-container — TÁCH RA dùng chung giữa
-         * resetPlayerToIdle() (tab/app bị ẩn) và clearAllStoredData() (Clear All trong Quản lý
-         * dung lượng, xem storage-manager.js): cả 2 trường hợp đều "không còn gì đang phát" sau
-         * khi gọi, nên UI phải bị ép về đúng màn Playlist NGAY, không chờ người dùng tự bấm Back —
-         * tránh đúng bug "Clear All xong vẫn thấy current/next/prev trên màn Visualizer" (UI cũ
-         * đứng yên dù currentKey đã bị xoá khỏi RAM).
+         * Đưa UI về màn Playlist, ẩn Visualizer/player-container — dùng bởi clearAllStoredData()
+         * (Clear All trong Quản lý dung lượng, xem storage-manager.js): sau khi xoá hết nhạc, UI
+         * phải bị ép về đúng màn Playlist NGAY, không chờ người dùng tự bấm Back — tránh bug "Clear
+         * All xong vẫn thấy current/next/prev trên màn Visualizer" (UI cũ đứng yên dù currentKey đã
+         * bị xoá khỏi RAM).
          *
          * KHÔNG đụng tới currentKey/audioPlayer/RAM khác — chỉ lo phần hiển thị (class CSS, panel
          * Control Center). Nơi gọi PHẢI tự reset RAM (currentKey=null, audioPlayer.pause()...)
-         * TRƯỚC khi gọi hàm này, đúng như resetPlayerToIdle()/clearAllStoredData() đang làm.
+         * TRƯỚC khi gọi hàm này.
+         *
+         * FIX (ver 10 refine #3, bổ sung): KHÔNG còn được gọi lúc tab/app bị ẩn nữa (xem wakelock.js
+         * — giờ ẩn tab chỉ lưu state + reload thật NGAY, không tự làm gì khác vì reload sẽ tự dọn
+         * sạch UI/RAM) — chỉ còn 1 nơi gọi DUY NHẤT là clearAllStoredData().
          */
         function forceBackToPlaylistUI() {
             visualizerUI.classList.remove('fade-enter-active');
@@ -147,110 +98,57 @@
             taskManager.once(() => { visualizerUI.classList.add('hidden'); playerContainer.classList.add('hidden'); renderPlaylistDiff(); }, 300, 'hideVisualizerUiAfterFade');
         }
 
-        let _resetPlayerToIdleInProgress = false;
-        function resetPlayerToIdle() {
-            if (_resetPlayerToIdleInProgress) return; // chặn gọi chồng (vd. 'visibilitychange' + 'pagehide' cùng bắn)
-            _resetPlayerToIdleInProgress = true;
-            try {
-                // (2) Giải phóng cứng — KHÔNG để 1 lượt withLoadingShield() bị OS treo giữa chừng
-                // (lúc tab vừa ẩn) khoá im lặng MỌI lượt playSong() sau khi người dùng quay lại tab.
-                //
-                // FIX (sau bug Clear All): trước đây dòng này set CỨNG isShieldBusy = false vô điều
-                // kiện — nếu resetPlayerToIdle() bị gọi (tab ẩn) ĐÚNG LÚC clearAllStoredData() đang
-                // chạy giữa loop xoá bài (cũng nằm trong withLoadingShield()), khoá bị mở sớm trong
-                // khi tác vụ xoá vẫn còn dở — 1 hành động khác gọi withLoadingShield() ngay sau đó
-                // (hiếm nhưng có thể) sẽ chạy CHỒNG lên lượt xoá đang chạy. Giờ chỉ giải phóng cứng
-                // khi CHẮC CHẮN không có tác vụ "phá hủy không hoàn tác" nào đang dở — cờ
-                // isDestructiveTaskInProgress (xem storage-manager.js, bật trong suốt
-                // clearAllStoredData()) là tín hiệu DUY NHẤT cho việc đó.
-                if (typeof isDestructiveTaskInProgress === 'undefined' || !isDestructiveTaskInProgress) {
-                    isShieldBusy = false;
-                    if (typeof loadingShield !== 'undefined' && loadingShield) {
-                        loadingShield.classList.remove('opacity-100', 'pointer-events-auto');
-                        loadingShield.classList.add('opacity-0', 'pointer-events-none');
-                    }
-                }
-
-                // Cache LẠI key + vị trí đang phát TRƯỚC khi mọi thứ dưới đây bị reset về 0/null —
-                // dùng cho modal hỏi "Tiếp tục nghe?" lúc quay lại tab (xem wakelock.js).
-                if (currentKey) { lastStoppedKey = currentKey; lastStoppedTime = audioPlayer.currentTime || 0; }
-
-                audioPlayer.pause();
-                audioPlayer.currentTime = 0;
-                if (currentObjectURL) { URL.revokeObjectURL(currentObjectURL); currentObjectURL = null; }
-                if (currentCoverObjectURL) { URL.revokeObjectURL(currentCoverObjectURL); currentCoverObjectURL = null; }
-                audioPlayer.removeAttribute('src'); audioPlayer.src = '';
-                const previousKey = currentKey;
-                currentKey = null;
-                // ver 10: audioPlayer.pause() ở trên đã bắn event 'pause' (gọi syncAutoSwitchVisualPlayState())
-                // NHƯNG lúc đó currentKey vẫn còn giá trị cũ (dòng này mới set null) -> hàm đó chỉ
-                // pause() task thay vì kill() hẳn. Dọn dứt điểm ở đây — không còn bài nào đang phát
-                // thì task auto-switch-visual không có lý do gì tồn tại (pause hờ) nữa.
-                if (typeof killAllAutoSwitchVisualTasks === 'function') killAllAutoSwitchVisualTasks();
-                // Reset UI player về ĐÚNG trạng thái ban đầu — xem bottom-player.js (TPL_BOTTOM_PLAYER)
-                // để biết giá trị gốc lúc chưa chọn bài nào.
-                playerTitle.textContent = 'Chưa chọn bài'; playerArtist.textContent = '---';
-                recordContainer.innerHTML = `<img id="record-art" src="" class="w-full h-full rounded-full object-cover shadow-lg relative z-20" alt="Record"><div class="absolute inset-0 m-auto w-3 h-3 bg-slate-900 rounded-full border border-slate-700 z-30"></div>`;
-                progressBar.value = 0;
-                currentTimeDisplay.textContent = '0:00'; durationTimeDisplay.textContent = '0:00';
-                if ('mediaSession' in navigator) { navigator.mediaSession.metadata = null; navigator.mediaSession.playbackState = 'none'; }
-                btnReturnVisual.classList.add('hidden');
-                if (previousKey) refreshSongNode(previousKey); // bỏ trạng thái "đang phát" (chấm xanh/EQ icon) khỏi bài vừa dừng trong danh sách
-
-                // (3) Đưa UI về màn Playlist — xem forceBackToPlaylistUI() ở trên, dùng CHUNG với
-                // clearAllStoredData() (storage-manager.js) để tránh người dùng quay lại tab vẫn
-                // thấy màn Visualizer trống không còn gì đang phát.
-                forceBackToPlaylistUI();
-            } finally {
-                _resetPlayerToIdleInProgress = false;
-            }
-        }
-
         /**
-         * Modal "Bạn có muốn tiếp tục nghe bài XXX không?" — hiện ra khi người dùng QUAY LẠI tab
-         * sau khi resetPlayerToIdle() đã dừng nhạc + xoá currentKey (xem wakelock.js, gọi hàm này
-         * lúc visibilitychange/pageshow báo tab vừa hiện lại). Dùng modalChoice() (file riêng,
-         * js/core/modal-choice.js) — KHÔNG đụng gì tới loading-shield (chỉ là spinner, không có
-         * chỗ cho nút bấm — xem comment ở modal-choice.js).
+         * Modal "Bạn có muốn tiếp tục nghe bài XXX không?" — hiện ra NGAY LÚC KHỞI ĐỘNG trang (sau
+         * reload do tab/app bị ẩn — xem resume-state-storage.js, checkPendingResumeStateOnBoot(),
+         * gọi hàm này NGAY SAU loadConfig(), KHÔNG đợi initPlaylistFromDB()). Dùng modalChoice()
+         * (file riêng, js/core/modal-choice.js).
          *
-         * 3 lựa chọn (đúng yêu cầu):
-         *   - "Không"          -> không làm gì cả, ở lại màn Playlist (đã sẵn ở idle từ
-         *                         resetPlayerToIdle() rồi, không cần làm gì thêm).
-         *   - "Tiếp tục phát"  -> phát lại ĐÚNG bài đó, seek về đúng vị trí (lastStoppedTime) lúc
-         *                         bị dừng.
-         *   - "Nghe lại"       -> phát lại bài đó TỪ ĐẦU (currentTime = 0).
+         * FIX (ver 10 refine #3, bổ sung — modal phải hiện NGAY từ đầu, không đợi load playlist
+         * xong): vì gọi trước initPlaylistFromDB(), playlistCache có thể CHƯA có dữ liệu lúc modal
+         * mở — hiện tạm tiêu đề là chính currentKey (id bài) thay vì tên thật, rồi
+         * updateResumeModalTitleIfPending() (gọi từ draw-visualizer.js sau khi playlist load xong)
+         * tự cập nhật lại đúng tên một khi có. ĐỒNG THỜI 2 nút "Tiếp tục phát"/"Nghe lại" bị khoá
+         * (disabled, đánh dấu data-resume-needs-playlist để enableResumeModalButtonsWhenPlaylistReady()
+         * — resume-state-storage.js — tìm đúng nút cần mở khoá) cho tới khi playlist load xong, vì
+         * playSong(key) cần playlistCache/getSongRecord() sẵn sàng mới chạy đúng được. Nút "Không"
+         * KHÔNG bị khoá — luôn bấm được ngay, không cần biết playlist đã load xong hay chưa.
+         *
+         * 3 lựa chọn:
+         *   - "Không"          -> KHÔNG áp gì vào RAM, chỉ tắt cờ + dọn snapshot (discardPendingResumeState()).
+         *   - "Tiếp tục phát"  -> applyResumeStateToRam() (shuffle/repeat/displayOrder/video/auto-switch-marks)
+         *                         RỒI playSong(key), seek về đúng lastStoppedTime lúc bị dừng.
+         *   - "Nghe lại"       -> applyResumeStateToRam() RỒI playSong(key) phát lại TỪ ĐẦU (currentTime = 0,
+         *                         playSong() tự đặt khi gán src mới — không cần seek thêm).
          */
         /**
-         * Cờ chống MỞ CHỒNG modal "Tiếp tục nghe?" — xử lý đúng kịch bản người dùng phát hiện:
-         * quay lại tab -> modal hiện ra -> (CHƯA CHỌN GÌ) ẩn tab đi -> quay lại tab LẦN NỮA. Nếu
-         * không có cờ này, lần quay lại thứ 2 có thể gọi showResumeChoiceModal() chồng lên modal
-         * cũ đang mở (modalChoice() tự dọn modal cũ trước khi dựng modal mới — xem modal-choice.js
-         * — nhưng làm vậy nghĩa là context của lượt hỏi đầu tiên bị xoá âm thầm, người dùng có thể
-         * hoang mang vì modal "tự đổi nội dung"/nhảy giật mà không hiểu vì sao).
-         *
-         * true  = modal đang mở, đang chờ người dùng chọn -> showResumeChoiceModal() gọi lại lúc
-         *         này sẽ KHÔNG làm gì cả (không dựng modal thứ 2, không đụng vào modal đang có).
-         * false = không có modal nào đang mở -> nếu có lastStoppedKey, được phép dựng modal mới.
-         * Đặt lại false ngay khi 1 trong 3 nút được bấm (modal đã đóng xong), bất kể chọn nút nào.
+         * Cờ chống MỞ CHỒNG modal "Tiếp tục nghe?" — phòng trường hợp showResumeChoiceModal() bị
+         * gọi 2 lần (hiếm, ví dụ race điều kiện nào đó gọi checkPendingResumeStateOnBoot() lần 2).
+         * true  = modal đang mở, đang chờ người dùng chọn -> gọi lại lúc này KHÔNG làm gì cả.
+         * false = không có modal nào đang mở. Đặt lại false ngay khi 1 trong 3 nút được bấm.
          */
         let isResumeModalOpen = false;
+
+        /** true khi initPlaylistFromDB() đã chạy xong (xem draw-visualizer.js) — dùng để biết
+         * lúc showResumeChoiceModal() mở, có nên disable 2 nút "Tiếp tục phát"/"Nghe lại" hay
+         * không (chỉ disable nếu playlist CHƯA load xong tại đúng thời điểm modal mở). */
+        let _isPlaylistReadyForResumeModal = false;
 
         function showResumeChoiceModal() {
             if (isResumeModalOpen) return; // modal cũ vẫn đang mở chờ chọn -> không mở chồng/thay thế
             if (!lastStoppedKey) return; // chưa từng nghe gì trước đó -> không có gì để hỏi
             const key = lastStoppedKey;
             const resumeTime = lastStoppedTime;
-            // Xoá cache NGAY khi mở modal (không phải lúc bấm nút) — tránh hiện lại modal này thêm
-            // lần nữa nếu lại bị ẩn/hiện tab liên tiếp trong lúc modal đang mở (currentKey vẫn null
-            // lúc đó, nhưng lastStoppedKey đã bị xoá nên triggerHideReset()/showResumeChoiceModal()
-            // sau đó không có gì để hỏi nữa). Cờ isResumeModalOpen ở trên là lớp chặn THỨ HAI, áp
-            // dụng kể cả trong trường hợp hiếm lastStoppedKey vô tình có giá trị trở lại trước khi
-            // modal hiện tại đóng (ví dụ nếu code khác sau này gán lastStoppedKey ở chỗ mới).
-            lastStoppedKey = null; lastStoppedTime = 0;
+            lastStoppedKey = null; lastStoppedTime = 0; // tránh gọi lại nhầm key cũ nếu hàm bị gọi lần 2
             isResumeModalOpen = true;
 
+            // FIX (ver 10 refine #3, bổ sung — modal phải hiện NGAY từ đầu, không đợi load playlist
+            // xong): gọi hàm này ngay sau loadConfig(), playlistCache rất có thể CHƯA có dữ liệu —
+            // hiện tạm chính key (id bài) làm tiêu đề, updateResumeModalTitleIfPending() (gọi từ
+            // draw-visualizer.js sau initPlaylistFromDB()) tự sửa lại đúng tên khi có.
             const cached = (typeof playlistCache !== 'undefined') ? playlistCache.get(key) : null;
             const title = cached && cached.tag && cached.tag.title ? cached.tag.title : key;
+            const needsPlaylist = !_isPlaylistReadyForResumeModal; // playlist chưa load xong -> khoá tạm 2 nút cần playSong()
 
             modalChoice(
                 `Bạn có muốn tiếp tục nghe bài <b>${title}</b> không?`,
@@ -258,13 +156,26 @@
                     {
                         label: 'Không',
                         className: 'flex-1 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-sm font-semibold transition-colors',
-                        onClick: () => { isResumeModalOpen = false; }
+                        // "Không" KHÔNG cần playlist load xong — chỉ tắt cờ/dọn snapshot, không gọi
+                        // playSong() nào cả — luôn bấm được ngay từ lúc modal vừa mở.
+                        onClick: () => {
+                            isResumeModalOpen = false;
+                            if (typeof discardPendingResumeState === 'function') discardPendingResumeState();
+                        }
                     },
                     {
                         label: 'Tiếp tục phát',
                         className: 'flex-1 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-sm font-semibold transition-colors',
+                        disabled: needsPlaylist,
+                        dataset: { resumeNeedsPlaylist: '1' }, // querySelector bởi enableResumeModalButtonsWhenPlaylistReady() (resume-state-storage.js)
+                        // applyResumeStateToRam() PHẢI gọi TRƯỚC window.playSong(key) — hàm đó set
+                        // window._resumeAutoSwitchVisualMarks (đọc bởi startAutoSwitchVisualBranch()
+                        // trong auto-switch-visual.js, tự kích hoạt qua sự kiện 'play' bên trong
+                        // playSong()) và phục hồi shuffle/repeat/displayOrder cần có TRƯỚC khi người
+                        // dùng bấm Next/Prev ngay sau đó.
                         onClick: async () => {
                             isResumeModalOpen = false;
+                            if (typeof applyResumeStateToRam === 'function') applyResumeStateToRam();
                             await window.playSong(key);
                             if (currentKey === key) audioPlayer.currentTime = resumeTime;
                         }
@@ -272,11 +183,47 @@
                     {
                         label: 'Nghe lại',
                         className: 'flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold transition-colors',
-                        onClick: () => { isResumeModalOpen = false; window.playSong(key); } // playSong() đã tự đặt currentTime = 0 khi gán src mới — không cần seek thêm
+                        disabled: needsPlaylist,
+                        dataset: { resumeNeedsPlaylist: '1' },
+                        // CŨNG áp dụng applyResumeStateToRam() (shuffle/repeat/displayOrder/video/
+                        // auto-switch-marks) — chỉ riêng VỊ TRÍ ĐANG NGHE của bài là phát lại từ đầu
+                        // (playSong() đã tự đặt currentTime = 0 khi gán src mới — không cần seek
+                        // thêm), mọi state khác vẫn nên khôi phục đúng như đã lưu.
+                        onClick: () => {
+                            isResumeModalOpen = false;
+                            if (typeof applyResumeStateToRam === 'function') applyResumeStateToRam();
+                            window.playSong(key);
+                        }
                     }
                 ],
                 { title: 'Đang phát tiếp?' }
             );
+
+            // Cache lại key/title hiện tại để updateResumeModalTitleIfPending() (gọi sau khi
+            // playlist load xong) biết cần thay tiêu đề tạm bằng tên thật của ĐÚNG bài nào.
+            _resumeModalPendingKey = needsPlaylist ? key : null;
+        }
+
+        /** Key đang chờ cập nhật lại tiêu đề modal (chỉ có giá trị nếu modal đang mở với tiêu đề
+         * TẠM — xem showResumeChoiceModal()). null nếu không cần cập nhật gì (đã có tên thật ngay
+         * từ đầu, hoặc modal đã đóng). */
+        let _resumeModalPendingKey = null;
+
+        /**
+         * Gọi từ enableResumeModalButtonsWhenPlaylistReady() (resume-state-storage.js, sau khi
+         * initPlaylistFromDB() xong) — nếu modal đang mở VỚI tiêu đề tạm (_resumeModalPendingKey
+         * còn giá trị), sửa lại đúng tên bài thật từ playlistCache. No-op an toàn nếu modal đã đóng
+         * hoặc tiêu đề đã đúng từ đầu.
+         */
+        function updateResumeModalTitleIfPending() {
+            if (!_resumeModalPendingKey) return;
+            const key = _resumeModalPendingKey;
+            _resumeModalPendingKey = null;
+            const textEl = document.getElementById('modal-choice-text');
+            if (!textEl) return; // modal đã đóng (người dùng bấm trước khi load xong) -> không có gì để sửa
+            const cached = (typeof playlistCache !== 'undefined') ? playlistCache.get(key) : null;
+            const title = cached && cached.tag && cached.tag.title ? cached.tag.title : key;
+            textEl.innerHTML = `Bạn có muốn tiếp tục nghe bài <b>${title}</b> không?`;
         }
 
         function switchToVisualizer() {

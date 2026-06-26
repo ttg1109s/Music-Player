@@ -26,6 +26,14 @@
  *       nút cuối cùng trong `buttons` (coi là hành động "huỷ"/mặc định an toàn nhất). Mặc định
  *       false vì hầu hết các quyết định loại này (xoá file, chọn tiếp tục nghe...) không nên đóng
  *       nhầm khi lỡ tay chạm ra ngoài.
+ *   Mỗi phần tử trong `buttons` còn hỗ trợ thêm (tuỳ chọn, dùng khi cần khoá tạm 1 nút lúc mới mở
+ *   modal — ví dụ chờ dữ liệu nào đó load xong mới cho bấm):
+ *     - disabled:  true để nút này bắt đầu ở trạng thái khoá (disabled, thêm class mờ + cursor
+ *                  not-allowed) — code gọi tự chịu trách nhiệm mở khoá lại sau (querySelector nút
+ *                  qua dataset đã gán, xem `dataset` dưới đây).
+ *     - dataset:   object {key: value} gán thẳng vào btnEl.dataset — dùng để code BÊN NGOÀI
+ *                  modalChoice() (sau khi modal đã mở) có thể querySelector lại đúng nút cần mở
+ *                  khoá/đổi trạng thái, vì modalChoice() không trả ra ref tới từng btnEl.
  *
  * KHÔNG dùng chung cơ chế với loading-shield (`withLoadingShield`, `js/core/loading-shield-util.js`)
  * — đã kiểm tra: loading-shield chỉ là spinner + 1 dòng text, không có chỗ cho nút bấm nào, sửa nó
@@ -62,6 +70,7 @@
             const textEl = document.createElement('p');
             textEl.className = 'text-sm text-slate-300 leading-relaxed';
             textEl.innerHTML = text; // cho phép <b>/<br> đơn giản (ví dụ in đậm tên bài hát) — nội dung luôn do code app tự dựng, không lấy trực tiếp từ input người dùng chưa qua escape
+            textEl.id = 'modal-choice-text'; // cho phép code bên ngoài cập nhật lại nội dung sau khi mở (ví dụ thay tiêu đề tạm bằng tên bài thật khi load xong)
             card.appendChild(textEl);
 
             const buttonRow = document.createElement('div');
@@ -75,6 +84,11 @@
                 const btnEl = document.createElement('button');
                 btnEl.className = btnDef.className || 'flex-1 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-sm font-semibold transition-colors';
                 btnEl.textContent = btnDef.label;
+                if (btnDef.dataset) Object.keys(btnDef.dataset).forEach(k => { btnEl.dataset[k] = btnDef.dataset[k]; });
+                if (btnDef.disabled) {
+                    btnEl.disabled = true;
+                    btnEl.classList.add('opacity-40', 'cursor-not-allowed');
+                }
                 btnEl.addEventListener('click', () => {
                     closeModal();
                     if (typeof btnDef.onClick === 'function') btnDef.onClick();

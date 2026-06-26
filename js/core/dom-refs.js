@@ -46,6 +46,10 @@
         const playerTitle = document.getElementById('player-title'), playerArtist = document.getElementById('player-artist');
         const recordArt = document.getElementById('record-art'), recordContainer = document.getElementById('record-container');
         const statBpm = document.getElementById('stat-bpm'), statNote = document.getElementById('stat-note'), statEnergy = document.getElementById('stat-energy');
+        // Toggle ẩn/hiện dải BPM/Pitch/Energy (ver 10 refine, bổ sung) — xem stats-panel-toggle.js.
+        const statsPanel = document.getElementById('stats-panel');
+        const btnToggleStatsPanel = document.getElementById('btn-toggle-stats-panel');
+        const iconStatsPanelVisible = document.getElementById('icon-stats-panel-visible'), iconStatsPanelHidden = document.getElementById('icon-stats-panel-hidden');
         
         const drawerSettings = document.getElementById('drawer-settings'), btnSettings = document.getElementById('btn-settings'), btnSettingsPlaylist = document.getElementById('btn-settings-playlist'), closeDrawer = document.getElementById('close-drawer');
         // Drawer "Tùy chỉnh Visualizer" + "Tùy chỉnh Phụ đề" (ver 8 refine, mục 3) — cùng pattern
@@ -140,6 +144,8 @@
         // riêng (xem js/components/settings/playlist-background.js). id mới `setting-visual-enable`.
         const visualEnabledToggle = document.getElementById('setting-visual-enable');
         const keepScreenOnToggle = document.getElementById('setting-keep-screen-on');
+        // Khắc phục sự cố (ver 10 refine, bổ sung) — xem js/core/app-recovery.js.
+        const btnRestartApp = document.getElementById('setting-restart-app'), btnRestoreDefaults = document.getElementById('setting-restore-defaults');
 
         const btnSubtitle = document.getElementById('btn-subtitle'), subToggleBadge = document.getElementById('sub-toggle-badge');
         const subtitleModal = document.getElementById('subtitle-modal'), btnCloseSubModal = document.getElementById('btn-close-sub-modal');

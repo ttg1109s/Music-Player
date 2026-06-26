@@ -177,6 +177,13 @@
             taskManager.kill(AUTO_SWITCH_VISUAL_TASK_MARKS);
         }
 
+        /** Key của bài đã build/gán marks LẦN GẦN NHẤT — dùng để onAutoSwitchVisualSongChanged()
+         * (gọi từ 'loadedmetadata') biết liệu startAutoSwitchVisualBranch() đã chạy đúng cho bài
+         * hiện tại rồi chưa (qua event 'play' bắn TRƯỚC 'loadedmetadata' trong playSong() — xem
+         * giải thích đầy đủ ở comment startAutoSwitchVisualBranch()) — tránh build/gán LẠI LẦN 2,
+         * đè mất marks vừa phục hồi đúng từ applyResumeStateToRam() (resume-state-storage.js). */
+        let _lastMarksBuiltForKey = null;
+
         /**
          * Bắt đầu ĐÚNG 1 nhánh theo vizConfig.autoSwitchVisualTimeMode hiện tại — luôn kill cả 2
          * task trước (đảm bảo không bao giờ có 2 nhánh chạy song song), rồi khởi động lại nhánh
@@ -184,13 +191,30 @@
          * riêng của nhánh đang chạy (autoSwitchVisualSecondsFixed/Random/Duration), đổi bài (chỉ
          * nhánh 2 cần build lại marks — nhánh 1 KHÔNG được reset khi đổi bài, xem
          * onAutoSwitchVisualSongChanged() gọi có điều kiện).
+         *
+         * FIX (ver 10 refine #3 — khôi phục sau "ẩn tab -> reload"): nếu
+         * resume-state-storage.js (applyResumeStateToRam(), gọi từ nhánh "Tiếp tục phát"/"Nghe lại"
+         * của showResumeChoiceModal()) vừa đặt window._resumeAutoSwitchVisualMarks — nghĩa là có 1
+         * mảng marks ĐÃ LƯU từ trước khi ẩn tab, ghi nhớ đúng hiệu ứng cho từng đoạn đã nghe qua —
+         * ƯU TIÊN gán đè mảng đó vào autoSwitchVisualMarks NGAY, KHÔNG gọi buildAutoSwitchVisualMarks()
+         * (hàm đó sẽ tạo mảng MỚI HOÀN TOÀN, xoá hết các mốc đã "nhớ" visual, phá vỡ tính nhất quán
+         * "tua qua tua lại không đổi ngẫu nhiên" mà tính năng này được thiết kế để đảm bảo). Đọc
+         * marks đã lưu CHỈ 1 LẦN rồi xoá cờ ngay (window._resumeAutoSwitchVisualMarks = null) — các
+         * lần startAutoSwitchVisualBranch() SAU đó (đổi bài tiếp/đổi field giây...) phải build mới
+         * như bình thường, không dùng lại marks cũ của bài trước.
          */
         function startAutoSwitchVisualBranch() {
             killAllAutoSwitchVisualTasks();
             if (!vizConfig.autoSwitchVisualEnabled || !currentKey) return;
 
             if (vizConfig.autoSwitchVisualTimeMode === 'duration') {
-                buildAutoSwitchVisualMarks();
+                if (typeof window !== 'undefined' && Array.isArray(window._resumeAutoSwitchVisualMarks) && window._resumeAutoSwitchVisualMarks.length > 0) {
+                    autoSwitchVisualMarks = window._resumeAutoSwitchVisualMarks;
+                    window._resumeAutoSwitchVisualMarks = null; // chỉ dùng 1 lần — lần sau build lại bình thường
+                } else {
+                    buildAutoSwitchVisualMarks();
+                }
+                _lastMarksBuiltForKey = currentKey; // đánh dấu ĐÃ build/gán marks đúng cho bài này — xem onAutoSwitchVisualSongChanged()
                 taskManager.addNew(AUTO_SWITCH_VISUAL_TASK_MARKS, { time: 1000, exe: autoSwitchVisualMarksTick, mode: 'timeout', count: 0 });
                 taskManager.operator(AUTO_SWITCH_VISUAL_TASK_MARKS, 'enabled');
                 if (typeof audioPlayer !== 'undefined' && audioPlayer.paused) taskManager.pause(AUTO_SWITCH_VISUAL_TASK_MARKS);
@@ -205,10 +229,30 @@
          * marks (duration mới khác hẳn bài cũ). Nhánh 1 ('fixed'/'random') KHÔNG được đụng tới ở
          * đây — đặc điểm cốt lõi của nhánh 1 là "không quan tâm bài nào đang phát", đổi bài giữa 1
          * vòng đếm không reset gì cả, đồng hồ cứ tiếp tục đếm xuyên qua bài mới.
+         *
+         * FIX (ver 10 refine #3, bổ sung — race condition 'play' bắn TRƯỚC 'loadedmetadata' trong
+         * playSong(), đã xác nhận bằng test thực tế): listener 'play' (player-controls.js) gọi
+         * syncAutoSwitchVisualPlayState() → thấy task CHƯA tồn tại (bài mới) → tự gọi
+         * startAutoSwitchVisualBranch() lần 1, đọc ĐÚNG window._resumeAutoSwitchVisualMarks (nếu có
+         * từ applyResumeStateToRam()) rồi XOÁ cờ đó ngay (chỉ dùng 1 lần). Event 'loadedmetadata' bắn
+         * SAU 'play' — nếu hàm này (gọi bởi event đó) CỨ gọi lại startAutoSwitchVisualBranch() VÔ
+         * ĐIỀU KIỆN như bản trước, marks vừa phục hồi đúng (lần 1) sẽ bị build LẠI MỚI HOÀN TOÀN ở
+         * lần 2 này (cờ window._resumeAutoSwitchVisualMarks đã null từ lần 1) — mất hết các mốc đã
+         * "nhớ" visual của đoạn đã nghe qua trước khi ẩn tab, đúng triệu chứng quan sát được khi
+         * test phục hồi resume state.
+         *
+         * SỬA: chỉ gọi startAutoSwitchVisualBranch() ở đây nếu marks CHƯA từng build cho ĐÚNG bài
+         * hiện tại (_lastMarksBuiltForKey !== currentKey) — startAutoSwitchVisualBranch() tự cập
+         * nhật _lastMarksBuiltForKey mỗi khi nó thực sự build/gán marks (cho dù gọi từ 'play' hay
+         * từ đây), nên lần gọi thứ 2 (nếu có, cho CÙNG 1 bài) sẽ tự nhận ra không cần làm lại.
          */
         function onAutoSwitchVisualSongChanged() {
-            if (vizConfig.autoSwitchVisualTimeMode === 'duration') startAutoSwitchVisualBranch();
+            if (vizConfig.autoSwitchVisualTimeMode === 'duration' && _lastMarksBuiltForKey !== currentKey) {
+                startAutoSwitchVisualBranch();
+            }
             // Nhánh 1: không làm gì — task vẫn đang đếm tiếp, không liên quan việc đổi bài.
+            // Nhánh 2 nhưng marks đã build đúng cho bài hiện tại (từ event 'play' bắn trước) -> bỏ
+            // qua, không làm gì thêm.
         }
 
         /**
