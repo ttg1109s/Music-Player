@@ -38,11 +38,34 @@ Sau đó có thêm 1 loạt **mini-fix (chưa final)** — log riêng:
 > thuật" ở cuối [changelog/v10-mini-not-full-fix.md](./changelog/v10-mini-not-full-fix.md)
 > để biết đầy đủ những gì còn dở.
 
+Sau đó có thêm 1 batch riêng **khung đa ngôn ngữ — i18n (chưa final)** — log
+riêng: [changelog/v10-lang-test.md](./changelog/v10-lang-test.md):
+
+- `English` làm ngôn ngữ GỐC, nằm cứng trong RAM (`js/core/lang.js`, 311
+  key) — không qua fetch, không qua IndexedDB, luôn là fallback cuối cùng.
+- Mọi ngôn ngữ khác (kể cả tiếng Việt, `lang/vi.json` đi kèm làm file mẫu)
+  đều phải do người dùng tự upload qua Settings → "Ngôn ngữ" — project chạy
+  qua `file://` nên không tự `fetch()` được file json nào khác.
+- File upload được validate (key thừa cắt, key thiếu/sai kiểu bù từ
+  English) rồi lưu IndexedDB (store `languages` mới, `DB_VERSION` 2→3).
+- Toàn bộ text trong app (template + alert/modal động) đã chuyển qua
+  `t()`/`tFormat()` — không còn chuỗi tiếng Việt hard-code nào sót lại.
+- Default tạm thời của bản test này là `English` (để thấy ngay UI đổi ngôn
+  ngữ, chắc chắn không phải cache cũ) — đổi lại tiếng Việt làm default cần
+  thêm 1 bước (xem mục "Nợ kỹ thuật" trong changelog).
+
+> **⚠️ Batch này CHƯA test trên browser thật.** Chỉ kiểm chứng qua
+> `node --check` (cú pháp) + test harness Node `vm`/`require` (mock
+> IndexedDB). Rủi ro lớn nhất chưa loại trừ: `lang.js` giờ nạp NGAY ĐẦU
+> `<body>`, TRƯỚC TOÀN BỘ file component — thay đổi thứ tự nạp script DUY
+> NHẤT trong cả project. Xem mục "Nợ kỹ thuật" ở cuối
+> [changelog/v10-lang-test.md](./changelog/v10-lang-test.md).
+
 ## Đọc tiếp ở đâu
 
 | Muốn biết... | Đọc... |
 |---|---|
-| Toàn bộ lịch sử thay đổi (ver 1 → ver 10 → mini-fix) | [readme/changelog-index.md](./readme/changelog-index.md) |
+| Toàn bộ lịch sử thay đổi (ver 1 → ver 10 → mini-fix → i18n) | [readme/changelog-index.md](./readme/changelog-index.md) |
 | Cấu trúc thư mục, file nào làm gì | [readme/folder-structure.md](./readme/folder-structure.md) |
 | Thứ tự nạp script trong `index.html` (quan trọng, đừng đảo) | [readme/script-load-order.md](./readme/script-load-order.md) |
 | Cách chạy / deploy ứng dụng + các lưu ý theo từng bản | [readme/usage.md](./readme/usage.md) |
