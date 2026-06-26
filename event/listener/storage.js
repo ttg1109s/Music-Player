@@ -8,11 +8,16 @@
  *     KHÔNG tạo state mới, KHÔNG tính toán gì) rồi gửi 1 message qua eventBus.send().
  *   - "Địa chỉ nhà" (msg.router) LUÔN là 'storage' cho mọi listener trong file này.
  *
- * NẠP SAU CÙNG (sau bus, core, workflow, router) — vì lúc gắn addEventListener, eventBus.send()
- * phải đã sẵn sàng để gọi ngay khi người dùng bấm.
+ * FIX (sau review): KHÔNG tự document.getElementById trong file này — project đã có quy ước
+ * CHUNG là dom-refs.js là nơi DUY NHẤT gọi getElementById, mọi nơi khác (kể cả /event/) chỉ DÙNG
+ * LẠI biến đã có sẵn ở đó (drawerStorage, btnOpenStorage, btnDeleteBroken, v.v. — xem
+ * js/core/dom-refs.js, khối "Quản lý dung lượng"). Vi phạm quy ước này sẽ tạo ra 2 nguồn tham
+ * chiếu cho cùng 1 phần tử DOM, dễ lệch nhau khi sửa id trong template HTML sau này.
+ *
+ * NẠP SAU CÙNG (sau bus, core, workflow, router, VÀ SAU dom-refs.js) — cần cả eventBus.send() và
+ * mọi biến DOM (btnOpenStorage, drawerStorage,...) đã sẵn sàng trước khi gắn addEventListener.
  */
 
-const btnOpenStorage = document.getElementById('setting-open-storage');
 if (btnOpenStorage) {
     btnOpenStorage.addEventListener('click', () => {
         drawerStorage.classList.remove('translate-y-full'); // thuần UI hiển thị drawer — không phải nghiệp vụ, listener tự làm luôn cũng được vì không gọi hàm core nghiệp vụ nào
@@ -20,35 +25,30 @@ if (btnOpenStorage) {
     });
 }
 
-const btnBackStorage = document.getElementById('btn-back-storage');
 if (btnBackStorage) {
     btnBackStorage.addEventListener('click', () => {
         drawerStorage.classList.add('translate-y-full'); // thuần UI, không có nghiệp vụ nào để gửi message
     });
 }
 
-const btnDownloadThenClear = document.getElementById('btn-storage-download-then-clear');
 if (btnDownloadThenClear) {
     btnDownloadThenClear.addEventListener('click', () => {
         eventBus.send({ router: 'storage', type: 'storage.downloadThenClear.click', payload: {} });
     });
 }
 
-const btnClearNoDownload = document.getElementById('btn-storage-clear-no-download');
 if (btnClearNoDownload) {
     btnClearNoDownload.addEventListener('click', () => {
         eventBus.send({ router: 'storage', type: 'storage.clearNoDownload.click', payload: {} });
     });
 }
 
-const btnScanBroken = document.getElementById('btn-storage-scan-broken');
 if (btnScanBroken) {
     btnScanBroken.addEventListener('click', () => {
         eventBus.send({ router: 'storage', type: 'storage.scanBroken.click', payload: {} });
     });
 }
 
-const btnDeleteBroken = document.getElementById('btn-storage-delete-broken');
 if (btnDeleteBroken) {
     btnDeleteBroken.addEventListener('click', () => {
         // Không cần gửi gì trong payload — router tự đọc lastScanResults (state riêng của router)
@@ -57,7 +57,6 @@ if (btnDeleteBroken) {
     });
 }
 
-const btnDismissScan = document.getElementById('btn-storage-dismiss-scan');
 if (btnDismissScan) {
     btnDismissScan.addEventListener('click', () => {
         eventBus.send({ router: 'storage', type: 'storage.dismissScan.click', payload: {} });
