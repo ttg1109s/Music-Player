@@ -50,10 +50,10 @@
             for (const file of allFiles) {
                 const check = validateAudioFile(file);
                 if (check.valid) files.push(file);
-                else failedFiles.push(`${file.name} — ${check.reason}`);
+                else failedFiles.push(`${escapeHtml(file.name)} — ${check.reason}`);
             }
             if (files.length === 0) {
-                if (failedFiles.length > 0) alert(tFormat('common.upload.failedList', { n: failedFiles.length, list: failedFiles.join('\n\n') }));
+                if (failedFiles.length > 0) await alertModal(tFormat('common.upload.failedList', { n: failedFiles.length, list: failedFiles.join('\n\n') }));
                 return;
             }
             // TỐI ƯU (v7): trước đây dùng `playlistOrder.includes(key)` NGAY TRONG vòng `for` qua
@@ -149,7 +149,7 @@
                     } catch (err) {
                         console.error(`[playlist] Không nạp được "${file.name}":`, err);
                         const errMsg = (err && err.name && err.message) ? `${err.name}: ${err.message}` : String(err && err.message || err || t('common.unknownError'));
-                        failedFiles.push(`${file.name} — ${errMsg}`);
+                        failedFiles.push(`${escapeHtml(file.name)} — ${escapeHtml(errMsg)}`);
                     }
                 }
                 updateShuffleArray();
@@ -162,16 +162,16 @@
                 // withLoadingShield() đã bỏ qua lệnh gọi này vì đang bận tác vụ khác — KHÔNG có file
                 // nào được xử lý dù người dùng đã chọn xong. Báo rõ thay vì im lặng.
                 console.warn('[upload] handleAudioFiles bị bỏ qua: đang có 1 tác vụ khác dùng loading shield (isShieldBusy=true). Hãy thử lại sau khi tác vụ hiện tại xong.');
-                alert(t('common.upload.shieldBusy'));
+                await alertModal(t('common.upload.shieldBusy'));
                 return;
             }
 
             if (failedFiles.length > 0) {
-                alert(tFormat('common.upload.failedList', { n: failedFiles.length, list: failedFiles.join('\n\n') }));
+                await alertModal(tFormat('common.upload.failedList', { n: failedFiles.length, list: failedFiles.join('\n\n') }));
             }
           } catch (err) {
               console.error('[upload] Lỗi không xác định trong handleAudioFiles:', err);
-              alert(tFormat('common.upload.genericError', { message: err && err.message ? err.message : err }));
+              await alertModal(tFormat('common.upload.genericError', { message: escapeHtml(err && err.message ? err.message : err) }));
           }
         }
 
@@ -199,7 +199,7 @@
                 await handleAudioFiles(fileList);
             } catch (err) {
                 console.error('[upload] Lỗi không xác định khi xử lý file đã chọn (#audio-upload):', err);
-                alert(tFormat('common.upload.fileError', { message: err && err.message ? err.message : err }));
+                await alertModal(tFormat('common.upload.fileError', { message: escapeHtml(err && err.message ? err.message : err) }));
             }
         });
 
@@ -210,13 +210,13 @@
                 console.log(`[upload] #audio-upload-folder change: ${fileList.length} file được chọn (toàn bộ thư mục + thư mục con).`);
                 if (fileList.length === 0) {
                     console.warn('[upload] #audio-upload-folder: FileList rỗng sau khi chọn thư mục — trình duyệt không trả về file nào (thư mục trống, hoặc bị chặn quyền đọc thư mục).');
-                    alert(t('common.upload.folderEmpty'));
+                    await alertModal(t('common.upload.folderEmpty'));
                     return;
                 }
                 await handleAudioFiles(fileList);
             } catch (err) {
                 console.error('[upload] Lỗi không xác định khi xử lý thư mục đã chọn (#audio-upload-folder):', err);
-                alert(tFormat('common.upload.folderError', { message: err && err.message ? err.message : err }));
+                await alertModal(tFormat('common.upload.folderError', { message: escapeHtml(err && err.message ? err.message : err) }));
             }
         });
 

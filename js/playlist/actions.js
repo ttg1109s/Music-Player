@@ -51,8 +51,11 @@
             // next/prev được vì chỉ tính index trong RAM, nhưng không có tiếng vì không lấy được
             // blob thật từ IndexedDB"), rồi thoát ra ngoài dưới dạng unhandled promise rejection.
             // Sau khi db.js đã tự retry, trường hợp này hiếm xảy ra hơn nhiều, nhưng vẫn cần lớp
-            // bảo vệ cuối: nếu thật sự thất bại (retry cũng lỗi, hoặc lỗi khác hẳn), alert() đúng
-            // nguyên văn lỗi thay vì im lặng — cùng tinh thần đã áp dụng cho luồng upload.
+            // bảo vệ cuối: nếu thật sự thất bại (retry cũng lỗi, hoặc lỗi khác hẳn), alertModal()
+            // đúng nguyên văn lỗi thay vì im lặng — cùng tinh thần đã áp dụng cho luồng upload.
+            // FIX (patch alert -> alertModal): trước đây dùng alert() native (chặn luồng JS) — đổi
+            // sang alertModal() (modal-choice.js) để không bị chặn/crash khi gọi đúng lúc 1
+            // #loading-shield khác đang chạy (alert() native từng gây "đứng" cảm giác app crash).
             return withLoadingShield(t('common.loading.switchingSong'), async () => {
                 if (currentObjectURL) { URL.revokeObjectURL(currentObjectURL); currentObjectURL = null; }
                 if (currentCoverObjectURL) { URL.revokeObjectURL(currentCoverObjectURL); currentCoverObjectURL = null; }
@@ -62,7 +65,7 @@
                 const record = await getSongRecord(key);
                 if (!record) {
                     removeKeyFromDisplay(key);
-                    alert(t('common.playSong.notFound'));
+                    await alertModal(t('common.playSong.notFound'));
                     return;
                 }
 
@@ -111,9 +114,10 @@
 
                 subtitles = record.subtitles ? record.subtitles.slice() : [];
                 clearAllActiveSubBlocks(); resetAutoSub(); renderSubList();
-            }, false).catch(err => {
+            }, false).catch(async err => {
                 console.error(`[playlist] playSong("${key}") lỗi không xác định, nhạc có thể không phát ra tiếng được:`, err);
-                alert(tFormat('common.playSong.error', { message: `${err && err.name ? err.name + ': ' : ''}${err && err.message ? err.message : String(err)}` }));
+                const rawMsg = `${err && err.name ? err.name + ': ' : ''}${err && err.message ? err.message : String(err)}`;
+                await alertModal(tFormat('common.playSong.error', { message: escapeHtml(rawMsg) }));
             });
         };
 
@@ -271,11 +275,11 @@
             songEditModal.classList.add('hidden');
         }
 
-        songEditCoverUploadInput.addEventListener('change', (e) => {
+        songEditCoverUploadInput.addEventListener('change', async (e) => {
             const file = e.target.files[0]; if (!file) return;
             e.target.value = '';
             const check = validateImageFile(file);
-            if (!check.valid) { alert(check.reason); return; }
+            if (!check.valid) { await alertModal(check.reason); return; }
             revokeSongEditPendingPreview();
             songEditPendingCover = file;
             songEditPendingCoverPreviewUrl = URL.createObjectURL(file);
@@ -296,7 +300,7 @@
 
             await withLoadingShield(t('common.loading.savingInfo'), async () => {
                 const record = await getSongRecord(key);
-                if (!record) { alert(t('common.songEdit.notFound')); return; }
+                if (!record) { await alertModal(t('common.songEdit.notFound')); return; }
                 record.tag = { ...record.tag, ...newTag };
                 // Ảnh bìa: File mới -> ghi thẳng Blob (File là 1 dạng Blob, lưu IndexedDB được luôn,
                 // giống cách record.cover đã được ghi từ jsmediatags lúc nạp file ban đầu). 'remove'
