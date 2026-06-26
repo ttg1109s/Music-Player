@@ -80,9 +80,17 @@
         // từ IndexedDB — mục 6 PLAN_INDEXEDDB.md). initPlaylistFromDB() đọc meta.playlistOrder +
         // tag/cover từng bài (KHÔNG đọc blob) để render danh sách ban đầu — thay cho playlist
         // luôn rỗng lúc load trang như bản cũ (mục 3.2).
+        //
+        // FIX (ver 10 refine #3): checkPendingResumeStateOnBoot() (resume-state-storage.js) PHẢI
+        // gọi SAU initPlaylistFromDB() — cần playlistCache đã có dữ liệu thật từ DB để kiểm tra
+        // bài đã lưu (currentKey trong resume state) còn tồn tại hay không trước khi quyết định
+        // hiện modal "Tiếp tục nghe?". Đây là bước DUY NHẤT chạy thêm so với luồng khởi động bình
+        // thường khi không có resume state nào đang chờ (trường hợp phổ biến — mở app lần đầu/mở
+        // lại sau khi đã đóng hẳn tab, không qua "ẩn tab" — hàm tự return ngay, không có gì xảy ra).
         document.addEventListener('DOMContentLoaded', async () => {
             await loadConfig();
             updateSubToggleUI();
             if (typeof loadSongStats === 'function') await loadSongStats();
             await initPlaylistFromDB();
+            if (typeof checkPendingResumeStateOnBoot === 'function') checkPendingResumeStateOnBoot();
         });
