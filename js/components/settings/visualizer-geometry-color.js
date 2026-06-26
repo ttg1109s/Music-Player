@@ -29,14 +29,23 @@
  *     (1) "Cách đổi" (#setting-auto-switch-mode): Tuần tự (theo đúng thứ tự MODES, giống
  *         #btn-cycle-mode) | Ngẫu nhiên (random 1 kiểu khác kiểu hiện tại mỗi lần đổi).
  *     (2) "Thời gian đổi" (#setting-auto-switch-time-mode), 3 lựa chọn loại trừ nhau, MỖI lựa
- *         chọn có khối input/giải thích riêng (JS tự ẩn/hiện đúng khối khớp lựa chọn đang chọn):
- *           - 'fixed'    : input số giây cố định (#setting-auto-switch-seconds-fixed), tối thiểu
- *                          AUTO_SWITCH_VISUAL_MIN_SECONDS (10s) — validate ở cả input (min HTML)
- *                          và JS (đề phòng nhập tay vượt qua min HTML bằng cách khác).
- *           - 'random'   : input số giây làm CẬN TRÊN (#setting-auto-switch-seconds-random) —
- *                          cận dưới luôn là 10s cố định, không có ô nhập riêng cho cận dưới.
- *           - 'duration' : KHÔNG có input nào — chỉ 1 đoạn giải thích tĩnh, vì công thức là
- *                          duration bài hát / 10 (cố định), người dùng không can thiệp được.
+ *         chọn có khối input/giải thích riêng (JS tự ẩn/hiện đúng khối khớp lựa chọn đang chọn).
+ *         QUAN TRỌNG — 2 NHÓM CƠ CHẾ KHÁC HẲN NHAU (xem giải thích đầy đủ ở đầu file
+ *         auto-switch-visual.js, đừng nhầm là 3 biến thể của cùng 1 cách tính):
+ *           - 'fixed'/'random' : ĐỒNG HỒ ĐỘC LẬP, không liên quan currentTime/duration/bài nào
+ *                                đang phát — cứ đếm đủ X giây là đổi, lặp lại, chạy xuyên qua cả
+ *                                việc đổi bài. 'fixed' input là khoảng CỐ ĐỊNH
+ *                                (#setting-auto-switch-seconds-fixed); 'random' input là CẬN TRÊN
+ *                                của khoảng random (#setting-auto-switch-seconds-random), cận
+ *                                dưới luôn 10s cố định. Cả 2 validate tối thiểu
+ *                                AUTO_SWITCH_VISUAL_MIN_SECONDS (10s) ở cả input (min HTML) và JS.
+ *           - 'duration'       : DUY NHẤT mode gắn với KHUNG THỜI GIAN của bài đang phát. Input
+ *                                (#setting-auto-switch-seconds-duration) là SỐ CHIA trong công
+ *                                thức (độ dài bài / X) — KHÔNG phải khoảng cách trực tiếp như 2
+ *                                mode trên. Hệ thống tự kẹp X không vượt round(duration/2) để
+ *                                luôn có tối thiểu 1 lần đổi giữa bài (xem
+ *                                buildAutoSwitchVisualMarks()). Cần xử lý tua tới/lùi cho đúng
+ *                                (mỗi mốc tự nhớ visual của nó) — xem auto-switch-visual.js.
  */
 const TPL_SETTINGS_VISUALIZER = `
 
@@ -124,9 +133,17 @@ const TPL_SETTINGS_VISUALIZER = `
                         </div>
                     </div>
 
-                    <!-- Khối riêng cho mode 'duration' (c3) — KHÔNG có input, chỉ giải thích tĩnh -->
-                    <div id="auto-switch-time-duration-block" class="hidden flex-col p-4 gap-1">
-                        <p class="text-xs text-slate-400 leading-relaxed">Tự tính theo độ dài bài đang phát: lấy tổng số giây của bài chia cho 10, ra khoảng cách giữa 2 lần đổi. Ví dụ bài dài 450 giây → đổi hiệu ứng mỗi 45 giây (10 lần/bài). Không cần điền gì — đổi bài khác, khoảng cách tự tính lại theo bài mới.</p>
+                    <!-- Khối riêng cho mode 'duration' (c3) — KHÁC HẲN 2 khối trên: X điền vào đây
+                         là SỐ CHIA trong (độ dài bài / X), KHÔNG phải khoảng cách trực tiếp — hệ
+                         thống tự kẹp X không vượt quá MỘT NỬA độ dài bài đang phát, để đảm bảo
+                         luôn có ít nhất 1 lần đổi xảy ra (xem buildAutoSwitchVisualMarks() ở
+                         auto-switch-visual.js để biết công thức kẹp chính xác). -->
+                    <div id="auto-switch-time-duration-block" class="hidden flex-col p-4 gap-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-slate-400">Chia độ dài bài hát cho (tối thiểu 10s)</span>
+                            <input type="number" id="setting-auto-switch-seconds-duration" min="10" step="1" class="bg-black/50 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white outline-none w-20 text-right">
+                        </div>
+                        <p class="text-xs text-slate-400 leading-relaxed">Khoảng cách giữa 2 lần đổi = độ dài bài / số đã điền, tính lại theo từng bài đang phát. Hệ thống tự giới hạn không quá một nửa độ dài bài, để luôn có ít nhất 1 lần đổi hiệu ứng trong lúc nghe. Tua tới/lùi vẫn nhớ đúng hiệu ứng đã đổi ở từng đoạn.</p>
                     </div>
                 </div>
             </div>
