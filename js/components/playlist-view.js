@@ -39,20 +39,20 @@ const TPL_PLAYLIST_VIEW = `
                      thành double-tap vì không còn phụ thuộc CSS hover nữa. Thuộc tính
                      touch-action: manipulation khai báo thêm trực tiếp trên thẻ làm lớp chặn
                      double-tap-zoom thứ 2 ở tầng trình duyệt. -->
-                <div id="sav-logo" class="flex items-baseline shrink-0 cursor-pointer select-none leading-none" style="touch-action: manipulation;" title="Simple Audio Visualizer">
+                <div id="sav-logo" class="flex items-baseline shrink-0 cursor-pointer select-none leading-none" style="touch-action: manipulation;" data-i18n-title="playlistView.logo.title" title="${t('playlistView.logo.title')}">
                     <span class="text-base font-extrabold text-white">S</span><span class="sav-logo-expand text-base font-extrabold text-white whitespace-pre overflow-hidden inline-block max-w-0 transition-all duration-300 ease-in-out" data-expand-width="4.2em">imple </span><span class="text-base font-extrabold text-white">A</span><span class="sav-logo-expand text-base font-extrabold text-white whitespace-pre overflow-hidden inline-block max-w-0 transition-all duration-300 ease-in-out delay-[60ms]" data-expand-width="3.6em">udio </span><span class="text-base font-extrabold text-white">V</span><span class="sav-logo-expand text-base font-extrabold text-white whitespace-nowrap overflow-hidden inline-block max-w-0 transition-all duration-300 ease-in-out delay-[120ms]" data-expand-width="6em">isualizer</span>
                 </div>
                 <div class="flex items-center gap-5 shrink-0">
-                <button id="btn-return-visual" class="hidden hover:text-emerald-400 transition-colors animate-pulse" title="Đang phát (Quay lại)">
+                <button id="btn-return-visual" class="hidden hover:text-emerald-400 transition-colors animate-pulse" data-i18n-title="playlistView.btnReturnVisual.title" title="${t('playlistView.btnReturnVisual.title')}">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10"></circle>
                         <circle cx="12" cy="12" r="3"></circle>
                     </svg>
                 </button>
-                <button id="btn-upload-audio" class="hover:text-sky-400 transition-colors" title="Thêm nhạc">
+                <button id="btn-upload-audio" class="hover:text-sky-400 transition-colors" data-i18n-title="playlistView.btnUploadAudio.title" title="${t('playlistView.btnUploadAudio.title')}">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
                 </button>
-                <button id="btn-settings-playlist" class="hover:text-sky-400 transition-colors" title="Cài đặt">
+                <button id="btn-settings-playlist" class="hover:text-sky-400 transition-colors" data-i18n-title="playlistView.btnSettings.title" title="${t('playlistView.btnSettings.title')}">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                 </button>
                 <!-- "Đổi giao diện" (Grid/List) đã dồn vào Settings (section "Danh sách phát &
@@ -62,11 +62,11 @@ const TPL_PLAYLIST_VIEW = `
 
             <!-- Hàng 2: "Bài hát" nằm cạnh trái, thanh tìm kiếm chiếm phần còn lại. -->
             <div class="flex items-center gap-3 mb-3">
-                <h1 class="text-[26px] leading-none font-bold tracking-tight text-white shrink-0">Bài hát</h1>
+                <h1 class="text-[26px] leading-none font-bold tracking-tight text-white shrink-0" data-i18n="playlistView.heading">${t('playlistView.heading')}</h1>
                 <div class="relative flex-1">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                    <input id="playlist-search-input" type="text" inputmode="search" autocomplete="off" placeholder="Tìm bài hát, nghệ sĩ, album..." class="w-full bg-white/10 focus:bg-white/15 border border-white/10 focus:border-sky-500/60 rounded-2xl pl-10 pr-10 py-2.5 text-[15px] text-white placeholder-slate-400 outline-none transition-colors backdrop-blur-md">
-                    <button id="playlist-search-clear" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors p-1" title="Xóa tìm kiếm">
+                    <input id="playlist-search-input" type="text" inputmode="search" autocomplete="off" data-i18n-placeholder="playlistView.search.placeholder" placeholder="${t('playlistView.search.placeholder')}" class="w-full bg-white/10 focus:bg-white/15 border border-white/10 focus:border-sky-500/60 rounded-2xl pl-10 pr-10 py-2.5 text-[15px] text-white placeholder-slate-400 outline-none transition-colors backdrop-blur-md">
+                    <button id="playlist-search-clear" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors p-1" data-i18n-title="playlistView.search.clear.title" title="${t('playlistView.search.clear.title')}">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                 </div>
@@ -78,11 +78,11 @@ const TPL_PLAYLIST_VIEW = `
             <div class="flex gap-3">
                 <button onclick="if(displayOrder.length > 0) playSong(currentKey || displayOrder[0]);" class="flex-1 min-w-0 bg-white/10 hover:bg-white/20 backdrop-blur-md active:scale-95 transition-all py-3 rounded-2xl flex items-center justify-center gap-1.5 font-semibold text-[14px] text-white">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>
-                    Phát
+                    <span data-i18n="playlistView.btnPlay">${t('playlistView.btnPlay')}</span>
                 </button>
                 <button onclick="if(!isShuffle) btnShuffle.click(); if(playlistOrder.length > 0) playSong(shuffleIndices[0]);" class="flex-1 min-w-0 bg-white/10 hover:bg-white/20 backdrop-blur-md active:scale-95 transition-all py-3 rounded-2xl flex items-center justify-center gap-1.5 font-semibold text-[14px] text-white whitespace-nowrap">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
-                    Trộn bài
+                    <span data-i18n="playlistView.btnShuffleAll">${t('playlistView.btnShuffleAll')}</span>
                 </button>
             </div>
         </div>
@@ -90,11 +90,11 @@ const TPL_PLAYLIST_VIEW = `
         <div class="flex-grow overflow-y-auto z-10 w-full relative">
             <div id="playlist-empty" class="hidden h-[60%] flex flex-col items-center justify-center text-slate-400 gap-4">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-                <p class="text-sm">Chưa có bài hát nào. Hãy thêm nhạc để bắt đầu.</p>
+                <p class="text-sm" data-i18n="playlistView.empty.noSongs">${t('playlistView.empty.noSongs')}</p>
             </div>
             <div id="playlist-search-empty" class="hidden h-[40%] flex flex-col items-center justify-center text-slate-400 gap-3">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                <p class="text-sm">Không tìm thấy bài hát phù hợp.</p>
+                <p class="text-sm" data-i18n="playlistView.empty.noSearchResults">${t('playlistView.empty.noSearchResults')}</p>
             </div>
             <!-- Lớp "đang nạp danh sách": phủ lên vùng list lúc khởi động đọc record từ IndexedDB, fade
                  out khi DOM list dựng xong. Mục đích: tránh nháy "Chưa có bài hát nào" trong lúc đang
@@ -102,7 +102,7 @@ const TPL_PLAYLIST_VIEW = `
                  lớp này (cập nhật "x / y bài") rồi fade out sau khi render. -->
             <div id="playlist-loading-list" class="hidden absolute inset-0 z-10 flex flex-col items-center justify-center text-slate-300 gap-3 bg-black/30 backdrop-blur-sm transition-opacity duration-300" style="opacity:0;">
                 <svg class="animate-spin h-10 w-10 text-sky-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                <p id="playlist-loading-text" class="text-sm font-medium tracking-wide">Đang nạp dữ liệu...</p>
+                <p id="playlist-loading-text" class="text-sm font-medium tracking-wide">${t('playlistView.loading.generic')}</p>
             </div>
             <div id="playlist-container" class="flex flex-col pb-32"></div>
         </div>
@@ -118,7 +118,7 @@ const TPL_PLAYLIST_VIEW = `
                 <div class="w-8 h-8 rounded-full bg-sky-500/15 border border-sky-500/30 flex items-center justify-center shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                 </div>
-                <h3 class="text-base font-bold text-white">Sửa thông tin bài hát</h3>
+                <h3 class="text-base font-bold text-white" data-i18n="playlistView.songEdit.title">${t('playlistView.songEdit.title')}</h3>
             </div>
 
             <!-- Tab switcher: "Thông tin" / "Ảnh bìa" — kiểu pill bên trong 1 rãnh nền tối, tab
@@ -128,11 +128,11 @@ const TPL_PLAYLIST_VIEW = `
                 <div class="flex w-full p-1 rounded-xl bg-black/30 border border-white/10 gap-1">
                     <button data-edit-tab="info" class="song-edit-tab-btn flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-white/10 text-white shadow">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        Thông tin
+                        <span data-i18n="playlistView.songEdit.tabInfo">${t('playlistView.songEdit.tabInfo')}</span>
                     </button>
                     <button data-edit-tab="cover" class="song-edit-tab-btn flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-400">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M4 8h.01M4 4h16a1 1 0 011 1v14a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1z" /></svg>
-                        Ảnh bìa
+                        <span data-i18n="playlistView.songEdit.tabCover">${t('playlistView.songEdit.tabCover')}</span>
                     </button>
                 </div>
             </div>
@@ -142,21 +142,21 @@ const TPL_PLAYLIST_VIEW = `
                  trên card kính mờ sáng hơn ver trước. -->
             <div id="song-edit-tab-info" class="flex flex-col gap-3 p-5">
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide ml-0.5">Tên bài hát</label>
+                    <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide ml-0.5" data-i18n="playlistView.songEdit.fieldTitle">${t('playlistView.songEdit.fieldTitle')}</label>
                     <div class="relative">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" /></svg>
                         <input type="text" id="song-edit-title" class="w-full bg-black/50 border border-white/10 rounded-lg pl-9 pr-3 py-2.5 text-sm text-white outline-none focus:border-sky-500 focus:bg-black/60 transition-colors">
                     </div>
                 </div>
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide ml-0.5">Nghệ sĩ</label>
+                    <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide ml-0.5" data-i18n="playlistView.songEdit.fieldArtist">${t('playlistView.songEdit.fieldArtist')}</label>
                     <div class="relative">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                         <input type="text" id="song-edit-artist" class="w-full bg-black/50 border border-white/10 rounded-lg pl-9 pr-3 py-2.5 text-sm text-white outline-none focus:border-sky-500 focus:bg-black/60 transition-colors">
                     </div>
                 </div>
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide ml-0.5">Album</label>
+                    <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide ml-0.5" data-i18n="playlistView.songEdit.fieldAlbum">${t('playlistView.songEdit.fieldAlbum')}</label>
                     <div class="relative">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM3 9a9 9 0 0118 0" /></svg>
                         <input type="text" id="song-edit-album" class="w-full bg-black/50 border border-white/10 rounded-lg pl-9 pr-3 py-2.5 text-sm text-white outline-none focus:border-sky-500 focus:bg-black/60 transition-colors">
@@ -170,29 +170,29 @@ const TPL_PLAYLIST_VIEW = `
             <div id="song-edit-tab-cover" class="hidden flex-col gap-4 p-5">
                 <div class="flex items-center gap-4">
                     <div class="w-24 h-24 rounded-2xl overflow-hidden border border-white/15 shrink-0 bg-black/40 shadow-lg ring-1 ring-white/5">
-                        <img id="song-edit-cover-preview" src="" class="w-full h-full object-cover" alt="Ảnh bìa">
+                        <img id="song-edit-cover-preview" src="" class="w-full h-full object-cover" data-i18n-title="playlistView.songEdit.coverAlt" alt="${t('playlistView.songEdit.coverAlt')}">
                     </div>
                     <div class="flex flex-col gap-2 flex-1">
                         <label class="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-sky-500 hover:bg-sky-400 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3-3 3 3m-3-3v6" /></svg>
-                            Chọn ảnh
+                            <span data-i18n="playlistView.songEdit.coverChoose">${t('playlistView.songEdit.coverChoose')}</span>
                             <input type="file" id="song-edit-cover-upload" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" class="hidden">
                         </label>
                         <button id="song-edit-cover-remove" class="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white/5 hover:bg-rose-500/15 border border-white/10 hover:border-rose-500/40 text-slate-300 hover:text-rose-300 rounded-xl text-xs font-bold transition-colors">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                            Xóa ảnh bìa
+                            <span data-i18n="playlistView.songEdit.coverRemove">${t('playlistView.songEdit.coverRemove')}</span>
                         </button>
                     </div>
                 </div>
                 <div class="flex items-start gap-2 bg-black/30 border border-white/5 rounded-lg p-3">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-sky-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    <p class="text-[11px] text-slate-400 leading-relaxed">Chấp nhận PNG, JPG hoặc WEBP. Ảnh được lưu cùng bài hát trong IndexedDB và sẽ được ghi vào tag <span class="font-mono text-slate-300">APIC</span> khi xuất tệp.</p>
+                    <p class="text-[11px] text-slate-400 leading-relaxed" data-i18n="playlistView.songEdit.coverHint">${t('playlistView.songEdit.coverHint')}</p>
                 </div>
             </div>
 
             <div class="flex gap-3 p-5 pt-2 border-t border-white/10">
-                <button id="song-edit-cancel" class="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 text-sm font-semibold transition-colors">Hủy</button>
-                <button id="song-edit-save" class="flex-1 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-white text-sm font-bold transition-colors shadow">Lưu</button>
+                <button id="song-edit-cancel" class="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 text-sm font-semibold transition-colors" data-i18n="playlistView.songEdit.btnCancel">${t('playlistView.songEdit.btnCancel')}</button>
+                <button id="song-edit-save" class="flex-1 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-white text-sm font-bold transition-colors shadow" data-i18n="playlistView.songEdit.btnSave">${t('playlistView.songEdit.btnSave')}</button>
             </div>
         </div>
     </div>
@@ -206,15 +206,15 @@ const TPL_PLAYLIST_VIEW = `
                 <div class="w-8 h-8 rounded-full bg-sky-500/15 border border-sky-500/30 flex items-center justify-center shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </div>
-                <h3 class="text-base font-bold text-white">Thông tin bài hát</h3>
+                <h3 class="text-base font-bold text-white" data-i18n="playlistView.songInfo.title">${t('playlistView.songInfo.title')}</h3>
             </div>
             <div id="song-info-body" class="flex flex-col gap-2 p-5 text-sm text-slate-300"></div>
             <div class="flex gap-3 p-5 pt-2 border-t border-white/10">
                 <button id="song-info-export" class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition-colors shadow">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-8-4V4m0 0L8 8m4-4l4 4" /></svg>
-                    Xuất tệp
+                    <span data-i18n="playlistView.songInfo.btnExport">${t('playlistView.songInfo.btnExport')}</span>
                 </button>
-                <button id="song-info-close" class="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 text-sm font-semibold transition-colors">Đóng</button>
+                <button id="song-info-close" class="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 text-sm font-semibold transition-colors" data-i18n="playlistView.songInfo.btnClose">${t('playlistView.songInfo.btnClose')}</button>
             </div>
         </div>
     </div>
@@ -233,12 +233,12 @@ const TPL_PLAYLIST_VIEW = `
     <div id="upload-action-menu" class="hidden fixed z-[115] w-52 bg-[#171c2b] border border-white/10 rounded-xl shadow-2xl overflow-hidden">
         <label class="flex items-center gap-3 w-full px-4 py-3 text-sm text-left hover:bg-white/10 transition-colors text-slate-200 cursor-pointer">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-            Chọn file nhạc
+            <span data-i18n="playlistView.uploadMenu.pickFiles">${t('playlistView.uploadMenu.pickFiles')}</span>
             <input type="file" id="audio-upload" accept=".mp3,.wav,.ogg,.m4a,.aac,.flac,audio/mpeg,audio/wav,audio/ogg,audio/mp4,audio/aac,audio/flac" multiple class="hidden">
         </label>
         <label class="flex items-center gap-3 w-full px-4 py-3 text-sm text-left hover:bg-white/10 transition-colors text-slate-200 border-t border-white/5 cursor-pointer">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
-            Chọn cả thư mục
+            <span data-i18n="playlistView.uploadMenu.pickFolder">${t('playlistView.uploadMenu.pickFolder')}</span>
             <input type="file" id="audio-upload-folder" webkitdirectory directory multiple class="hidden">
         </label>
     </div>
@@ -251,19 +251,19 @@ const TPL_PLAYLIST_VIEW = `
     <div id="song-action-menu" class="hidden fixed z-[115] w-48 bg-[#171c2b] border border-white/10 rounded-xl shadow-2xl overflow-hidden">
         <button data-menu-action="info" class="flex items-center gap-3 w-full px-4 py-3 text-sm text-left hover:bg-white/10 transition-colors text-slate-200">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            Thông tin
+            <span data-i18n="playlistView.songMenu.info">${t('playlistView.songMenu.info')}</span>
         </button>
         <button data-menu-action="edit" class="flex items-center gap-3 w-full px-4 py-3 text-sm text-left hover:bg-white/10 transition-colors text-slate-200 border-t border-white/5">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-            Sửa thông tin
+            <span data-i18n="playlistView.songMenu.edit">${t('playlistView.songMenu.edit')}</span>
         </button>
         <button data-menu-action="restore" class="flex items-center gap-3 w-full px-4 py-3 text-sm text-left hover:bg-white/10 transition-colors text-slate-200 border-t border-white/5">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-8-4V4m0 0L8 8m4-4l4 4" /></svg>
-            Xuất tệp
+            <span data-i18n="playlistView.songMenu.export">${t('playlistView.songMenu.export')}</span>
         </button>
         <button data-menu-action="delete" class="flex items-center gap-3 w-full px-4 py-3 text-sm text-left hover:bg-rose-500/10 transition-colors text-rose-400 border-t border-white/5">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-            Xóa bài
+            <span data-i18n="playlistView.songMenu.delete">${t('playlistView.songMenu.delete')}</span>
         </button>
     </div>
 
@@ -274,13 +274,13 @@ const TPL_PLAYLIST_VIEW = `
         <div class="bg-[#0f172a] border border-white/10 rounded-2xl w-full max-w-sm p-5 shadow-2xl flex flex-col gap-4">
             <div class="flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
-                <h3 class="text-base font-bold text-amber-400">Không phát được bài này</h3>
+                <h3 class="text-base font-bold text-amber-400" data-i18n="playlistView.playbackError.title">${t('playlistView.playbackError.title')}</h3>
             </div>
             <p id="playback-error-filename" class="text-sm text-slate-300 break-all"></p>
-            <p class="text-xs text-slate-500">Dữ liệu file có thể bị lỗi hoặc không đúng định dạng. Bạn muốn giữ lại để xử lý sau (trong Quản lý dung lượng) hay xóa luôn?</p>
+            <p class="text-xs text-slate-500" data-i18n="playlistView.playbackError.body">${t('playlistView.playbackError.body')}</p>
             <div class="flex gap-3 mt-1">
-                <button id="playback-error-keep" class="flex-1 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-sm font-semibold transition-colors">Giữ lại</button>
-                <button id="playback-error-delete" class="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-sm font-semibold transition-colors">Xóa luôn</button>
+                <button id="playback-error-keep" class="flex-1 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-sm font-semibold transition-colors" data-i18n="playlistView.playbackError.btnKeep">${t('playlistView.playbackError.btnKeep')}</button>
+                <button id="playback-error-delete" class="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-sm font-semibold transition-colors" data-i18n="playlistView.playbackError.btnDelete">${t('playlistView.playbackError.btnDelete')}</button>
             </div>
         </div>
     </div>
