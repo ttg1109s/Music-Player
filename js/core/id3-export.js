@@ -31,16 +31,36 @@
         }
 
         async function exportSongWithTag(key) {
-            return withLoadingShield(t('common.loading.exportingFile'), async () => {
+            // FIX (xung đột shield/modal): KHÔNG await alertModal() bên trong fn() của
+            // withLoadingShield() — xem giải thích chi tiết ở playlist/actions.js (window.playSong).
+            // Tóm tắt: isShieldBusy chỉ giải phóng SAU KHI fn() resolve, còn alertModal() chỉ resolve
+            // khi người dùng bấm OK -> lồng vào nhau làm #loading-shield (z-[200]) treo, đè lên trên
+            // modalChoice() (z-[130]) suốt thời gian chờ. Dùng cờ mang thông tin ra ngoài, hiện modal
+            // SAU KHI withLoadingShield() đã resolve hoàn toàn.
+            let resultFlag = null; // null = ổn (không cần báo gì) | 'notFound' | 'tagWriteFailed'
+            let failedRecord = null; // giữ lại record gốc khi ghi tag lỗi — dùng để triggerDownload(record.blob,...) ở ngoài, tránh query lại DB lần 2
+            await withLoadingShield(t('common.loading.exportingFile'), async () => {
                 const record = await getSongRecord(key);
-                if (!record) { await alertModal(t('common.export.notFound')); return; }
+                if (!record) { resultFlag = 'notFound'; return; }
                 try {
                     const taggedBlob = await buildTaggedBlob(record);
                     triggerDownload(taggedBlob, record.filename);
                 } catch (e) {
                     console.error('[id3-export] Lỗi ghi tag:', e);
-                    await alertModal(t('common.export.tagWriteFailed'));
-                    triggerDownload(record.blob, record.filename);
+                    resultFlag = 'tagWriteFailed';
+                    failedRecord = record;
+                    // Giữ ĐÚNG thứ tự hành vi gốc: trước đây alert() (chặn đồng bộ) chạy XONG rồi mới
+                    // tới triggerDownload(record.blob,...) — nghĩa là người dùng đọc thông báo lỗi
+                    // TRƯỚC khi file (chưa ghi tag) được tải xuống. Đưa triggerDownload này ra ngoài
+                    // CÙNG với alertModal() (xem dưới) để giữ đúng thứ tự đó.
                 }
             });
+
+            // Shield đã đóng HẲN tới đây — an toàn để hiện modal.
+            if (resultFlag === 'notFound') {
+                await alertModal(t('common.export.notFound'));
+            } else if (resultFlag === 'tagWriteFailed') {
+                await alertModal(t('common.export.tagWriteFailed'));
+                triggerDownload(failedRecord.blob, failedRecord.filename);
+            }
         }

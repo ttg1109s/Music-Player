@@ -139,12 +139,19 @@
 
         const btnDownloadThenClear = document.getElementById('btn-storage-download-then-clear');
         if (btnDownloadThenClear) {
-            btnDownloadThenClear.addEventListener('click', () => {
+            btnDownloadThenClear.addEventListener('click', async () => {
                 const ok = confirm(t('common.storage.downloadThenClearConfirm'));
                 if (!ok) return;
-                withLoadingShield(t('common.storage.zippingStart'), async () => {
+                // FIX (xung đột shield/modal): KHÔNG await alertModal() trong fn() của
+                // withLoadingShield() — xem giải thích chi tiết ở playlist/actions.js
+                // (window.playSong). Dùng cờ kết quả mang ra ngoài, hiện modal SAU KHI shield đã
+                // đóng hẳn (isShieldBusy = false), tránh #loading-shield (z-[200]) treo/đè lên trên
+                // modalChoice() (z-[130]) suốt thời gian chờ người dùng bấm OK.
+                let resultFlag = null; // null = thành công | 'noSongs' | 'zipError'
+                let zipErrorMessage = '';
+                await withLoadingShield(t('common.storage.zippingStart'), async () => {
                     const keys = await getAllSongKeys();
-                    if (keys.length === 0) { await alertModal(t('common.storage.noSongsToDownload')); return; }
+                    if (keys.length === 0) { resultFlag = 'noSongs'; return; }
                     let zipBlob;
                     try {
                         zipBlob = await buildAllSongsZipBlob((done, total, percent) => {
@@ -153,7 +160,8 @@
                         });
                     } catch (err) {
                         console.error('[storage-manager] Lỗi đóng gói zip:', err);
-                        await alertModal(tFormat('common.storage.zipBuildError', { message: escapeHtml(err.message || err) }));
+                        resultFlag = 'zipError';
+                        zipErrorMessage = escapeHtml(err.message || err);
                         return;
                     }
                     const dateStr = new Date().toISOString().slice(0, 10);
@@ -162,21 +170,30 @@
                     loadingText.textContent = t('common.storage.deletingData');
                     await clearAllStoredData();
                     renderStorageStats();
-                    await alertModal(t('common.storage.downloadThenClearDone'));
                 });
+
+                // Shield đã đóng HẲN tới đây — an toàn để hiện modal.
+                if (resultFlag === 'noSongs') {
+                    await alertModal(t('common.storage.noSongsToDownload'));
+                } else if (resultFlag === 'zipError') {
+                    await alertModal(tFormat('common.storage.zipBuildError', { message: zipErrorMessage }));
+                } else {
+                    await alertModal(t('common.storage.downloadThenClearDone'));
+                }
             });
         }
 
         const btnClearNoDownload = document.getElementById('btn-storage-clear-no-download');
         if (btnClearNoDownload) {
-            btnClearNoDownload.addEventListener('click', () => {
+            btnClearNoDownload.addEventListener('click', async () => {
                 const ok = confirm(t('common.storage.clearNoDownloadConfirm'));
                 if (!ok) return;
-                withLoadingShield(t('common.storage.deletingData'), async () => {
+                await withLoadingShield(t('common.storage.deletingData'), async () => {
                     await clearAllStoredData();
                     renderStorageStats();
-                    await alertModal(t('common.storage.clearNoDownloadDone'));
                 });
+                // Shield đã đóng HẲN tới đây — an toàn để hiện modal (xem giải thích ở trên).
+                await alertModal(t('common.storage.clearNoDownloadDone'));
             });
         }
 
@@ -258,11 +275,11 @@
 
         const btnDeleteBroken = document.getElementById('btn-storage-delete-broken');
         if (btnDeleteBroken) {
-            btnDeleteBroken.addEventListener('click', () => {
+            btnDeleteBroken.addEventListener('click', async () => {
                 if (lastScanResults.length === 0) return;
                 const ok = confirm(tFormat('common.storage.deleteBrokenConfirm', { n: lastScanResults.length }));
                 if (!ok) return;
-                withLoadingShield(t('common.storage.deletingBroken'), async () => {
+                await withLoadingShield(t('common.storage.deletingBroken'), async () => {
                     for (const { key } of lastScanResults) {
                         if (key === currentKey) continue; // không xóa bài đang phát, giữ đúng quy tắc chung của removeSong
                         await deleteSongRecord(key);
@@ -271,8 +288,10 @@
                     }
                     resetScanResultUI();
                     renderStorageStats();
-                    await alertModal(t('common.storage.deleteBrokenDone'));
                 });
+                // Shield đã đóng HẲN tới đây — an toàn để hiện modal (xem giải thích ở
+                // btnDownloadThenClear phía trên, cùng nguyên nhân xung đột shield/modal).
+                await alertModal(t('common.storage.deleteBrokenDone'));
             });
         }
 
