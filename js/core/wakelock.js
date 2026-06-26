@@ -95,15 +95,28 @@
                 _hideReloadInProgress = false; // mở lại ngay, phòng trường hợp ẩn/hiện/ẩn liên tục
                 if (_isRealUnloadHappening) return; // F5/đóng tab/điều hướng THẬT -> không làm gì cả
 
-                const didSave = (typeof saveResumeStateToLocalStorage === 'function') && saveResumeStateToLocalStorage();
-                if (didSave && typeof setResumeFlag === 'function') setResumeFlag();
-
-                // Pause rồi XÁC NHẬN đã pause thật trước khi reload — audioPlayer.pause() là API
-                // đồng bộ (sự kiện 'pause' bắn ra ngay trong cùng tick JS theo spec HTML5 Media),
-                // nên việc kiểm tra audioPlayer.paused ngay sau đó là đủ tin cậy.
+                // FIX (bổ sung — video nền lệch currentTime sau khi phục hồi, audio cũng có rủi ro
+                // tương tự dù nhỏ hơn): PAUSE CẢ AUDIO VÀ VIDEO TRƯỚC KHI LƯU STATE, không phải sau.
+                // Lý do: nếu lưu currentTime trước rồi mới pause (thứ tự cũ), giữa 2 bước đó vẫn còn
+                // vài tick JS để audio/video tiếp tục trôi thêm (dù rất ngắn) — currentTime đã lưu
+                // sẽ luôn "cũ" hơn 1 chút so với lúc thực sự dừng. Đảo thứ tự: pause CẢ HAI trước,
+                // rồi mới đọc currentTime để lưu — giá trị đọc được là chính xác trạng thái "đứng
+                // yên" tại thời điểm dừng, không bị trôi thêm bởi bất kỳ độ trễ xử lý nào sau đó.
+                //
+                // Video đặc biệt cần pause TRỰC TIẾP ở đây (không thể chỉ trông cậy syncVideoBgToAudio()
+                // tự đồng bộ qua sự kiện 'pause' của audioPlayer): syncVideoBgToAudio() có thể chạy
+                // SAU dòng audioPlayer.pause() (lắng nghe event, không đồng bộ tức thì theo đúng thứ
+                // tự code), và quan trọng hơn — nếu video nền đang KHÔNG đồng bộ đúng với audio (ví
+                // dụ do lỗi mạng/buffer riêng), gọi pause() trực tiếp ở đây mới đảm bảo chắc chắn.
                 if (typeof audioPlayer !== 'undefined' && audioPlayer && !audioPlayer.paused) {
                     audioPlayer.pause();
                 }
+                if (typeof bgVideoElement !== 'undefined' && bgVideoElement && !bgVideoElement.paused) {
+                    bgVideoElement.pause();
+                }
+
+                const didSave = (typeof saveResumeStateToLocalStorage === 'function') && saveResumeStateToLocalStorage();
+                if (didSave && typeof setResumeFlag === 'function') setResumeFlag();
 
                 location.reload(); // NGAY SAU KHI XÁC NHẬN đây là ẩn tab thật — không đợi quay lại tab mới reload
             }, HIDE_RELOAD_DEBOUNCE_MS);
