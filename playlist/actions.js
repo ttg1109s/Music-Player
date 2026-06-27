@@ -8,7 +8,20 @@
  * "Lưu" — chọn ảnh hay bấm "Xóa ảnh bìa" chỉ cập nhật preview + biến tạm songEditPendingCover,
  * "Hủy" sẽ bỏ hoàn toàn pending đó. Cover sau khi lưu tự động được ghi vào tag APIC lúc Xuất
  * tệp (xem id3-export.js, không cần sửa gì thêm ở đó).
+ *
+ * MIGRATE (kiến trúc /event/): toàn bộ addEventListener TRƯỚC ĐÂY nằm trong file này đã dời sang
+ * event/listener/playlist.js — file này giờ CHỈ còn các hàm CORE THUẦN (không tự gọi
+ * withLoadingShield/alertModal/confirm/document.getElementById, trừ ngoại lệ #record-art đã ghi
+ * chú riêng) mà event/router/playlist.js + event/workflow/playlist.js gọi tới. window.playSong/
+ * window.removeSong GIỮ NGUYÊN là hàm core toàn cục (gắn vào window) — KHÔNG tách vào /event/, vì
+ * chúng được gọi từ RẤT NHIỀU nơi khác trong toàn project (core/player-controls.js next/prev,
+ * components/playlist-view.js onclick inline HTML, modal "Tiếp tục nghe?"...) như 1 API core
+ * công khai, không phải điểm bắt đầu của 1 lượt bấm riêng.
+ *
+ * STATE CONTEXT của các modal (đang mở bài nào, ảnh bìa đang chờ áp dụng gì...) sống trong
+ * `playlistStore` (event/store.js) — xem comment chi tiết tại mỗi khối modal phía dưới.
  */
+        const playlistStore = new EventStore('playlist');
 
         /**
          * Loại 1 key khỏi playlist (xoá tay / "Xóa luôn" / "Giữ lại" lúc phát lỗi). Cập nhật CẢ
@@ -136,12 +149,14 @@
         };
 
         // ===================== Menu 3 chấm dùng chung =====================
-        const songActionMenu = document.getElementById('song-action-menu');
-        const songActionOverlay = document.getElementById('song-action-overlay');
-        let songActionMenuKey = null;
+        // songActionMenu/songActionOverlay: dùng lại biến từ core/dom-refs.js (quy ước chung,
+        // KHÔNG tự getElementById ở đây nữa — xem khối "Playlist actions" trong dom-refs.js).
+        // songActionMenuKey: state context "đang mở menu cho bài nào" — sống trong playlistStore
+        // (event/store.js), KHÔNG còn là biến `let` closure riêng của file này, để router (khi
+        // cần đọc/ghi cùng state) và core đều thấy ĐÚNG 1 nguồn duy nhất.
 
         function openSongActionMenu(key, anchorBtn) {
-            songActionMenuKey = key;
+            playlistStore.set({ songActionMenuKey: key });
             const rect = anchorBtn.getBoundingClientRect();
             const menuWidth = 192;
             let left = rect.right - menuWidth;
@@ -157,82 +172,87 @@
         function closeSongActionMenu() {
             songActionMenu.classList.add('hidden');
             songActionOverlay.classList.add('hidden');
-            songActionMenuKey = null;
+            playlistStore.set({ songActionMenuKey: null });
         }
-        songActionOverlay.addEventListener('click', closeSongActionMenu);
-        songActionMenu.addEventListener('click', (e) => {
-            const btn = e.target.closest('button[data-menu-action]');
-            if (!btn || !songActionMenuKey) return;
-            const key = songActionMenuKey; const action = btn.dataset.menuAction;
+
+        /**
+         * Xử lý 1 lựa chọn trong menu 3 chấm (Xoá/Thông tin/Sửa/Khôi phục). Đọc key đang mở từ
+         * playlistStore (KHÔNG nhận key qua tham số — menu chỉ có thể mở cho ĐÚNG 1 bài tại 1
+         * thời điểm, state context này đã được openSongActionMenu() ghi lúc mở).
+         * @param {string} action - 'delete' | 'info' | 'edit' | 'restore'
+         * @returns {{status: string}} 'noop' nếu không có menu nào đang mở, 'ok' nếu đã xử lý
+         */
+        function handleSongActionMenuSelect(action) {
+            const key = playlistStore.get('songActionMenuKey');
+            if (!key) return { status: 'noop' };
             closeSongActionMenu();
             if (action === 'delete') window.removeSong(key);
             else if (action === 'info') openSongInfoModal(key);
             else if (action === 'edit') openSongEditModal(key);
             else if (action === 'restore') exportSongWithTag(key);
-        });
-
-        playlistContainer.addEventListener('click', (e) => {
-            const menuBtn = e.target.closest('button[data-action="menu"]');
-            if (menuBtn) {
-                e.stopPropagation();
-                openSongActionMenu(menuBtn.dataset.key, menuBtn);
-                return;
-            }
-            const item = e.target.closest('[data-role="play-item"]');
-            if (item) window.playSong(item.dataset.key);
-        });
+            return { status: 'ok' };
+        }
 
         // ===================== Modal: Bài hát lỗi lúc phát =====================
-        const playbackErrorModal = document.getElementById('playback-error-modal');
-        const playbackErrorFilename = document.getElementById('playback-error-filename');
-        let playbackErrorKey = null;
+        // playbackErrorModal/playbackErrorFilename: dùng lại biến từ core/dom-refs.js.
+        // playbackErrorKey: state context "modal đang nói về bài nào" — sống trong playlistStore.
 
         function handlePlaybackError(key) {
-            playbackErrorKey = key;
+            playlistStore.set({ playbackErrorKey: key });
             const cached = playlistCache.get(key);
             playbackErrorFilename.textContent = cached ? cached.filename : key;
             playbackErrorModal.classList.remove('hidden');
         }
 
-        document.getElementById('playback-error-keep').addEventListener('click', () => {
-            if (!playbackErrorKey) return;
-            confirmedBrokenKeys.add(playbackErrorKey);
-            removeKeyFromDisplay(playbackErrorKey);
+        /**
+         * Ứng với nút "Giữ lại" — CHỈ 1 hàm core đủ xử lý toàn bộ (không cần shield/modal) ->
+         * router sẽ gọi thẳng hàm này, không cần workflow riêng.
+         * @returns {{status: string}}
+         */
+        function confirmKeepBrokenSong() {
+            const key = playlistStore.get('playbackErrorKey');
+            if (!key) return { status: 'noop' };
+            confirmedBrokenKeys.add(key);
+            removeKeyFromDisplay(key);
             playbackErrorModal.classList.add('hidden');
-            playbackErrorKey = null;
-        });
-        document.getElementById('playback-error-delete').addEventListener('click', () => {
-            if (!playbackErrorKey) return;
-            const key = playbackErrorKey;
+            playlistStore.set({ playbackErrorKey: null });
+            return { status: 'ok' };
+        }
+
+        /**
+         * Đọc + xoá state "đang hỏi xoá bài lỗi nào" và ẨN MODAL NGAY (thuần UI, không cần
+         * shield) — workflow gọi hàm này TRƯỚC, lấy key trả về, rồi mới bọc shield quanh
+         * deleteBrokenSongByKey(key) ở tầng workflow. Tách riêng để core không tự gọi
+         * withLoadingShield bên trong (core không biết shield/modal tồn tại).
+         * @returns {string|null} key đang chờ xoá, hoặc null nếu không có gì đang mở
+         */
+        function getAndClearPlaybackErrorKey() {
+            const key = playlistStore.get('playbackErrorKey');
+            if (!key) return null;
             playbackErrorModal.classList.add('hidden');
-            playbackErrorKey = null;
-            withLoadingShield(t('common.loading.deleting'), async () => {
-                await deleteSongRecord(key);
-                removeSongStats(key);
-                removeKeyFromDisplay(key);
-            });
-        });
+            playlistStore.set({ playbackErrorKey: null });
+            return key;
+        }
+
+        /**
+         * Hàm core THUẦN, nhận key qua tham số (KHÔNG tự đọc playlistStore) — để workflow có thể
+         * bọc withLoadingShield() quanh đúng lệnh gọi này, đúng quy tắc "core không biết shield".
+         * @param {string} key
+         */
+        async function deleteBrokenSongByKey(key) {
+            await deleteSongRecord(key);
+            removeSongStats(key);
+            removeKeyFromDisplay(key);
+        }
 
         // ===================== Modal: Sửa thông tin (Thông tin + Ảnh bìa) =====================
-        const songEditModal = document.getElementById('song-edit-modal');
-        const songEditTitleInput = document.getElementById('song-edit-title');
-        const songEditArtistInput = document.getElementById('song-edit-artist');
-        const songEditAlbumInput = document.getElementById('song-edit-album');
-        const songEditCoverPreview = document.getElementById('song-edit-cover-preview');
-        const songEditCoverUploadInput = document.getElementById('song-edit-cover-upload');
-        const songEditCoverRemoveBtn = document.getElementById('song-edit-cover-remove');
-        const songEditTabButtons = document.querySelectorAll('.song-edit-tab-btn');
-        const songEditTabInfo = document.getElementById('song-edit-tab-info');
-        const songEditTabCover = document.getElementById('song-edit-tab-cover');
-        let songEditCurrentKey = null;
+        // songEditModal và mọi input/nút bên trong: dùng lại biến từ core/dom-refs.js.
+        // songEditCurrentKey/songEditPendingCover/songEditPendingCoverPreviewUrl: state context
+        // "modal đang sửa bài nào, ảnh bìa đang chờ áp dụng gì" — sống trong playlistStore.
         // Ảnh bìa được áp dụng NGAY khi bấm "Lưu" (cùng 1 lượt ghi IndexedDB với title/artist/
         // album), KHÔNG ghi DB ngay lúc chọn file — để nút "Hủy" hoàn toàn không đổi gì, giống
         // hành vi 2 ô nhập text bên cạnh. 3 trạng thái: null (không đổi gì) | File (đặt ảnh mới)
         // | 'remove' (xóa ảnh, dùng lại DEFAULT_VINYL).
-        let songEditPendingCover = null;
-        // object: { url: string } object URL tạm để preview ảnh MỚI chọn — phải revoke khi đóng
-        // modal hoặc chọn ảnh khác, tránh rò bộ nhớ (cùng nguyên tắc currentCoverObjectURL ở actions.js).
-        let songEditPendingCoverPreviewUrl = null;
         // Ver 8 refine (mục 4): songEditCoverPreview là <img> CỐ ĐỊNH trong DOM (không bị tạo lại
         // qua innerHTML như #record-art) -> chỉ cần gắn onerror fallback 1 LẦN ở đây, không cần
         // gắn lại mỗi lần setSongEditCoverPreview() đổi src.
@@ -243,7 +263,8 @@
         }
 
         function revokeSongEditPendingPreview() {
-            if (songEditPendingCoverPreviewUrl) { URL.revokeObjectURL(songEditPendingCoverPreviewUrl); songEditPendingCoverPreviewUrl = null; }
+            const url = playlistStore.get('songEditPendingCoverPreviewUrl');
+            if (url) { URL.revokeObjectURL(url); playlistStore.set({ songEditPendingCoverPreviewUrl: null }); }
         }
 
         function setSongEditTab(tab) {
@@ -262,21 +283,19 @@
                 btn.classList.toggle('text-slate-400', !active);
             });
         }
-        songEditTabButtons.forEach(btn => btn.addEventListener('click', () => setSongEditTab(btn.dataset.editTab)));
 
         async function openSongEditModal(key) {
             const cached = playlistCache.get(key); if (!cached) return;
-            songEditCurrentKey = key;
+            playlistStore.set({ songEditCurrentKey: key, songEditPendingCover: null });
             songEditTitleInput.value = cached.tag.title || '';
             songEditArtistInput.value = cached.tag.artist || '';
             songEditAlbumInput.value = cached.tag.album || '';
 
             revokeSongEditPendingPreview();
-            songEditPendingCover = null;
             setSongEditCoverPreview(cached.cover ? URL.createObjectURL(cached.cover) : DEFAULT_VINYL);
             // Object URL trên chỉ sống trong lúc modal mở (preview ảnh HIỆN TẠI, không phải pending);
             // gán vào songEditPendingCoverPreviewUrl để được revoke đồng bộ lúc đóng modal/đổi ảnh.
-            if (cached.cover) songEditPendingCoverPreviewUrl = songEditCoverPreview.src;
+            if (cached.cover) playlistStore.set({ songEditPendingCoverPreviewUrl: songEditCoverPreview.src });
 
             setSongEditTab('info');
             songEditModal.classList.remove('hidden');
@@ -284,90 +303,121 @@
 
         function closeSongEditModal() {
             revokeSongEditPendingPreview();
-            songEditPendingCover = null;
+            playlistStore.set({ songEditPendingCover: null });
             songEditCoverUploadInput.value = '';
             songEditModal.classList.add('hidden');
         }
 
-        songEditCoverUploadInput.addEventListener('change', async (e) => {
-            const file = e.target.files[0]; if (!file) return;
-            e.target.value = '';
+        /**
+         * Validate + cập nhật preview cho 1 file ảnh bìa mới chọn. Hàm core THUẦN — KHÔNG tự gọi
+         * alertModal() bên trong (khác bản gốc) — trả {status} để workflow tự quyết định hiện
+         * modal lỗi hay không, đúng quy tắc "core không biết shield/modal tồn tại".
+         * @param {File} file
+         * @returns {{status: 'ok'|'invalid', reason?: string}}
+         */
+        function changeSongEditCover(file) {
             const check = validateImageFile(file);
-            if (!check.valid) { await alertModal(check.reason); return; }
+            if (!check.valid) return { status: 'invalid', reason: check.reason };
             revokeSongEditPendingPreview();
-            songEditPendingCover = file;
-            songEditPendingCoverPreviewUrl = URL.createObjectURL(file);
-            setSongEditCoverPreview(songEditPendingCoverPreviewUrl);
-        });
+            const previewUrl = URL.createObjectURL(file);
+            playlistStore.set({ songEditPendingCover: file, songEditPendingCoverPreviewUrl: previewUrl });
+            setSongEditCoverPreview(previewUrl);
+            return { status: 'ok' };
+        }
 
-        songEditCoverRemoveBtn.addEventListener('click', () => {
+        /** Ứng với nút "Xóa ảnh bìa" — thuần state + preview, không cần shield/modal. */
+        function removeSongEditCover() {
             revokeSongEditPendingPreview();
-            songEditPendingCover = 'remove';
+            playlistStore.set({ songEditPendingCover: 'remove' });
             setSongEditCoverPreview(DEFAULT_VINYL);
-        });
+        }
 
-        document.getElementById('song-edit-cancel').addEventListener('click', closeSongEditModal);
-        document.getElementById('song-edit-save').addEventListener('click', async () => {
-            const key = songEditCurrentKey; if (!key) return;
-            const newTag = { title: songEditTitleInput.value.trim() || t('common.songEdit.defaultTitle'), artist: songEditArtistInput.value.trim() || t('common.songEdit.defaultArtist'), album: songEditAlbumInput.value.trim() };
-            const pendingCover = songEditPendingCover; // chụp lại trước khi closeSongEditModal() reset về null
+        /**
+         * Đọc state hiện tại của modal Sửa thông tin (key + giá trị input + pending cover) —
+         * hàm core THUẦN, không shield. Workflow gọi hàm này TRƯỚC để lấy đủ data, rồi mới gọi
+         * applySongEditAndSave(key, newTag, pendingCover) bọc trong withLoadingShield().
+         * @returns {{key: string|null, newTag: Object, pendingCover: File|'remove'|null}}
+         */
+        function captureSongEditFormState() {
+            const key = playlistStore.get('songEditCurrentKey');
+            const newTag = {
+                title: songEditTitleInput.value.trim() || t('common.songEdit.defaultTitle'),
+                artist: songEditArtistInput.value.trim() || t('common.songEdit.defaultArtist'),
+                album: songEditAlbumInput.value.trim()
+            };
+            const pendingCover = playlistStore.get('songEditPendingCover');
+            return { key, newTag, pendingCover };
+        }
 
-            let notFoundAlert = false; // cờ mang ra ngoài withLoadingShield — xem giải thích chi tiết ở playSong() phía trên
-            await withLoadingShield(t('common.loading.savingInfo'), async () => {
-                const record = await getSongRecord(key);
-                if (!record) { notFoundAlert = true; return; }
-                record.tag = { ...record.tag, ...newTag };
-                // Ảnh bìa: File mới -> ghi thẳng Blob (File là 1 dạng Blob, lưu IndexedDB được luôn,
-                // giống cách record.cover đã được ghi từ jsmediatags lúc nạp file ban đầu). 'remove'
-                // -> xóa hẳn field cover (record không còn cover -> các nơi đọc cover tự fallback
-                // DEFAULT_VINYL, đúng hành vi cũ khi 1 bài chưa từng có cover).
-                if (pendingCover instanceof File) record.cover = pendingCover;
-                else if (pendingCover === 'remove') delete record.cover;
-                await setSongRecord(key, record);
+        /**
+         * Hàm core THUẦN, nhận toàn bộ data qua tham số (KHÔNG tự đọc playlistStore) — để
+         * workflow bọc withLoadingShield() quanh đúng lệnh gọi này.
+         * @param {string} key
+         * @param {Object} newTag
+         * @param {File|'remove'|null} pendingCover
+         * @returns {{status: 'notFound'|'ok'}}
+         */
+        async function applySongEditAndSave(key, newTag, pendingCover) {
+            const record = await getSongRecord(key);
+            if (!record) return { status: 'notFound' };
+            record.tag = { ...record.tag, ...newTag };
+            // Ảnh bìa: File mới -> ghi thẳng Blob (File là 1 dạng Blob, lưu IndexedDB được luôn,
+            // giống cách record.cover đã được ghi từ jsmediatags lúc nạp file ban đầu). 'remove'
+            // -> xóa hẳn field cover (record không còn cover -> các nơi đọc cover tự fallback
+            // DEFAULT_VINYL, đúng hành vi cũ khi 1 bài chưa từng có cover).
+            if (pendingCover instanceof File) record.cover = pendingCover;
+            else if (pendingCover === 'remove') delete record.cover;
+            await setSongRecord(key, record);
 
-                const cached = playlistCache.get(key);
-                if (cached) { cached.tag = record.tag; cached.cover = record.cover || null; }
-                songNameIndex.set(key, normalizeSongName(record.tag.title));
+            const cached = playlistCache.get(key);
+            if (cached) { cached.tag = record.tag; cached.cover = record.cover || null; }
+            songNameIndex.set(key, normalizeSongName(record.tag.title));
 
-                if (key === currentKey) {
-                    playerTitle.textContent = record.tag.title; playerArtist.textContent = record.tag.artist;
-                    if (currentCoverObjectURL && currentCoverObjectURL.startsWith('blob:')) URL.revokeObjectURL(currentCoverObjectURL);
-                    currentCoverObjectURL = record.cover ? URL.createObjectURL(record.cover) : DEFAULT_VINYL;
-                    const recordArtEl = document.getElementById('record-art');
-                    if (recordArtEl) {
-                        recordArtEl.src = currentCoverObjectURL;
-                        // Gắn lại fallback mỗi khi đổi src (ver 8 refine, mục 4) — listener cũ tự
-                        // gỡ sau 1 lần lỗi (xem attachCoverFallback ở render.js), nên ảnh MỚI vừa
-                        // đổi sang cần listener mới của riêng nó để vẫn được bảo vệ.
-                        attachCoverFallback(recordArtEl);
-                    }
-                    if ('mediaSession' in navigator) {
-                        navigator.mediaSession.metadata = new MediaMetadata({
-                            title: record.tag.title || "Visual Master",
-                            artist: record.tag.artist || "Unknown Artist",
-                            // Ver 8 refine (mục 4): dùng đúng record.cover.type thật, xem comment
-                            // tương tự ở playSong() phía trên.
-                            artwork: record.cover ? [{ src: currentCoverObjectURL, sizes: '512x512', type: record.cover.type || 'image/jpeg' }] : []
-                        });
-                    }
+            if (key === currentKey) {
+                playerTitle.textContent = record.tag.title; playerArtist.textContent = record.tag.artist;
+                if (currentCoverObjectURL && currentCoverObjectURL.startsWith('blob:')) URL.revokeObjectURL(currentCoverObjectURL);
+                currentCoverObjectURL = record.cover ? URL.createObjectURL(record.cover) : DEFAULT_VINYL;
+                // NGOẠI LỆ CỐ Ý: #record-art là phần tử ĐỘNG (tạo lại qua innerHTML mỗi lần đổi
+                // bài) — không thể dùng biến cố định từ dom-refs.js, phải tự getElementById tại
+                // chỗ cần (xem comment chi tiết ở khối "Playlist actions" trong dom-refs.js).
+                const recordArtEl = document.getElementById('record-art');
+                if (recordArtEl) {
+                    recordArtEl.src = currentCoverObjectURL;
+                    // Gắn lại fallback mỗi khi đổi src (ver 8 refine, mục 4) — listener cũ tự
+                    // gỡ sau 1 lần lỗi (xem attachCoverFallback ở render.js), nên ảnh MỚI vừa
+                    // đổi sang cần listener mới của riêng nó để vẫn được bảo vệ.
+                    attachCoverFallback(recordArtEl);
                 }
-            });
+                if ('mediaSession' in navigator) {
+                    navigator.mediaSession.metadata = new MediaMetadata({
+                        title: record.tag.title || "Visual Master",
+                        artist: record.tag.artist || "Unknown Artist",
+                        // Ver 8 refine (mục 4): dùng đúng record.cover.type thật, xem comment
+                        // tương tự ở playSong() phía trên.
+                        artwork: record.cover ? [{ src: currentCoverObjectURL, sizes: '512x512', type: record.cover.type || 'image/jpeg' }] : []
+                    });
+                }
+            }
+            return { status: 'ok' };
+        }
 
-            // Shield đã đóng HẲN tới đây — an toàn để hiện modal (xem giải thích ở playSong() phía trên).
-            if (notFoundAlert) await alertModal(t('common.songEdit.notFound'));
-
-            closeSongEditModal();
+        /**
+         * Phần "dọn dẹp sau khi lưu" (vẽ lại danh sách, sắp xếp lại nếu cần) — core thuần, không
+         * shield/modal, gọi SAU KHI applySongEditAndSave() đã resolve (workflow gọi nối tiếp).
+         * @param {string} key
+         */
+        function refreshAfterSongEditSave(key) {
             refreshSongNode(key); // vẽ lại ảnh/tên mới ngay trong danh sách (ảnh cũ trong DOM không tự đổi)
             // Đổi tên -> ảnh hưởng sort: cập nhật cả hàng đợi phát (nếu az/za) lẫn danh sách hiển thị.
             if (displaySortMode === 'az' || displaySortMode === 'za') recomputeDisplayOrder();
             recomputeRenderOrder();
             renderPlaylistDiff();
-        });
+        }
 
         // ===================== Modal: Thông tin chi tiết bài hát =====================
-        const songInfoModal = document.getElementById('song-info-modal');
-        const songInfoBody = document.getElementById('song-info-body');
-        let songInfoCurrentKey = null;
+        // songInfoModal/songInfoBody: dùng lại biến từ core/dom-refs.js.
+        // songInfoCurrentKey: state context "modal đang hiện thông tin bài nào" — sống trong
+        // playlistStore.
 
         /**
          * Dựng 1 dòng thông tin dạng "card" nhỏ (icon tròn màu + label + giá trị) — thay cho
@@ -387,7 +437,7 @@
 
         function openSongInfoModal(key) {
             const cached = playlistCache.get(key); if (!cached) return;
-            songInfoCurrentKey = key;
+            playlistStore.set({ songInfoCurrentKey: key });
             const stats = getSongStats(key); // { count, totalTime }
             const emptyVal = t('playlistView.songInfo.empty');
             songInfoBody.innerHTML =
@@ -399,8 +449,22 @@
                 songInfoRowHtml('M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', 'bg-indigo-500/15 text-indigo-400', t('playlistView.songInfo.fieldListened'), formatListenTime(stats.totalTime));
             songInfoModal.classList.remove('hidden');
         }
-        document.getElementById('song-info-close').addEventListener('click', () => songInfoModal.classList.add('hidden'));
-        document.getElementById('song-info-export').addEventListener('click', () => {
-            if (songInfoCurrentKey) exportSongWithTag(songInfoCurrentKey);
+
+        /** Ứng với nút đóng modal thông tin — thuần UI, không cần shield/modal. */
+        function closeSongInfoModal() {
             songInfoModal.classList.add('hidden');
-        });
+            playlistStore.set({ songInfoCurrentKey: null });
+        }
+
+        /**
+         * Ứng với nút "Xuất tệp" trong modal thông tin — đọc key đang hiện từ playlistStore, gọi
+         * exportSongWithTag() (đã là hàm core thuần có sẵn ở id3-export.js), rồi đóng modal.
+         * @returns {{status: string}}
+         */
+        function exportCurrentSongInfo() {
+            const key = playlistStore.get('songInfoCurrentKey');
+            if (key) exportSongWithTag(key);
+            closeSongInfoModal();
+            return { status: key ? 'ok' : 'noop' };
+        }
+
