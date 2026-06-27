@@ -9,28 +9,18 @@ thường để chạy được trực tiếp khi mở `index.html` bằng cách
 
 ## Tóm tắt thay đổi mới nhất
 
+> **⚠️ Bản này CHƯA nâng version chính thức.** Đang trong quá trình thử nghiệm 2 việc song song:
+> khung đa ngôn ngữ (lang pack) và tái cấu trúc kiến trúc **event-driven** (`/event/`) — xem mục
+> "Đang cải tiến: kiến trúc event-driven" ngay dưới đây. Coi đây là bản **làm việc (work in
+> progress)**, không phải bản phát hành.
+
 Bản nền là **ver 10**: dồn toàn bộ `setInterval`/`setTimeout` của project
 qua 1 `TaskManager` tập trung duy nhất, sửa lỗi "Xoá hết dữ liệu" không
 cập nhật UI + thêm phòng thủ khi bị gián đoạn, dọn 2 icon Sort/Grid khỏi
 header Playlist vào Settings, và tính năng mới Tự động đổi hiệu ứng
 Visualizer theo thời gian.
 
-Sau đó có thêm 1 loạt **mini-fix (chưa final)** — log riêng:
-[changelog/v10-mini-not-full-fix.md](./changelog/v10-mini-not-full-fix.md):
 
-- Sửa logo "SAV" không bấm được trên mobile (chuyển từ CSS `:hover` thuần
-  sang JS — `click`/tap-ra-ngoài-tự-thu trên mobile, `mouseenter`/
-  `mouseleave` trên desktop).
-- Tự động đổi hiệu ứng: chuyển đúng vào drawer "Tùy chỉnh Visualizer", và
-  nút "Đổi hiệu ứng" tự khoá khi tính năng này đang bật.
-- Cơ chế "ẩn tab" viết lại hoàn toàn: reload trang thật NGAY lúc ẩn tab
-  (không đợi quay lại), phân biệt được F5 thủ công với ẩn tab thật, hỏi
-  "Tiếp tục nghe?" ngay từ đầu lúc khởi động lại (không đợi load xong
-  playlist), khôi phục cả vị trí audio/video nền/hiệu ứng auto-switch đã
-  lưu khi chọn "Tiếp tục phát"/"Nghe lại".
-- Thêm Settings → "Khắc phục sự cố": **Khởi động lại app** / **Khôi phục
-  cài đặt mặc định**.
-- Thêm toggle ẩn/hiện dải BPM/Pitch/Energy trong Control Center.
 
 > **⚠️ Log mini-fix này CHƯA được test đủ kỹ để coi là bản chốt (final).**
 > Một số phần còn nợ kỹ thuật — đặc biệt **video nền vẫn chưa khôi phục
@@ -56,15 +46,47 @@ riêng: [changelog/v10-lang-test.md](./changelog/v10-lang-test.md):
 
 > **⚠️ Batch này CHƯA test trên browser thật.** Chỉ kiểm chứng qua
 > `node --check` (cú pháp) + test harness Node `vm`/`require` (mock
-> IndexedDB). Rủi ro lớn nhất chưa loại trừ: `lang.js` giờ nạp NGAY ĐẦU
+> IndexedDB). Rủi ro lớn nhất chưa loại trừ: `lang.js` nạp NGAY ĐẦU
 > `<body>`, TRƯỚC TOÀN BỘ file component — thay đổi thứ tự nạp script DUY
-> NHẤT trong cả project. Xem mục "Nợ kỹ thuật" ở cuối
+> NHẤT trong cả project so với trước batch này. (Cập nhật: sau đó `lang.js`
+> đã được tách tiếp thành `lang/lang.js` + `lang/patch/*.js` — xem khung
+> "Cập nhật cấu trúc thư mục" ngay dưới — nhưng vị trí nạp SỚM này vẫn giữ
+> nguyên, chỉ đổi tên/số lượng file.) Xem mục "Nợ kỹ thuật" ở cuối
 > [changelog/v10-lang-test.md](./changelog/v10-lang-test.md).
+
+> **📦 Cập nhật cấu trúc thư mục (sau batch i18n trên):** `lang.js` đã được tách tiếp thành
+> `lang/lang.js` (engine) + 5 file `lang/patch/*.js` (default key tiếng Anh, viết dạng `.js` vì
+> `file://` không `fetch()` được file tĩnh). Đồng thời, toàn bộ `js/core/`, `js/components/`,
+> `js/playlist/`, `js/visualizers/`, `js/main.js` đã được đưa thẳng ra root (`core/`,
+> `components/`, `playlist/`, `visualizers/`, `main.js`) — thư mục `js/` không còn tồn tại.
+
+## Đang cải tiến: kiến trúc event-driven (`/event/`) — chưa hoàn thành, đang làm dần
+
+Xuất phát từ vấn đề: logic nghiệp vụ (gọi DB, build zip, xoá file...) đang nằm thẳng trong
+callback của `addEventListener`, trộn lẫn với việc đăng ký sự kiện — khó đọc, khó sửa an toàn.
+Đang tái cấu trúc theo mô hình "gửi thư": **listener** chỉ gửi message → **event bus** định tuyến
+→ **router** quyết định gọi thẳng 1 hàm core hoặc giao cho **workflow** (chuỗi gọi nhiều hàm core,
+có `withLoadingShield`/`alertModal`) → **core** là hàm thuần, không biết gì về DOM/event/modal.
+
+**Làm từng cụm nhỏ, kiểm chứng kỹ trước khi nhân rộng** — không đổi đại trà 1 lần vì rủi ro làm
+hỏng toàn bộ project đang chạy ổn định. Tới nay đã hoàn thành 2 cụm:
+
+- **`storage`** (Quản lý dung lượng) — cụm mẫu đầu tiên, dùng làm chuẩn tham chiếu.
+- **`playlist`** (gộp hành động trên 1 bài + nạp nhạc mới + sắp xếp/kiểu xem/tìm kiếm) — cụm thứ
+  2, có thêm `EventStore` (store trung tâm tối giản cho state context, dùng `class`, mỗi module
+  tự tạo 1 instance riêng namespace).
+
+> **⚠️ Chưa chạy thử trên trình duyệt thật.** Mọi kiểm chứng tới nay đều bằng Node `vm` với DOM
+> giả lập (nạp file thật theo đúng thứ tự nạp trong `index.html`, không viết lại code tay vào
+> test). Còn **101/134 listener gốc chưa tách** — toàn bộ chi tiết quyết định kiến trúc, lỗi đã
+> mắc, và việc còn thiếu được ghi đầy đủ trong `plan.md` (file kế hoạch riêng, mang theo giữa các
+> phiên làm việc) — đọc file đó trước khi tiếp tục sửa bất kỳ phần nào liên quan `/event/`.
 
 ## Đọc tiếp ở đâu
 
 | Muốn biết... | Đọc... |
 |---|---|
+
 | Toàn bộ lịch sử thay đổi (ver 1 → ver 10 → mini-fix → i18n) | [readme/changelog-index.md](./readme/changelog-index.md) |
 | Cấu trúc thư mục, file nào làm gì | [readme/folder-structure.md](./readme/folder-structure.md) |
 | Thứ tự nạp script trong `index.html` (quan trọng, đừng đảo) | [readme/script-load-order.md](./readme/script-load-order.md) |
