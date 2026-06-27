@@ -187,10 +187,68 @@
         // SỬA: chốt danh sách file ra 1 Array THẬT (Array.from) NGAY khi vào listener, TRƯỚC khi
         // đụng tới `e.target.value` — Array.from tạo bản sao độc lập, không còn bị ảnh hưởng bởi
         // bất kỳ thay đổi nào lên input sau đó.
-        fileInput.addEventListener('change', async function(e) {
+        //
+        // MIGRATE (kiến trúc /event/): việc "chốt FileList ra Array NGAY + reset input.value"
+        // PHẢI làm trong listener thật (event/listener/playlist.js) — đây là hành vi gắn chặt với
+        // chính sự kiện DOM 'change' (timing nhạy cảm như comment trên giải thích), không thể dời
+        // vào core/router/workflow vì khi đó FileList có thể đã bị trình duyệt làm rỗng. Listener
+        // gửi ĐÚNG Array đã chốt qua payload — router/handleAudioFiles() không cần biết gì về
+        // input/FileList, chỉ nhận 1 Array file thuần.
+
+        // ===================== Menu nhỏ cho nút "Thêm nhạc": Chọn file / Chọn cả thư mục =====================
+        // Dùng CHUNG #song-action-overlay (đã có sẵn ở core/dom-refs.js, biến `songActionOverlay`
+        // — KHÔNG tự tạo biến riêng `songActionOverlayForUpload` nữa, tránh 2 nguồn tham chiếu
+        // cho cùng 1 phần tử DOM) để đóng khi bấm ra ngoài — tại 1 thời điểm chỉ 1 trong 2 menu
+        // (#song-action-menu / #upload-action-menu) hiện, không xung đột. Cùng công thức định vị
+        // "rect.bottom + 6, lật lên nếu tràn đáy màn hình" như openSongActionMenu() để 2 menu có
+        // cảm giác nhất quán.
+        //
+        // FIX (ver 8 refine): 2 mục trong menu giờ là <label> bọc input thật (xem playlist-view.js)
+        // — click tự nhiên lên label đã trigger input qua hành vi HTML chuẩn, KHÔNG cần gọi
+        // fileInput.click()/folderInput.click() bằng JS nữa (cách cũ "treo" trên một số nền tảng,
+        // xem comment ở playlist-view.js).
+        function closeUploadActionMenu() {
+            uploadActionMenu.classList.add('hidden');
+            songActionOverlay.classList.add('hidden');
+        }
+
+        /** Mở menu "Thêm nhạc" (Chọn file / Chọn cả thư mục) — core thuần, thuần UI tính vị trí. */
+        function openUploadActionMenu() {
+            const rect = btnUploadAudio.getBoundingClientRect();
+            const menuWidth = 208;
+            let left = rect.right - menuWidth;
+            if (left < 8) left = 8;
+            let top = rect.bottom + 8;
+            const viewportH = window.innerHeight || 800;
+            if (top + 110 > viewportH) top = rect.top - 110 - 8;
+            uploadActionMenu.style.left = `${left}px`;
+            uploadActionMenu.style.top = `${top}px`;
+            uploadActionMenu.classList.remove('hidden');
+            songActionOverlay.classList.remove('hidden');
+        }
+
+        /**
+         * Đóng menu sau khi bấm vào 1 trong 2 label — dùng taskManager.once(...,10) để KHÔNG ẩn
+         * menu (classList.add('hidden')) NGAY trong cùng tick của sự kiện click: nếu ẩn ngay lập
+         * tức, một số trình duyệt có thể chưa kịp xử lý xong việc click vào label kích hoạt input
+         * bên trong nó (input đã bị display:none trước khi hộp thoại kịp mở) — đẩy việc đóng menu
+         * ra sau 1 tick đảm bảo hộp thoại file picker đã được yêu cầu mở trước khi DOM bị ẩn.
+         * @param {EventTarget} target - e.target gốc của click, để kiểm tra có trúng <label> không
+         */
+        function handleUploadMenuLabelClick(target) {
+            if (target.closest('label')) taskManager.once(closeUploadActionMenu, 10);
+        }
+
+        /**
+         * Xử lý FileList đã chốt (Array thật) từ input chọn FILE RỜI (#audio-upload). Core THUẦN
+         * nhận Array qua tham số — KHÔNG tự đọc input/FileList (đã chốt ở listener, xem comment
+         * phía trên). Giữ NGUYÊN try/catch + alertModal() bên trong (giống handleAudioFiles() —
+         * đây vẫn là 1 hàm core "lớn" có sẵn shield/modal nội bộ, KHÔNG tách ra workflow, theo
+         * đúng quyết định đã chốt khi tách cụm này vào /event/).
+         * @param {File[]} fileList
+         */
+        async function handleFilePickerChange(fileList) {
             try {
-                const fileList = Array.from(e.target.files || []);
-                e.target.value = '';
                 console.log(`[upload] #audio-upload change: ${fileList.length} file được chọn.`);
                 if (fileList.length === 0) {
                     console.warn('[upload] #audio-upload: FileList rỗng sau khi chọn — trình duyệt không trả về file nào.');
@@ -201,12 +259,15 @@
                 console.error('[upload] Lỗi không xác định khi xử lý file đã chọn (#audio-upload):', err);
                 await alertModal(tFormat('common.upload.fileError', { message: escapeHtml(err && err.message ? err.message : err) }));
             }
-        });
+        }
 
-        folderInput.addEventListener('change', async function(e) {
+        /**
+         * Xử lý FileList đã chốt từ input chọn CẢ THƯ MỤC (#audio-upload-folder). Core THUẦN,
+         * cùng nguyên tắc như handleFilePickerChange() ở trên.
+         * @param {File[]} fileList
+         */
+        async function handleFolderPickerChange(fileList) {
             try {
-                const fileList = Array.from(e.target.files || []);
-                e.target.value = '';
                 console.log(`[upload] #audio-upload-folder change: ${fileList.length} file được chọn (toàn bộ thư mục + thư mục con).`);
                 if (fileList.length === 0) {
                     console.warn('[upload] #audio-upload-folder: FileList rỗng sau khi chọn thư mục — trình duyệt không trả về file nào (thư mục trống, hoặc bị chặn quyền đọc thư mục).');
@@ -218,47 +279,7 @@
                 console.error('[upload] Lỗi không xác định khi xử lý thư mục đã chọn (#audio-upload-folder):', err);
                 await alertModal(tFormat('common.upload.folderError', { message: escapeHtml(err && err.message ? err.message : err) }));
             }
-        });
-
-        // ===================== Menu nhỏ cho nút "Thêm nhạc": Chọn file / Chọn cả thư mục =====================
-        // Dùng CHUNG #song-action-overlay (đã có sẵn ở playlist/actions.js) để đóng khi bấm ra
-        // ngoài — tại 1 thời điểm chỉ 1 trong 2 menu (#song-action-menu / #upload-action-menu)
-        // hiện, không xung đột. Cùng công thức định vị "rect.bottom + 6, lật lên nếu tràn đáy màn
-        // hình" như openSongActionMenu() để 2 menu có cảm giác nhất quán.
-        //
-        // FIX (ver 8 refine): 2 mục trong menu giờ là <label> bọc input thật (xem playlist-view.js)
-        // — click tự nhiên lên label đã trigger input qua hành vi HTML chuẩn, KHÔNG cần gọi
-        // fileInput.click()/folderInput.click() bằng JS nữa (cách cũ "treo" trên một số nền tảng,
-        // xem comment ở playlist-view.js). Listener dưới đây CHỈ còn lo đóng menu lại sau khi click
-        // (đóng ngay khi bấm bất kỳ đâu trong menu, bằng đúng click event mà label vừa nhận, không
-        // chặn hay preventDefault gì cả nên input vẫn mở hộp thoại bình thường ngay sau đó).
-        const songActionOverlayForUpload = document.getElementById('song-action-overlay');
-        function closeUploadActionMenu() {
-            uploadActionMenu.classList.add('hidden');
-            songActionOverlayForUpload.classList.add('hidden');
         }
-        btnUploadAudio.addEventListener('click', () => {
-            const rect = btnUploadAudio.getBoundingClientRect();
-            const menuWidth = 208;
-            let left = rect.right - menuWidth;
-            if (left < 8) left = 8;
-            let top = rect.bottom + 8;
-            const viewportH = window.innerHeight || 800;
-            if (top + 110 > viewportH) top = rect.top - 110 - 8;
-            uploadActionMenu.style.left = `${left}px`;
-            uploadActionMenu.style.top = `${top}px`;
-            uploadActionMenu.classList.remove('hidden');
-            songActionOverlayForUpload.classList.remove('hidden');
-        });
-        songActionOverlayForUpload.addEventListener('click', closeUploadActionMenu);
-        // Đóng menu sau khi bấm vào 1 trong 2 label — dùng taskManager.once(...,10) để KHÔNG ẩn menu
-        // (classList.add('hidden')) NGAY trong cùng tick của sự kiện click: nếu ẩn ngay lập tức,
-        // một số trình duyệt có thể chưa kịp xử lý xong việc click vào label kích hoạt input bên
-        // trong nó (input đã bị display:none trước khi hộp thoại kịp mở) — đẩy việc đóng menu ra
-        // sau 1 tick đảm bảo hộp thoại file picker đã được yêu cầu mở trước khi DOM bị ẩn.
-        uploadActionMenu.addEventListener('click', (e) => {
-            if (e.target.closest('label')) taskManager.once(closeUploadActionMenu, 10);
-        });
 
         /**
          * Quét NHANH store `songs` (KHÔNG decode duration) — record hợp lệ (blob + tag + MIME đúng)
