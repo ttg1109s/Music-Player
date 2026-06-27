@@ -233,3 +233,42 @@
         const storageScanResult = document.getElementById('storage-scan-result');
         const storageScanSummary = document.getElementById('storage-scan-summary');
         const storageScanList = document.getElementById('storage-scan-list');
+
+        // ===================== Playlist actions (menu 3 chấm, modal lỗi phát / sửa thông tin / thông tin chi tiết) =====================
+        // FIX (kiến trúc /event/): toàn bộ getElementById của cụm này TRƯỚC ĐÂY nằm rải rác ngay
+        // trong playlist/actions.js — vi phạm quy ước CHUNG của project là dom-refs.js PHẢI là nơi
+        // DUY NHẤT gọi getElementById, mọi file khác chỉ dùng lại biến đã có ở đây. Gom về đúng 1
+        // chỗ, theo đúng style các khối phía trên.
+        //
+        // NGOẠI LỆ CỐ Ý — KHÔNG đưa vào đây: #record-art. Phần tử này KHÔNG tĩnh — nó bị TẠO LẠI
+        // HOÀN TOÀN mỗi lần đổi bài hát (playlist/actions.js gán recordContainer.innerHTML = ...,
+        // xem window.playSong) và mỗi lần lưu sửa thông tin bài đang phát. Một biến `const` lấy 1
+        // lần lúc khởi động (giống mọi biến khác trong file này) sẽ NHANH CHÓNG trở thành tham
+        // chiếu tới 1 node đã bị gỡ khỏi DOM (stale reference) ngay sau lần đổi bài đầu tiên —
+        // đây chính là lý do biến `recordArt` khai báo phía trên KHÔNG được dùng ở bất kỳ đâu
+        // trong toàn project (dead code có từ trước patch này, không thuộc phạm vi dọn ở đây).
+        // Mọi nơi cần truy cập #record-art (playlist/actions.js, đã tự document.getElementById
+        // lại đúng lúc cần) tiếp tục làm vậy — đây là ngoại lệ HỢP LỆ của quy ước "dom-refs.js là
+        // nơi DUY NHẤT gọi getElementById", áp dụng riêng cho phần tử bị tái tạo động qua innerHTML.
+        const songActionMenu = document.getElementById('song-action-menu');
+        const songActionOverlay = document.getElementById('song-action-overlay');
+        const playbackErrorModal = document.getElementById('playback-error-modal');
+        const playbackErrorFilename = document.getElementById('playback-error-filename');
+        const btnPlaybackErrorKeep = document.getElementById('playback-error-keep');
+        const btnPlaybackErrorDelete = document.getElementById('playback-error-delete');
+        const songEditModal = document.getElementById('song-edit-modal');
+        const songEditTitleInput = document.getElementById('song-edit-title');
+        const songEditArtistInput = document.getElementById('song-edit-artist');
+        const songEditAlbumInput = document.getElementById('song-edit-album');
+        const songEditCoverPreview = document.getElementById('song-edit-cover-preview');
+        const songEditCoverUploadInput = document.getElementById('song-edit-cover-upload');
+        const songEditCoverRemoveBtn = document.getElementById('song-edit-cover-remove');
+        const songEditTabButtons = document.querySelectorAll('.song-edit-tab-btn');
+        const songEditTabInfo = document.getElementById('song-edit-tab-info');
+        const songEditTabCover = document.getElementById('song-edit-tab-cover');
+        const btnSongEditCancel = document.getElementById('song-edit-cancel');
+        const btnSongEditSave = document.getElementById('song-edit-save');
+        const songInfoModal = document.getElementById('song-info-modal');
+        const songInfoBody = document.getElementById('song-info-body');
+        const btnSongInfoClose = document.getElementById('song-info-close');
+        const btnSongInfoExport = document.getElementById('song-info-export');
