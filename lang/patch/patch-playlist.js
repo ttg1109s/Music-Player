@@ -1,0 +1,63 @@
+/**
+ * patch-playlist.js — patch default-language keys (tiếng Anh), phần playlistView + bottomPlayer.
+ *
+ * Đây KHÔNG phải file JSON: project chạy qua file://, không thể fetch() file tĩnh, nên các
+ * "patch" default-language được viết thành .js gán vào 1 biến global, để core/../lang.js (nay đã
+ * dời sang /lang/lang.js) gom lại bằng Object.assign(). File này CHỈ chứa dữ liệu (key -> chuỗi
+ * tiếng Anh), không chứa logic.
+ *
+ * Nạp TRƯỚC /lang/lang.js (xem index.html, khối nạp /lang/patch/*.js đứng trước /lang/lang.js).
+ */
+const LANG_PATCH_PLAYLIST = {
+    'playlistView.logo.title': 'Simple Audio Visualizer',
+    'playlistView.btnReturnVisual.title': 'Now playing (return)',
+    'playlistView.btnUploadAudio.title': 'Add music',
+    'playlistView.btnSettings.title': 'Settings',
+    'playlistView.heading': 'Songs',
+    'playlistView.search.placeholder': 'Search songs, artists, albums...',
+    'playlistView.search.clear.title': 'Clear search',
+    'playlistView.btnPlay': 'Play',
+    'playlistView.btnShuffleAll': 'Shuffle',
+    'playlistView.empty.noSongs': 'No songs yet. Add some music to get started.',
+    'playlistView.empty.noSearchResults': 'No matching songs found.',
+    'playlistView.loading.generic': 'Loading data...',
+    'playlistView.loading.withCount': 'Loading {done} / {total} songs...',
+    'playlistView.songEdit.title': 'Edit song info',
+    'playlistView.songEdit.tabInfo': 'Info',
+    'playlistView.songEdit.tabCover': 'Cover',
+    'playlistView.songEdit.fieldTitle': 'Title',
+    'playlistView.songEdit.fieldArtist': 'Artist',
+    'playlistView.songEdit.fieldAlbum': 'Album',
+    'playlistView.songEdit.coverAlt': 'Cover art',
+    'playlistView.songEdit.coverChoose': 'Choose image',
+    'playlistView.songEdit.coverRemove': 'Remove cover',
+    'playlistView.songEdit.coverHint': 'Accepts PNG, JPG or WEBP. The image is stored with the song in IndexedDB and written to the APIC tag on export.',
+    'playlistView.songEdit.btnCancel': 'Cancel',
+    'playlistView.songEdit.btnSave': 'Save',
+    'playlistView.songInfo.title': 'Song info',
+    'playlistView.songInfo.fieldTitle': 'Title',
+    'playlistView.songInfo.fieldArtist': 'Artist',
+    'playlistView.songInfo.fieldAlbum': 'Album',
+    'playlistView.songInfo.fieldDuration': 'Duration',
+    'playlistView.songInfo.fieldPlayCount': 'Play count',
+    'playlistView.songInfo.fieldPlayCountValue': '{n} times',
+    'playlistView.songInfo.fieldListened': 'Listened',
+    'playlistView.songInfo.btnExport': 'Export file',
+    'playlistView.songInfo.btnClose': 'Close',
+    'playlistView.songInfo.empty': '—',
+    'playlistView.uploadMenu.pickFiles': 'Choose music files',
+    'playlistView.uploadMenu.pickFolder': 'Choose a folder',
+    'playlistView.songMenu.title': 'Options',
+    'playlistView.songMenu.info': 'Info',
+    'playlistView.songMenu.edit': 'Edit info',
+    'playlistView.songMenu.export': 'Export file',
+    'playlistView.songMenu.delete': 'Delete song',
+    'playlistView.playbackError.title': "Can't play this song",
+    'playlistView.playbackError.body': 'The file data may be corrupted or in an unsupported format. Keep it for later (in Storage Management) or delete it now?',
+    'playlistView.playbackError.btnKeep': 'Keep',
+    'playlistView.playbackError.btnDelete': 'Delete now',
+
+    'bottomPlayer.noSongSelected': 'No song selected',
+    'bottomPlayer.btnPrev.title': 'Previous',
+    'bottomPlayer.btnNext.title': 'Next',
+};

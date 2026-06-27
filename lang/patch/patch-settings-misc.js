@@ -1,0 +1,66 @@
+/**
+ * patch-settings-misc.js — patch default-language keys (tiếng Anh), phần settingsMisc + settingsDrawer + aboutDrawer + storageDrawer + settingsLanguage.
+ *
+ * Đây KHÔNG phải file JSON: project chạy qua file://, không thể fetch() file tĩnh, nên các
+ * "patch" default-language được viết thành .js gán vào 1 biến global, để core/../lang.js (nay đã
+ * dời sang /lang/lang.js) gom lại bằng Object.assign(). File này CHỈ chứa dữ liệu (key -> chuỗi
+ * tiếng Anh), không chứa logic.
+ *
+ * Nạp TRƯỚC /lang/lang.js (xem index.html, khối nạp /lang/patch/*.js đứng trước /lang/lang.js).
+ */
+const LANG_PATCH_SETTINGS_MISC = {
+    'settingsMisc.sectionTitle': 'Other',
+    'settingsMisc.keepScreenOn.label': 'Keep screen on',
+    'settingsMisc.keepScreenOn.hint': 'Prevents the screen from turning off during playback. Turn off to save battery (music still tries to keep playing in the background).',
+    'settingsMisc.openAbout.label': 'About the player',
+    'settingsMisc.troubleshootTitle': 'Troubleshooting',
+    'settingsMisc.restartApp.label': 'Restart app',
+    'settingsMisc.restartApp.hint': 'Use this if the player freezes, gets stuck, or behaves abnormally. Does not affect saved music/playlist/settings.',
+    'settingsMisc.restoreDefaults.label': 'Restore default settings',
+    'settingsMisc.restoreDefaults.hint': 'Resets colors, effects, EQ, and other display customizations to defaults. Does NOT delete uploaded music/playlist.',
+
+    'settingsDrawer.title': 'System Settings',
+
+    'aboutDrawer.backToSettings.title': 'Back to Settings',
+    'aboutDrawer.title': 'About the player',
+    'aboutDrawer.statsSectionTitle': 'Statistics',
+    'aboutDrawer.statTotalSongs': 'Total songs',
+    'aboutDrawer.statTotalDuration': 'Total song length',
+    'aboutDrawer.statListenSeconds': 'Total listening time',
+    'aboutDrawer.storageSectionTitle': 'Storage',
+    'aboutDrawer.openStorage.label': 'Storage Management',
+    'aboutDrawer.openStorage.hint': 'Storage used, free up space, clean up broken files',
+    'aboutDrawer.introSectionTitle': 'About',
+    'aboutDrawer.introBody': 'This music player & visualizer runs entirely in your browser (client-side): there is no server, and none of your files are uploaded anywhere. All music, cover art, subtitles, and background images/videos are stored locally on your device.',
+    'aboutDrawer.warningSectionTitle': 'About stored data',
+    'aboutDrawer.warning.deviceBound': 'Data is tied to <strong class="text-amber-300">this specific browser + device</strong> — it does not sync across other devices or browsers.',
+    'aboutDrawer.warning.osCleanup': "The operating system may automatically clear data when the device is low on storage, especially on mobile. iOS Safari has its own data-clearing policy if the page hasn't been added to the Home Screen.",
+    'aboutDrawer.warning.offline': '<strong class="text-amber-300">About offline use:</strong> saved data does NOT disappear when offline. The real issue is that without an internet connection to reload the page from scratch, there\'s no way to open the app and access that data. The player doesn\'t use a Service Worker yet (to keep development speed up), so this risk still exists — you should be aware of it.',
+    'aboutDrawer.warning.recommendation': '<strong class="text-amber-300">Recommendation:</strong> keep your original mp3 files elsewhere too (Google Drive, your computer...). Treat this as a convenient cache, not your primary storage.',
+
+    'storageDrawer.backToAbout.title': 'Back to About',
+    'storageDrawer.title': 'Storage Management',
+    'storageDrawer.statsSectionTitle': 'Statistics',
+    'storageDrawer.statTotalSongs': 'Total songs',
+    'storageDrawer.statTotalBytes': 'Storage used',
+    'storageDrawer.freeSpaceSectionTitle': 'Free up storage',
+    'storageDrawer.downloadThenClear.label': 'Download all files (.zip) then delete',
+    'storageDrawer.downloadThenClear.hint': 'Packs all original music into one zip file to download, then deletes everything from this device',
+    'storageDrawer.clearNoDownload.label': 'Delete everything, no download',
+    'storageDrawer.clearNoDownload.hint': 'Deletes all saved songs (background image/video is kept) — CANNOT be undone',
+    'storageDrawer.brokenSectionTitle': 'Corrupted data',
+    'storageDrawer.scanBroken.label': 'Scan & clean broken files',
+    'storageDrawer.scanBroken.hint': "Finds songs whose data isn't a valid mp3 or can't be played, asks before deleting",
+    'storageDrawer.btnDeleteBroken': 'Delete these broken files',
+    'storageDrawer.btnDismissScan': 'Dismiss',
+
+    'settingsLanguage.sectionTitle': 'Language',
+    'settingsLanguage.select.label': 'Display language',
+    'settingsLanguage.upload.label': 'Upload a new language (.json)',
+    'settingsLanguage.delete.label': 'Delete this language',
+    'settingsLanguage.delete.confirm': 'Delete language "{name}"? After deleting, the app will switch back to English.',
+    'settingsLanguage.upload.invalidFile': 'Invalid language file: missing "meta.code" or malformed JSON.',
+    'settingsLanguage.upload.success': 'Added language "{name}" and applied it.',
+    'settingsLanguage.upload.parseError': "Couldn't read this JSON file:\n\n{message}",
+    'settingsLanguage.cannotDeleteEnglish': 'English (the original language) is always available and cannot be deleted.',
+};
