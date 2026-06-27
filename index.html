@@ -109,6 +109,17 @@
             hàm helper định nghĩa trong 2 file này.
          ===================================================================== -->
     <script src="core/config.js?v=20260625v10"></script>
+    <!-- event/store.js (class EventStore) — CHỈ riêng file NÀY trong toàn bộ /event/ được nạp SỚM
+         ở đây, KHÔNG đợi xuống cuối cùng cùng bus/workflow/router/listener. Lý do: playlist/
+         actions.js (core, dòng dưới) cần khai báo `const playlistStore = new EventStore(...)`
+         ngay ở top-level của nó lúc nạp — nếu để event/store.js xuống cuối tuyệt đối (cùng khối
+         /event/ còn lại), playlist/actions.js sẽ ReferenceError vì class EventStore chưa tồn
+         tại tại thời điểm nó cần dùng. event/store.js KHÔNG phụ thuộc eventBus hay bất kỳ gì
+         khác trong /event/ (tự đứng độc lập, xem comment đầu file đó), nên tách riêng lên đây
+         là AN TOÀN — không phá vỡ nguyên tắc "core không cần biết /event/ tồn tại" cho phần CÒN
+         LẠI của /event/ (bus/workflow/router/listener vẫn nạp cuối cùng tuyệt đối như cũ, xem
+         khối "KIẾN TRÚC /event/" ở gần cuối file này). -->
+    <script src="event/store.js?v=20260627v1"></script>
     <script src="core/dom-refs.js?v=20260625v10"></script>
     <!-- TaskManager (Loop/TaskManager) — quản lý TẬP TRUNG mọi setInterval/setTimeout của app
          (kể cả timeout bắn-1-lần). Nạp NGAY SAU dom-refs.js, TRƯỚC modal-choice.js/db.js và mọi
@@ -204,6 +215,9 @@
          THỨ TỰ NỘI BỘ trong khối này, đúng quy tắc đã thống nhất — "Workflow nạp trước -> router
          đăng ký tiếp -> listener ở cuối, vì các function đã nạp trước đó":
            1. event/bus.js             — TỔNG ĐÀI, phải có trước để router gọi register() được.
+              (event/store.js KHÔNG nằm trong khối này — đã nạp SỚM hơn nhiều, ngay sau
+              core/config.js, vì playlist/actions.js [core] cần `new EventStore(...)` ngay lúc
+              nạp. Xem comment chi tiết ở dòng nạp event/store.js phía trên.)
            2. event/workflow/*.js      — chuỗi gọi hàm core, PHẢI có trước vì router gọi vào đó.
            3. event/router/*.js        — đăng ký với bus (eventBus.register(...)) NGAY lúc nạp.
            4. event/listener/*.js      — addEventListener cuối cùng, vì cần eventBus.send() (1) và
@@ -213,6 +227,9 @@
     <script src="event/workflow/storage.js?v=20260627v1"></script>
     <script src="event/router/storage.js?v=20260627v1"></script>
     <script src="event/listener/storage.js?v=20260627v1"></script>
+    <script src="event/workflow/playlist.js?v=20260627v1"></script>
+    <script src="event/router/playlist.js?v=20260627v1"></script>
+    <script src="event/listener/playlist.js?v=20260627v1"></script>
 
 </body>
 </html>
