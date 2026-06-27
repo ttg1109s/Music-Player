@@ -272,3 +272,11 @@
         const songInfoBody = document.getElementById('song-info-body');
         const btnSongInfoClose = document.getElementById('song-info-close');
         const btnSongInfoExport = document.getElementById('song-info-export');
+
+        // ===================== Playlist main (sắp xếp, kiểu xem, ô tìm kiếm) =====================
+        // FIX (kiến trúc /event/): toàn bộ getElementById của cụm này TRƯỚC ĐÂY nằm rải rác ngay
+        // trong playlist/main.js — vi phạm quy ước CHUNG của project. Gom về đúng 1 chỗ.
+        const sortSelect = document.getElementById('setting-playlist-sort-mode');
+        const viewModeSelect = document.getElementById('setting-playlist-view-mode');
+        const playlistSearchInput = document.getElementById('playlist-search-input');
+        const playlistSearchClear = document.getElementById('playlist-search-clear');
