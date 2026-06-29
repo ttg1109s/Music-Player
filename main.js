@@ -3,7 +3,7 @@
  *
  * File này PHẢI được nạp NGAY SAU các file components/*.js (chúng chỉ định nghĩa
  * các biến TPL_* chứa chuỗi HTML) và PHẢI chạy TRƯỚC TOÀN BỘ các file js/core/*.js
- * và js/visualizers/*.js, vì các file đó dùng document.getElementById(...) ngay khi
+ * và core/visualizer/*.js, vì các file đó dùng document.getElementById(...) ngay khi
  * được nạp — nếu DOM chưa có các phần tử tương ứng, code sẽ lỗi (null reference).
  *
  * Cơ chế: mỗi component là một chuỗi HTML (TPL_...) được "lắp" (mount) vào đúng vị
