@@ -8,6 +8,10 @@
  * `applyEQPreset()` GIỮ NGUYÊN ở core/visualizer/visualizer-display.js (cross-call, KHÔNG di
  * chuyển — đây là hàm có nhiều nguồn gọi không chỉ từ EQ, xem mục "Cross-call" của plan.md).
  *
+ * LISTENER: slider.addEventListener('input') đã XOÁ khỏi vòng lặp initEQSliders() — thay bằng
+ * 1 delegation duy nhất trên eqSlidersWrapper (phần tử cha cố định, tồn tại suốt đời trang),
+ * đăng ký trong event/listener/equalizer-settings.js. Đọc data-index để xác định băng tần.
+ *
  * PHẢI nạp SAU: core/config.js (vizConfig), core/dom-refs.js (eqSelect/eqSlidersWrapper).
  */
         function initEQSliders() {
@@ -16,13 +20,6 @@
                 const col = document.createElement('div'); col.className = 'flex flex-col items-center gap-1 w-6';
                 col.innerHTML = `<span class="text-[8px] text-sky-300 w-full text-center" id="eq-val-${i}">0</span><div class="eq-slider-container"><input type="range" class="eq-slider" min="-12" max="12" step="1" value="0" data-index="${i}"></div><span class="text-[8px] text-slate-400 mt-1">${EQ_LABELS[i]}</span>`;
                 eqSlidersWrapper.appendChild(col);
-                const slider = col.querySelector('.eq-slider');
-                slider.addEventListener('input', (e) => {
-                    const val = parseFloat(e.target.value); document.getElementById(`eq-val-${i}`).textContent = val > 0 ? `+${val}` : val;
-                    vizConfig.manualEq[i] = val;
-                    if(vizConfig.eqMode !== 'manual') { vizConfig.eqMode = 'manual'; eqSelect.value = 'manual'; }
-                    if(eqBandNodes[i]) eqBandNodes[i].gain.value = val; saveConfig();
-                });
             }
         }
 
