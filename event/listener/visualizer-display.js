@@ -13,7 +13,7 @@
  *
  * KHÔNG tự document.getElementById trong file này — dùng lại biến đã có sẵn ở core/dom-refs.js.
  *
- * NẠP SAU CÙNG (sau bus, visualizers/visualizer-display.js, router/visualizer-display.js, workflow/
+ * NẠP SAU CÙNG (sau bus, core/visualizer/visualizer-display.js, router/visualizer-display.js, workflow/
  * visualizer-display.js, VÀ SAU dom-refs.js) — cần cả eventBus.send() và mọi biến DOM đã sẵn sàng
  * trước khi gắn addEventListener.
  */

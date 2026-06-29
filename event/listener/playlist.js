@@ -121,7 +121,7 @@ if (fileInput) {
         // FIX (ver 8 refine #2): e.target.files là FileList SỐNG, gắn trực tiếp với <input> — một
         // số trình duyệt/WebView làm RỖNG nó NGAY khi input.value bị set lại. Chốt ra Array thật
         // (Array.from) TRƯỚC khi đụng e.target.value, để payload gửi đi không bị ảnh hưởng bởi
-        // bất kỳ thay đổi nào lên input sau đó (xem comment đầy đủ ở playlist/loader.js).
+        // bất kỳ thay đổi nào lên input sau đó (xem comment đầy đủ ở core/playlist/loader.js).
         const fileList = Array.from(e.target.files || []);
         e.target.value = '';
         eventBus.send({ router: 'playlist', type: 'playlist.upload.fileChange', payload: { fileList } });
