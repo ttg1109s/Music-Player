@@ -121,6 +121,8 @@
          khối "KIẾN TRÚC /event/" ở gần cuối file này). -->
     <script src="event/store.js?v=20260627v1"></script>
     <script src="core/dom-refs.js?v=20260625v10"></script>
+    <!-- Logo "SAV" (cụm /event/ "savLogo") — cần biến `savLogo` vừa nạp từ dom-refs.js ngay trên. -->
+    <script src="core/sav-logo.js?v=20260629v1"></script>
     <!-- TaskManager (Loop/TaskManager) — quản lý TẬP TRUNG mọi setInterval/setTimeout của app
          (kể cả timeout bắn-1-lần). Nạp NGAY SAU dom-refs.js, TRƯỚC modal-choice.js/db.js và mọi
          file core khác — hầu hết chúng gọi taskManager.once()/addNew() ngay khi gắn listener lúc
@@ -240,9 +242,12 @@
                                           router đã đăng ký xong (3) sẵn sàng nhận message.
     -->
     <script src="event/bus.js?v=20260627v1"></script>
-    <script src="event/workflow/storage.js?v=20260627v1"></script>
-    <script src="event/router/storage.js?v=20260627v1"></script>
-    <script src="event/listener/storage.js?v=20260627v1"></script>
+    <!-- Cụm "settingsMisc" (ver 11, patch 5): gộp aboutDrawer + storageDrawer (thay router/listener
+         "storage" cũ đã xoá, GIỮ NGUYÊN toàn bộ workflow nghiệp vụ, chỉ đổi tiền tố msg.type) +
+         appRecovery — gộp vì mỗi nhánh quá nhỏ để xứng đáng 1 router/listener riêng. -->
+    <script src="event/workflow/settings-misc.js?v=20260629v2"></script>
+    <script src="event/router/settings-misc.js?v=20260629v2"></script>
+    <script src="event/listener/settings-misc.js?v=20260629v2"></script>
     <script src="event/workflow/playlist.js?v=20260627v1"></script>
     <script src="event/router/playlist.js?v=20260627v1"></script>
     <script src="event/listener/playlist.js?v=20260627v1"></script>
@@ -254,6 +259,33 @@
     <script src="event/workflow/visualizer-display.js?v=20260629v1"></script>
     <script src="event/router/visualizer-display.js?v=20260629v1"></script>
     <script src="event/listener/visualizer-display.js?v=20260629v1"></script>
+    <!-- Cụm "statsPanel" (ver 11, patch 4): KHÔNG có event/workflow/stats-panel.js — chỉ 1
+         msg.type, chỉ cần ĐÚNG 1 HÀM CORE (toggleStatsPanelVisibility), router gọi THẲNG (xem
+         comment đầu event/router/stats-panel.js). -->
+    <script src="event/router/stats-panel.js?v=20260629v1"></script>
+    <script src="event/listener/stats-panel.js?v=20260629v1"></script>
+    <!-- Cụm "savLogo" (ver 11, patch 6): KHÔNG có event/workflow/sav-logo.js — chỉ 2 msg.type,
+         chỉ cần ĐÚNG 1 HÀM CORE (setSavLogoExpanded), router gọi THẲNG. -->
+    <script src="event/router/sav-logo.js?v=20260629v1"></script>
+    <script src="event/listener/sav-logo.js?v=20260629v1"></script>
+    <!-- Cụm "languageSettings" (ver 11, patch 7). -->
+    <script src="event/workflow/language-settings.js?v=20260629v1"></script>
+    <script src="event/router/language-settings.js?v=20260629v1"></script>
+    <script src="event/listener/language-settings.js?v=20260629v1"></script>
+    <!-- Cụm "playlistEmptyState" (ver 11, patch 8) — KHÔNG có workflow. -->
+    <script src="event/router/playlist-empty-state.js?v=20260629v1"></script>
+    <script src="event/listener/playlist-empty-state.js?v=20260629v1"></script>
+    <!-- Cụm "subtitleModal" (ver 11, patch 9). -->
+    <script src="event/workflow/subtitle-modal.js?v=20260629v1"></script>
+    <script src="event/router/subtitle-modal.js?v=20260629v1"></script>
+    <script src="event/listener/subtitle-modal.js?v=20260629v1"></script>
+    <!-- Cụm "autoSwitchVisual" (ver 11, patch 10) — KHÔNG có workflow. -->
+    <script src="event/router/auto-switch-visual.js?v=20260629v1"></script>
+    <script src="event/listener/auto-switch-visual.js?v=20260629v1"></script>
+    <!-- Cụm "visualizerControlCenter" (ver 11, patch 11). -->
+    <script src="event/workflow/visualizer-control-center.js?v=20260629v1"></script>
+    <script src="event/router/visualizer-control-center.js?v=20260629v1"></script>
+    <script src="event/listener/visualizer-control-center.js?v=20260629v1"></script>
 
 </body>
 </html>
