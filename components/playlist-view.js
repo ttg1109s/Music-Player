@@ -76,11 +76,11 @@ const TPL_PLAYLIST_VIEW = `
                  (section "Danh sách phát & Nền", xem js/components/settings/playlist-background.js)
                  — không còn icon riêng ở đây, theo yêu cầu dọn header gọn lại. -->
             <div class="flex gap-3">
-                <button onclick="if(displayOrder.length > 0) playSong(currentKey || displayOrder[0]);" class="flex-1 min-w-0 bg-white/10 hover:bg-white/20 backdrop-blur-md active:scale-95 transition-all py-3 rounded-2xl flex items-center justify-center gap-1.5 font-semibold text-[14px] text-white">
+                <button id="btn-playlist-empty-play" class="flex-1 min-w-0 bg-white/10 hover:bg-white/20 backdrop-blur-md active:scale-95 transition-all py-3 rounded-2xl flex items-center justify-center gap-1.5 font-semibold text-[14px] text-white">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>
                     <span data-i18n="playlistView.btnPlay">${t('playlistView.btnPlay')}</span>
                 </button>
-                <button onclick="if(!isShuffle) btnShuffle.click(); if(playlistOrder.length > 0) playSong(shuffleIndices[0]);" class="flex-1 min-w-0 bg-white/10 hover:bg-white/20 backdrop-blur-md active:scale-95 transition-all py-3 rounded-2xl flex items-center justify-center gap-1.5 font-semibold text-[14px] text-white whitespace-nowrap">
+                <button id="btn-playlist-empty-shuffle" class="flex-1 min-w-0 bg-white/10 hover:bg-white/20 backdrop-blur-md active:scale-95 transition-all py-3 rounded-2xl flex items-center justify-center gap-1.5 font-semibold text-[14px] text-white whitespace-nowrap">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
                     <span data-i18n="playlistView.btnShuffleAll">${t('playlistView.btnShuffleAll')}</span>
                 </button>
