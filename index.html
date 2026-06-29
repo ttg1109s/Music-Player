@@ -297,6 +297,14 @@
     <!-- Cụm "subtitleStyleSettings" (ver 11, patch 12) — KHÔNG có workflow. -->
     <script src="event/router/subtitle-style-settings.js?v=20260629v1"></script>
     <script src="event/listener/subtitle-style-settings.js?v=20260629v1"></script>
+    <!-- Cụm "visualizerMiscSettings" (ver 11, patch 13): KHÔNG có workflow — 4 nút mở/đóng
+         drawer + select kiểu hiệu ứng + toggle giữ màn hình sáng. Tất cả gọi thẳng hàm core. -->
+    <script src="event/router/visualizer-misc-settings.js?v=20260630v1"></script>
+    <script src="event/listener/visualizer-misc-settings.js?v=20260630v1"></script>
+    <!-- Cụm "equalizerSettings" (ver 11, patch 14): KHÔNG có workflow — 1 delegation listener
+         trên eqSlidersWrapper thay cho 10 listener riêng lẻ trong vòng lặp initEQSliders(). -->
+    <script src="event/router/equalizer-settings.js?v=20260630v1"></script>
+    <script src="event/listener/equalizer-settings.js?v=20260630v1"></script>
 
 </body>
 </html>
