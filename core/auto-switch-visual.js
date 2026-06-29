@@ -38,9 +38,10 @@
  * giây tương ứng — KHÔNG reset khi đổi bài (đặc điểm cốt
  * lõi của nhánh 1: không quan tâm bài nào đang phát).
  *
- * PHẢI nạp SAU: config.js (AUTO_SWITCH_VISUAL_MIN_SECONDS, MODES), dom-refs.js (currentModeIndex,
- * audioPlayer), task-manager.js (taskManager), player-controls.js (updateTypeUI, saveConfig) —
- * xem index.html.
+ * PHẢI nạp SAU: core/config.js (AUTO_SWITCH_VISUAL_MIN_SECONDS, MODES), core/dom-refs.js
+ * (currentModeIndex, audioPlayer), core/task-manager.js (taskManager), core/equalizer-settings.js
+ * (saveConfig), visualizers/visualizer-display.js (updateTypeUI — ver 11: hàm này đã dời từ
+ * player-controls.js sang đây, xem comment đầu file đó) — xem index.html.
  */
         const AUTO_SWITCH_VISUAL_TASK_TIMER = 'autoSwitchVisualTimer';   // nhánh 1 (fixed/random) — đồng hồ độc lập
         const AUTO_SWITCH_VISUAL_TASK_MARKS = 'autoSwitchVisualMarks';  // nhánh 2 (duration) — tick theo mốc bài hát

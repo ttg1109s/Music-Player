@@ -1,6 +1,27 @@
 /**
- * Điều khiển phát nhạc: next/prev, chuyển sang màn hình visualizer, nút play/pause/shuffle/repeat, Media Session API, thanh tiến trình, cập nhật UI loại hiệu ứng & màu sắc, áp EQ preset.
+ * Điều khiển phát nhạc: next/prev, chuyển sang màn hình visualizer, nút play/pause/shuffle/repeat,
+ * Media Session API, thanh tiến trình, sự kiện audio (play/pause/ended/loadedmetadata/error/
+ * timeupdate/seeked), bộ đếm thời gian nghe thật, modal "Tiếp tục nghe?".
  * (Trích từ file gốc, dòng 802-972 trong khối <script>)
+ *
+ * TÁCH FILE (ver 11, tái cấu trúc /event/): phần "Settings hiệu ứng hình ảnh/màu/EQ/volume" +
+ * nút Cycle hiệu ứng (#btn-cycle-mode) trước đây nằm CHUNG file này đã dời sang
+ * visualizers/visualizer-display.js (đúng ranh giới nghiệp vụ — phần đó là cấu hình Visualizer,
+ * không phải điều khiển phát nhạc). 5 hàm `updateTypeUI`, `updateBarStyleUI`, `updateColorMenuUI`,
+ * `applyEQPreset`, `updateProgressBarCSS` GIỜ định nghĩa ở visualizer-display.js — file đó PHẢI
+ * nạp SAU file này (xem index.html, khu vực 4 VISUALIZERS) vì mọi lệnh gọi 5 hàm đó từ file này
+ * (dòng dưới) đều nằm trong callback (lazy — chạy sau khi mọi script đã nạp xong), KHÔNG có lệnh
+ * gọi nào chạy ngay lúc parse, nên thứ tự nạp này an toàn dù visualizer-display.js đứng sau.
+ *
+ * ÁP DỤNG /event/ (ver 11, patch 2): TOÀN BỘ 17 `addEventListener` cũ của file này (9 click UI +
+ * 8 audioPlayer/progressBar event) đã CHUYỂN HẾT sang event/listener/player-controls.js — quyết
+ * định CHỐT khác mục 2b.6: dù `audioPlayer`/`progressBar` là DOM cố định (không phải listener nội
+ * bộ dùng-1-lần), vẫn đưa vào /event/ theo đúng nghĩa đen "DOM listener cần tách" (xem quyết định
+ * người dùng, không phải mục 2b.6 phát sinh từ cụm playlist). Mọi logic nghiệp vụ TRƯỚC ĐÂY nằm
+ * thẳng trong callback đã rút thành HÀM CORE THUẦN ở file này — xem từng hàm bên dưới, đối chiếu
+ * event/router/player-controls.js để biết msg.type nào gọi hàm nào. Cross-call (vd updateTypeUI,
+ * applyEQPreset) vẫn GIỮ NGUYÊN lệnh gọi hàm trực tiếp như cũ — KHÔNG thuộc phạm vi patch này (xem
+ * plan.md, đã chốt lùi việc này tới khi 134 listener gốc tách xong hết).
  */
         /**
          * Next/Prev khi KHÔNG shuffle giờ dùng `displayOrder` (thứ tự ĐANG HIỂN THỊ theo sort mode
@@ -236,12 +257,21 @@
             }, 50, 'showVisualizerFadeIn');
         }
 
-        btnBackPlaylist.addEventListener('click', () => {
+        /**
+         * Quay về màn Playlist (nút Back ở Visualizer). Dùng chung với resetPlayerToIdle()/
+         * clearAllStoredData() — xem định nghĩa forceBackToPlaylistUI() ở trên.
+         * Ứng với msg.type 'playerControls.backToPlaylist.click'.
+         */
+        function handleBackToPlaylistClick() {
             // KHÔNG dừng/ẩn video ở đây nữa: Playlist (z-[60]) tự che video, video vẫn chạy theo nhạc.
-            forceBackToPlaylistUI(); // dùng chung với resetPlayerToIdle()/clearAllStoredData() — xem định nghĩa ở trên
-        });
+            forceBackToPlaylistUI();
+        }
 
-        playPauseBtn.addEventListener('click', () => {
+        /**
+         * Play/Pause chính — rút nguyên logic từ listener cũ của playPauseBtn. Ứng với msg.type
+         * 'playerControls.playPause.click'.
+         */
+        function togglePlayPause() {
             requestWakeLock(); if (playlistOrder.length === 0) return;
             if (currentKey === null) { window.playSong(displayOrder[0] || playlistOrder[0]); return; }
             // FIX (log 9->10): 'interrupted' là trạng thái RIÊNG của iOS Safari khi audio bị hệ điều
@@ -249,16 +279,42 @@
             // setupAudioContext(), audio-engine.js). Thiếu check này thì audioContext.resume() không
             // được gọi, dù audioPlayer.play() có chạy thì vẫn không nghe được tiếng gì.
             if (audioPlayer.paused) { audioPlayer.play(); if (audioContext && (audioContext.state === 'suspended' || audioContext.state === 'interrupted')) audioContext.resume(); } else { audioPlayer.pause(); }
-        });
+        }
 
-        btnNext.addEventListener('click', () => playNext(true)); btnPrev.addEventListener('click', () => playPrev());
-        btnShuffle.addEventListener('click', () => { isShuffle = !isShuffle; btnShuffle.classList.toggle('!text-sky-400', isShuffle); btnShuffle.classList.toggle('text-slate-400', !isShuffle); updateShuffleArray(); });
-        btnRepeat.addEventListener('click', () => {
+        /**
+         * Toggle bật/tắt Shuffle + đồng bộ class màu nút + tính lại mảng phát ngẫu nhiên. Ứng với
+         * msg.type 'playerControls.shuffle.click'.
+         */
+        function toggleShuffle() {
+            isShuffle = !isShuffle; btnShuffle.classList.toggle('!text-sky-400', isShuffle); btnShuffle.classList.toggle('text-slate-400', !isShuffle); updateShuffleArray();
+        }
+
+        /**
+         * Xoay vòng 3 trạng thái Repeat (tắt -> lặp danh sách -> lặp 1 bài) + đồng bộ class/badge.
+         * Ứng với msg.type 'playerControls.repeat.click'.
+         */
+        function cycleRepeatMode() {
             repeatMode = (repeatMode + 1) % 3;
             if (repeatMode === 0) { btnRepeat.classList.remove('!text-sky-400'); btnRepeat.classList.add('text-slate-400'); repeatBadge.classList.add('hidden'); } 
             else if (repeatMode === 1) { btnRepeat.classList.remove('text-slate-400'); btnRepeat.classList.add('!text-sky-400'); repeatBadge.classList.add('hidden'); } 
             else if (repeatMode === 2) { btnRepeat.classList.add('!text-sky-400'); repeatBadge.classList.remove('hidden'); }
-        });
+        }
+
+        /**
+         * Mở drawer Settings — dùng chung cho cả 2 nút mở (#btn-settings ở Visualizer,
+         * #btn-settings-playlist ở Playlist). Ứng với msg.type 'playerControls.settingsDrawer.open'.
+         */
+        function openSettingsDrawer() {
+            drawerSettings.classList.remove('-translate-y-full');
+        }
+
+        /**
+         * Đóng drawer Settings — kèm validateVideoBgOnClose() (kiểm tra lại video nền lúc đóng,
+         * giữ đúng hành vi gốc). Ứng với msg.type 'playerControls.settingsDrawer.close'.
+         */
+        function closeSettingsDrawer() {
+            validateVideoBgOnClose(); drawerSettings.classList.add('-translate-y-full');
+        }
 
         // Ver 8 refine (mục 2 — loại bỏ can thiệp điều khiển từ ngoài app): KHÔNG còn
         // navigator.mediaSession.setActionHandler(...) nào nữa — play/pause/next/prev/seek từ màn
@@ -330,7 +386,12 @@
             taskManager.kill(LISTEN_CLOCK_TASK);
         }
 
-        audioPlayer.addEventListener('play', () => { 
+        /**
+         * Audio bắt đầu phát (sự kiện 'play' của audioPlayer) — cập nhật icon, record-art quay,
+         * Media Session, refresh node danh sách, bắt đầu đếm thời gian nghe, đồng bộ auto-switch +
+         * video nền. Ứng với msg.type 'playerControls.audio.play'.
+         */
+        function handleAudioPlay() {
             iconPlay.classList.add('hidden'); iconPause.classList.remove('hidden'); 
             let recordArtDynamic = document.getElementById('record-art'); if(recordArtDynamic) recordArtDynamic.classList.remove('paused');
             if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing";
@@ -340,8 +401,13 @@
             // Chỉ ĐỒNG BỘ phát video theo nhạc — KHÔNG fade lại. Nguồn + fade đã thiết lập 1 lần
             // lúc bật/upload/nạp trang (handleVideoBackground), nên Next/Prev không lặp lại cú fade.
             syncVideoBgToAudio();
-        });
-        audioPlayer.addEventListener('pause', () => { 
+        }
+
+        /**
+         * Audio bị dừng (sự kiện 'pause') — ngược lại handleAudioPlay(), cộng thêm
+         * releaseWakeLock(). Ứng với msg.type 'playerControls.audio.pause'.
+         */
+        function handleAudioPause() {
             iconPlay.classList.remove('hidden'); iconPause.classList.add('hidden'); 
             let recordArtDynamic = document.getElementById('record-art'); if(recordArtDynamic) recordArtDynamic.classList.add('paused');
             releaseWakeLock(); if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "paused";
@@ -349,162 +415,76 @@
             stopListenClock();
             if (typeof syncAutoSwitchVisualPlayState === 'function') syncAutoSwitchVisualPlayState(); // ver 10: xem auto-switch-visual.js
             syncVideoBgToAudio();
-        });
-        audioPlayer.addEventListener('ended', () => { stopListenClock(); playNext(false); });
-        audioPlayer.addEventListener('loadedmetadata', () => {
+        }
+
+        /**
+         * Bài hát phát hết (sự kiện 'ended') — dừng đếm giờ nghe, tự chuyển bài kế tiếp (không
+         * force, tôn trọng repeatMode/wrap-around như Next thường). Ứng với msg.type
+         * 'playerControls.audio.ended'.
+         */
+        function handleAudioEnded() {
+            stopListenClock(); playNext(false);
+        }
+
+        /**
+         * Đã đọc xong metadata (duration) của bài mới (sự kiện 'loadedmetadata') — đặt lại max
+         * thanh tiến trình, hiển thị tổng thời lượng, đồng bộ Media Session, build lại marks cho
+         * auto-switch-visual. Ứng với msg.type 'playerControls.audio.loadedmetadata'.
+         */
+        function handleAudioLoadedMetadata() {
             progressBar.max = audioPlayer.duration; durationTimeDisplay.textContent = formatTime(audioPlayer.duration); updateMediaPositionState();
             // ver 10: bài MỚI bắt đầu (duration vừa có giá trị chính xác) -> build lại marks cho
             // auto-switch-visual — xem onAutoSwitchVisualSongChanged() ở auto-switch-visual.js.
             if (typeof onAutoSwitchVisualSongChanged === 'function') onAutoSwitchVisualSongChanged();
-        });
-        // Lỗi decode THẬT (khác với "không tìm thấy record" đã xử lý riêng trong playSong) — trình
-        // duyệt gán src xong rồi mới phát hiện không decode được (file hỏng dù qua được check nhanh
-        // lúc nạp/quét). Chỉ xử lý khi đang thực sự gắn với currentKey (audioPlayer.src vẫn còn trỏ
-        // đúng bài đó) — tránh trường hợp hiếm: lỗi bắn ra sau khi đã playSong() sang bài khác.
-        audioPlayer.addEventListener('error', () => {
+        }
+
+        /**
+         * Lỗi decode THẬT (sự kiện 'error', khác với "không tìm thấy record" đã xử lý riêng trong
+         * playSong) — trình duyệt gán src xong rồi mới phát hiện không decode được (file hỏng dù
+         * qua được check nhanh lúc nạp/quét). Chỉ xử lý khi đang thực sự gắn với currentKey
+         * (audioPlayer.src vẫn còn trỏ đúng bài đó) — tránh trường hợp hiếm: lỗi bắn ra sau khi đã
+         * playSong() sang bài khác. Ứng với msg.type 'playerControls.audio.error'.
+         */
+        function handleAudioError() {
             if (currentKey && currentObjectURL && audioPlayer.src === currentObjectURL) {
                 handlePlaybackError(currentKey);
             }
-        });
+        }
 
+        /** Mốc lần gần nhất đồng bộ Media Session position trong handleAudioTimeUpdate() — giới
+         * hạn tần suất gọi setPositionState (mỗi 5s) thay vì gọi mỗi tick 'timeupdate' (rất dày). */
         let lastPositionSync = 0;
-        audioPlayer.addEventListener('timeupdate', () => { 
+
+        /**
+         * Cập nhật UI theo thời gian thực lúc đang phát (sự kiện 'timeupdate', bắn rất dày) — thanh
+         * tiến trình (nếu không đang kéo tay), hiển thị thời gian hiện tại, xử lý phụ đề, đồng bộ
+         * Media Session mỗi 5s. Ứng với msg.type 'playerControls.audio.timeupdate'.
+         */
+        function handleAudioTimeUpdate() {
             if (!isSeeking) { progressBar.value = audioPlayer.currentTime; updateProgressBarCSS(); } 
             currentTimeDisplay.textContent = formatTime(audioPlayer.currentTime); processSubtitles(audioPlayer.currentTime);
             if (Date.now() - lastPositionSync > 5000) { updateMediaPositionState(); lastPositionSync = Date.now(); }
             // (Thống kê thời lượng nghe KHÔNG còn tính ở đây — xem "Bộ đếm thời gian nghe thật"
             //  phía trên: đo bằng đồng hồ thực, độc lập với currentTime/thanh tiến trình.)
-        });
-        
-        audioPlayer.addEventListener('seeked', updateMediaPositionState);
-        progressBar.addEventListener('input', () => { isSeeking = true; currentTimeDisplay.textContent = formatTime(progressBar.value); updateProgressBarCSS(); processSubtitles(progressBar.value); });
-        progressBar.addEventListener('change', () => { audioPlayer.currentTime = progressBar.value; isSeeking = false; updateMediaPositionState(); });
-
-        function updateProgressBarCSS() {
-            const percentage = (progressBar.value / (progressBar.max || 100)) * 100;
-            const color = vizConfig.mode === 'solid' ? vizConfig.solidColor : (vizConfig.mode === 'dynamic' ? vizConfig.dynB : '#38bdf8');
-            progressBar.style.background = `linear-gradient(to right, ${color} 0%, ${color} ${percentage}%, rgba(255,255,255,0.2) ${percentage}%, rgba(255,255,255,0.2) 100%)`;
         }
 
-        btnSettings.addEventListener('click', () => drawerSettings.classList.remove('-translate-y-full'));
-        btnSettingsPlaylist.addEventListener('click', () => drawerSettings.classList.remove('-translate-y-full'));
-        closeDrawer.addEventListener('click', () => { validateVideoBgOnClose(); drawerSettings.classList.add('-translate-y-full'); });
-        
-        // FIX (yêu cầu mới): khi "Tự động đổi hiệu ứng" đang BẬT (vizConfig.autoSwitchVisualEnabled),
-        // nút "Đổi hiệu ứng" (#btn-cycle-mode) ở Control Center PHẢI vô hiệu — không bấm được, bấm
-        // cũng không có tác dụng gì. Trước đây nút này luôn hoạt động bất kể auto-switch đang bật
-        // hay tắt, gây xung đột: tự động đang đếm giờ để đổi, nhưng người dùng bấm tay cũng đổi
-        // được luôn, 2 cơ chế dẫm chân nhau. Kiểm tra ĐIỀU KIỆN NGAY ĐẦU listener (không chỉ dựa
-        // vào thuộc tính HTML `disabled` của nút — xem updateCycleModeButtonState() ở
-        // auto-switch-visual.js, nơi đồng bộ CẢ thuộc tính disabled/style THỊ GIÁC lẫn cờ JS này)
-        // để chắc chắn không có đường nào lách qua được, kể cả khi nút được kích hoạt bằng cách
-        // khác ngoài click chuột thật (ví dụ gọi .click() bằng JS từ nơi khác).
-        btnCycleMode.addEventListener('click', () => {
-            if (vizConfig.autoSwitchVisualEnabled) return;
-            currentModeIndex = (currentModeIndex + 1) % MODES.length; updateTypeUI(); saveConfig();
-        });
-
-        function updateTypeUI() {
-            vizConfig.type = MODES[currentModeIndex]; modeBadge.textContent = `${currentModeIndex + 1}/${MODES.length}`;
-            // Đồng bộ select "Kiểu hiệu ứng" trong Settings (ver 8 refine) — updateTypeUI() là
-            // điểm DUY NHẤT mọi đường đổi kiểu hiệu ứng đều đi qua (cycle button HOẶC select), nên
-            // đặt đồng bộ ở đây đảm bảo 2 UI luôn khớp nhau bất kể đổi từ đâu.
-            if (typeof visualizerTypeSelect !== 'undefined' && visualizerTypeSelect) visualizerTypeSelect.value = vizConfig.type;
-            blockMaxHeight.classList.add('hidden'); blockBarWidth.classList.add('hidden');
-            blockVortex.classList.add('hidden'); blockRain.classList.add('hidden'); blockBarStyle.classList.add('hidden');
-            
-            if (vizConfig.type === 'vortex') {
-                if(!tInitialized) initThreeJS();
-                updateVortexVisibility();
-                if (!playlistView.classList.contains('-translate-y-full')) {} else { document.getElementById('webgl-canvas').classList.remove('opacity-0'); }
-            } else { document.getElementById('webgl-canvas').classList.add('opacity-0'); }
-
-            if (vizConfig.type === 'vortex') { blockVortex.classList.remove('hidden'); blockVortex.classList.add('flex'); }
-            else if (vizConfig.type === 'rain') { blockRain.classList.remove('hidden'); blockRain.classList.add('flex'); }
-            else if (vizConfig.type === 'bar') {
-                // "Độ cao tối đa" vẫn dùng chung cho Bar (cả mirror/cascade); "Độ dày thanh" KHÔNG
-                // áp dụng cho Bar nữa (chỉ Black Hole) — xem updateBarStyleUI cho 2 setting riêng
-                // của kiểu Phản chiếu (số lượng thanh, độ to vòng tròn).
-                blockMaxHeight.classList.remove('hidden'); blockMaxHeight.classList.add('flex');
-                blockBarStyle.classList.remove('hidden'); blockBarStyle.classList.add('flex');
-                updateBarStyleUI();
-            }
-            else if (vizConfig.type === 'black hole') {
-                // Black Hole là visual DUY NHẤT còn dùng "Độ dày thanh".
-                blockMaxHeight.classList.remove('hidden'); blockMaxHeight.classList.add('flex');
-                blockBarWidth.classList.remove('hidden'); blockBarWidth.classList.add('flex');
-            }
-            else if (vizConfig.type !== 'rubik' && vizConfig.type !== 'lightning') { 
-                blockMaxHeight.classList.remove('hidden'); blockMaxHeight.classList.add('flex'); 
-            }
-
-            if(analyser) { analyser.fftSize = (vizConfig.type === 'vortex' || vizConfig.type === 'lightning') ? APP_CONFIG.fftSizeHighRes : APP_CONFIG.fftSizeStandard; allocateBuffers(); }
+        /**
+         * Người dùng ĐANG kéo tay thanh tiến trình (sự kiện 'input' trên progressBar, bắn liên tục
+         * khi kéo) — đặt cờ isSeeking để handleAudioTimeUpdate() không đè giá trị, hiển thị tạm
+         * thời gian theo VỊ TRÍ ĐANG KÉO (chưa commit), xử lý phụ đề theo vị trí đó luôn. Ứng với
+         * msg.type 'playerControls.progressBar.seeking'.
+         * @param {number} value - progressBar.value tại thời điểm kéo
+         */
+        function handleProgressBarSeeking(value) {
+            isSeeking = true; currentTimeDisplay.textContent = formatTime(value); updateProgressBarCSS(); processSubtitles(value);
         }
 
-        function updateBarStyleUI() {
-            const isMirror = vizConfig.barStyle === 'mirror';
-            barMirrorOptions.classList.toggle('hidden', !isMirror);
-            barMirrorOptions.classList.toggle('flex', isMirror);
+        /**
+         * Người dùng THẢ tay, commit vị trí mới (sự kiện 'change' trên progressBar) — set thật
+         * audioPlayer.currentTime, tắt cờ isSeeking, đồng bộ lại Media Session ngay. Ứng với
+         * msg.type 'playerControls.progressBar.seekCommit'.
+         * @param {number} value - progressBar.value tại thời điểm commit
+         */
+        function handleProgressBarSeekCommit(value) {
+            audioPlayer.currentTime = value; isSeeking = false; updateMediaPositionState();
         }
-
-        function updateColorMenuUI() {
-            if (vizConfig.mode === 'solid') { solidColorContainer.classList.remove('hidden'); dynColorContainer.classList.add('hidden'); dynColorContainer.classList.remove('flex'); } 
-            else if (vizConfig.mode === 'dynamic') { solidColorContainer.classList.add('hidden'); dynColorContainer.classList.remove('hidden'); dynColorContainer.classList.add('flex'); } 
-            else { solidColorContainer.classList.add('hidden'); dynColorContainer.classList.add('hidden'); dynColorContainer.classList.remove('flex'); }
-            updateProgressBarCSS();
-        }
-
-        function applyEQPreset(mode) {
-            if (!eqBandNodes || eqBandNodes.length === 0) return;
-            const gains = mode === 'manual' ? vizConfig.manualEq : (EQ_PRESETS[mode] || EQ_PRESETS['flat']);
-            for(let i = 0; i < eqBandNodes.length; i++) { if(eqBandNodes[i]) eqBandNodes[i].gain.value = gains[i] || 0; }
-        }
-
-        qualitySelect.addEventListener('change', (e) => { vizConfig.quality = e.target.value; resizeCanvas(); saveConfig(); });
-        bgUploadInput.addEventListener('change', async (e) => {
-            const file = e.target.files[0]; if (!file) return;
-            e.target.value = '';
-            // (3b) Chỉ chấp nhận PNG/JPG/WEBP — xem upload-validation.js. Chặn TRƯỚC khi đụng tới
-            // IndexedDB/blob URL, không đổi gì khác trong luồng cũ nếu file hợp lệ.
-            const check = validateImageFile(file);
-            if (!check.valid) { await alertModal(check.reason); return; }
-            withLoadingShield(t('common.loading.savingImageBg'), async () => {
-                await setMeta('bgImage', file);
-                if (vizConfig.bgImage && vizConfig.bgImage.startsWith('blob:')) URL.revokeObjectURL(vizConfig.bgImage);
-                vizConfig.bgImage = URL.createObjectURL(file);
-                vizConfig.bgImageEnabled = true; bgImageEnableToggle.checked = true;
-                updatePlaylistBg(); saveConfig();
-            });
-        });
-        bgImageEnableToggle.addEventListener('change', (e) => {
-            vizConfig.bgImageEnabled = e.target.checked;
-            withLoadingShield(vizConfig.bgImageEnabled ? t('common.loading.generic') : t('common.loading.deletingImageBg'), async () => {
-                if (!vizConfig.bgImageEnabled) {
-                    await delMeta('bgImage');
-                    if (vizConfig.bgImage && vizConfig.bgImage.startsWith('blob:')) URL.revokeObjectURL(vizConfig.bgImage);
-                    vizConfig.bgImage = '';
-                }
-                updatePlaylistBg(); saveConfig();
-            });
-        });
-        bgBlurSlider.addEventListener('input', (e) => { vizConfig.bgBlur = e.target.value; valBgBlurDisplay.textContent = e.target.value + 'px'; updatePlaylistBg(); saveConfig(); });
-        
-        bgColorPicker.addEventListener('input', (e) => { vizConfig.bgColor = e.target.value; updateDOMBackground(); saveConfig(); });
-        colorModeSelect.addEventListener('change', (e) => { vizConfig.mode = e.target.value; updateColorMenuUI(); saveConfig(); });
-        solidColorPicker.addEventListener('input', (e) => { vizConfig.solidColor = e.target.value; solidColorText.value = e.target.value; updateProgressBarCSS(); saveConfig(); });
-        solidColorText.addEventListener('input', (e) => { if (/^#[0-9A-F]{6}$/i.test(e.target.value)) { vizConfig.solidColor = e.target.value; solidColorPicker.value = e.target.value; updateProgressBarCSS(); saveConfig(); } });
-        dynColorA.addEventListener('input', (e) => { vizConfig.dynA = e.target.value; saveConfig(); }); 
-        dynColorB.addEventListener('input', (e) => { vizConfig.dynB = e.target.value; updateProgressBarCSS(); saveConfig(); });
-        vortexStyleSelect.addEventListener('change', (e) => { vizConfig.vortexStyle = e.target.value; updateVortexVisibility(); saveConfig(); });
-        barStyleSelect.addEventListener('change', (e) => { vizConfig.barStyle = e.target.value; updateBarStyleUI(); saveConfig(); });
-        rainStyleSelect.addEventListener('change', (e) => { vizConfig.rainStyle = e.target.value; resizeCanvas(); saveConfig(); });
-        glassFlashToggle.addEventListener('change', (e) => { vizConfig.glassFlash = e.target.checked; saveConfig(); });
-        maxHeightSlider.addEventListener('input', (e) => { vizConfig.maxH = parseInt(e.target.value); valMaxDisplay.textContent = vizConfig.maxH; saveConfig(); });
-        barWidthSlider.addEventListener('input', (e) => { vizConfig.barWidth = parseInt(e.target.value); valWidthDisplay.textContent = vizConfig.barWidth; saveConfig(); });
-        mirrorCountSlider.addEventListener('input', (e) => { vizConfig.mirrorBarCount = parseInt(e.target.value); valMirrorCountDisplay.textContent = vizConfig.mirrorBarCount; saveConfig(); });
-
-        volumeSlider.addEventListener('input', (e) => { 
-            vizConfig.volume = parseInt(e.target.value); valVolumeDisplay.textContent = vizConfig.volume + '%'; 
-            if(masterGainNode) masterGainNode.gain.value = vizConfig.volume / 100; saveConfig();
-        });
-        eqSelect.addEventListener('change', (e) => { vizConfig.eqMode = e.target.value; updateEQSlidersUI(vizConfig.eqMode); applyEQPreset(vizConfig.eqMode); saveConfig(); });
