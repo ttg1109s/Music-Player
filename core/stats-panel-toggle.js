@@ -17,25 +17,36 @@
  *
  * PHẢI nạp TRƯỚC audio-analysis.js (file đó đọc isStatsPanelVisible) — xem index.html. Cần
  * dom-refs.js đã chạy (statsPanel/btnToggleStatsPanel/iconStatsPanelVisible/iconStatsPanelHidden).
+ *
+ * ÁP DỤNG /event/ (cụm "statsPanel"): `addEventListener` cũ đã CHUYỂN sang
+ * event/listener/stats-panel.js, gửi message qua eventBus tới event/router/stats-panel.js (gọi
+ * THẲNG hàm core toggleStatsPanelVisibility() dưới đây, không cần workflow vì chỉ 1 hàm core).
+ * isStatsPanelVisible VẪN giữ nguyên là `let` toàn cục ở đây (KHÔNG đưa vào EventStore) — đây là
+ * biến nghiệp vụ to toàn cục được audio-analysis.js đọc trực tiếp mỗi frame, không phải "state
+ * context của 1 router" theo đúng phạm vi mục 2b.1. Việc gộp các global này vào service/state.js
+ * sẽ làm ở 1 patch riêng sau, KHÔNG đụng ở cụm nhỏ này.
  */
         /** true = dải BPM/Pitch/Energy đang hiện (mặc định) — audio-analysis.js đọc cờ này trước
          * mỗi lần ghi DOM text, KHÔNG đụng gì tới phần tính toán logic khác trong hàm đó. */
         let isStatsPanelVisible = true;
 
-        if (typeof btnToggleStatsPanel !== 'undefined' && btnToggleStatsPanel) {
-            btnToggleStatsPanel.addEventListener('click', () => {
-                isStatsPanelVisible = !isStatsPanelVisible;
-                if (typeof statsPanel !== 'undefined' && statsPanel) statsPanel.classList.toggle('hidden', !isStatsPanelVisible);
-                if (typeof iconStatsPanelVisible !== 'undefined' && iconStatsPanelVisible) iconStatsPanelVisible.classList.toggle('hidden', !isStatsPanelVisible);
-                if (typeof iconStatsPanelHidden !== 'undefined' && iconStatsPanelHidden) iconStatsPanelHidden.classList.toggle('hidden', isStatsPanelVisible);
-                // Khi ẨN trở lại: đưa 3 ô số liệu về "---"/"0%" ngay lúc ẩn (không để giá trị cũ
-                // đứng yên "đông cứng" — dù không ai nhìn thấy lúc panel đang ẩn, vẫn nên sạch sẽ
-                // đúng trạng thái ban đầu nếu HIỆN LẠI ngay sau đó trước khi audio-analysis.js kịp
-                // ghi giá trị mới — tránh nhấp nháy 1 khung hình giá trị cũ từ trước khi ẩn).
-                if (!isStatsPanelVisible) {
-                    if (typeof statBpm !== 'undefined' && statBpm) statBpm.textContent = '---';
-                    if (typeof statNote !== 'undefined' && statNote) statNote.textContent = '---';
-                    if (typeof statEnergy !== 'undefined' && statEnergy) statEnergy.textContent = '0%';
-                }
-            });
+        /**
+         * Core thuần: đảo trạng thái hiện/ẩn dải BPM/Pitch/Energy + đồng bộ icon + dọn số liệu cũ
+         * khi ẩn. Không biết gì về eventBus/shield/modal — chỉ đọc/ghi DOM ref có sẵn từ dom-refs.js
+         * và biến isStatsPanelVisible ở trên.
+         */
+        function toggleStatsPanelVisibility() {
+            isStatsPanelVisible = !isStatsPanelVisible;
+            if (typeof statsPanel !== 'undefined' && statsPanel) statsPanel.classList.toggle('hidden', !isStatsPanelVisible);
+            if (typeof iconStatsPanelVisible !== 'undefined' && iconStatsPanelVisible) iconStatsPanelVisible.classList.toggle('hidden', !isStatsPanelVisible);
+            if (typeof iconStatsPanelHidden !== 'undefined' && iconStatsPanelHidden) iconStatsPanelHidden.classList.toggle('hidden', isStatsPanelVisible);
+            // Khi ẨN trở lại: đưa 3 ô số liệu về "---"/"0%" ngay lúc ẩn (không để giá trị cũ
+            // đứng yên "đông cứng" — dù không ai nhìn thấy lúc panel đang ẩn, vẫn nên sạch sẽ
+            // đúng trạng thái ban đầu nếu HIỆN LẠI ngay sau đó trước khi audio-analysis.js kịp
+            // ghi giá trị mới — tránh nhấp nháy 1 khung hình giá trị cũ từ trước khi ẩn).
+            if (!isStatsPanelVisible) {
+                if (typeof statBpm !== 'undefined' && statBpm) statBpm.textContent = '---';
+                if (typeof statNote !== 'undefined' && statNote) statNote.textContent = '---';
+                if (typeof statEnergy !== 'undefined' && statEnergy) statEnergy.textContent = '0%';
+            }
         }

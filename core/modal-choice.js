@@ -42,8 +42,8 @@
  * không đụng gì tới loading-shield.js/loading-shield-util.js.
  *
  * alertModal(text, options?) (THÊM, xem định nghĩa dưới) — wrapper 1-nút "OK" dựng trên CHÍNH
- * modalChoice() này, dùng để THAY THẾ TOÀN BỘ alert() rải rác khắp app (playlist/actions.js,
- * playlist/loader.js, core/id3-export.js, core/state-and-video-bg.js, core/storage-manager.js,
+ * modalChoice() này, dùng để THAY THẾ TOÀN BỘ alert() rải rác khắp app (core/playlist/actions.js,
+ * core/playlist/loader.js, core/id3-export.js, core/state-and-video-bg.js, core/storage-manager.js,
  * core/player-controls.js, core/language-settings.js, core/subtitles.js). LÝ DO: alert() là API
  * đồng bộ-chặn của trình duyệt — có thể bị 1 số WebView mobile chặn hẳn (không hiện gì, coi như
  * mất luôn thông báo lỗi), hoặc gây "đứng" cảm giác crash khi rơi đúng lúc 1 #loading-shield khác

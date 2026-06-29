@@ -11,7 +11,7 @@
         // (KHÔNG còn ở index.html ngoài #app-root, KHÔNG còn trigger bằng .click() qua JS — xem
         // comment ở playlist-view.js để biết lý do: 1 số trình duyệt/WebView chặn .click() gọi
         // gián tiếp lên input[type=file], chỉ click NATIVE thật lên label mới chắc chắn hoạt
-        // động). Cùng xử lý chung qua handleAudioFiles() ở playlist/loader.js.
+        // động). Cùng xử lý chung qua handleAudioFiles() ở core/playlist/loader.js.
         const folderInput = document.getElementById('audio-upload-folder');
         const btnUploadAudio = document.getElementById('btn-upload-audio'), uploadActionMenu = document.getElementById('upload-action-menu');
         // FIX (ver 8 refine #2): nếu 1 trong các id trên không khớp với template HTML thật (lỗi gõ
@@ -79,7 +79,7 @@
 
         // Ver 10 refine: KHÔNG còn #btn-toggle-view/#icon-grid-view/#icon-list-view trong HTML —
         // "Kiểu xem" (grid/list) đã chuyển vào Settings (#setting-playlist-view-mode, xem
-        // js/playlist/main.js: PlaylistMain.initViewMode()). Đã xoá 3 ref tương ứng ở đây.
+        // core/playlist/main.js: PlaylistMain.initViewMode()). Đã xoá 3 ref tương ứng ở đây.
         const btnCycleMode = document.getElementById('btn-cycle-mode'), modeBadge = document.getElementById('mode-badge');
         // "Tự động đổi hiệu ứng" (Settings, ver 10) — xem core/auto-switch-visual.js. FIX (kiến
         // trúc /event/, cụm "autoSwitchVisual"): 10 biến này TRƯỚC ĐÂY tự getElementById ngay
@@ -118,7 +118,7 @@
         // Khắc phục sự cố (ver 10 refine, bổ sung) — xem js/core/app-recovery.js.
         const btnRestartApp = document.getElementById('setting-restart-app'), btnRestoreDefaults = document.getElementById('setting-restore-defaults');
 
-        // Ngôn ngữ (Settings) — xem js/lang/language-settings.js.
+        // Ngôn ngữ (Settings) — xem lang/language-settings.js.
         // FIX (kiến trúc /event/, cụm "languageSettings"): 3 biến này TRƯỚC ĐÂY tự getElementById
         // ngay trong lang/language-settings.js — vi phạm quy ước CHUNG (dom-refs.js PHẢI là nơi
         // DUY NHẤT gọi getElementById). Gom về đây.
@@ -227,18 +227,18 @@
 
         // ===================== Playlist actions (menu 3 chấm, modal lỗi phát / sửa thông tin / thông tin chi tiết) =====================
         // FIX (kiến trúc /event/): toàn bộ getElementById của cụm này TRƯỚC ĐÂY nằm rải rác ngay
-        // trong playlist/actions.js — vi phạm quy ước CHUNG của project là dom-refs.js PHẢI là nơi
+        // trong core/playlist/actions.js — vi phạm quy ước CHUNG của project là dom-refs.js PHẢI là nơi
         // DUY NHẤT gọi getElementById, mọi file khác chỉ dùng lại biến đã có ở đây. Gom về đúng 1
         // chỗ, theo đúng style các khối phía trên.
         //
         // NGOẠI LỆ CỐ Ý — KHÔNG đưa vào đây: #record-art. Phần tử này KHÔNG tĩnh — nó bị TẠO LẠI
-        // HOÀN TOÀN mỗi lần đổi bài hát (playlist/actions.js gán recordContainer.innerHTML = ...,
+        // HOÀN TOÀN mỗi lần đổi bài hát (core/playlist/actions.js gán recordContainer.innerHTML = ...,
         // xem window.playSong) và mỗi lần lưu sửa thông tin bài đang phát. Một biến `const` lấy 1
         // lần lúc khởi động (giống mọi biến khác trong file này) sẽ NHANH CHÓNG trở thành tham
         // chiếu tới 1 node đã bị gỡ khỏi DOM (stale reference) ngay sau lần đổi bài đầu tiên —
         // đây chính là lý do biến `recordArt` khai báo phía trên KHÔNG được dùng ở bất kỳ đâu
         // trong toàn project (dead code có từ trước patch này, không thuộc phạm vi dọn ở đây).
-        // Mọi nơi cần truy cập #record-art (playlist/actions.js, đã tự document.getElementById
+        // Mọi nơi cần truy cập #record-art (core/playlist/actions.js, đã tự document.getElementById
         // lại đúng lúc cần) tiếp tục làm vậy — đây là ngoại lệ HỢP LỆ của quy ước "dom-refs.js là
         // nơi DUY NHẤT gọi getElementById", áp dụng riêng cho phần tử bị tái tạo động qua innerHTML.
         const songActionMenu = document.getElementById('song-action-menu');
@@ -266,7 +266,7 @@
 
         // ===================== Playlist main (sắp xếp, kiểu xem, ô tìm kiếm) =====================
         // FIX (kiến trúc /event/): toàn bộ getElementById của cụm này TRƯỚC ĐÂY nằm rải rác ngay
-        // trong playlist/main.js — vi phạm quy ước CHUNG của project. Gom về đúng 1 chỗ.
+        // trong core/playlist/main.js — vi phạm quy ước CHUNG của project. Gom về đúng 1 chỗ.
         const sortSelect = document.getElementById('setting-playlist-sort-mode');
         const viewModeSelect = document.getElementById('setting-playlist-view-mode');
         const playlistSearchInput = document.getElementById('playlist-search-input');

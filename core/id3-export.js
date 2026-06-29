@@ -32,7 +32,7 @@
 
         async function exportSongWithTag(key) {
             // FIX (xung đột shield/modal): KHÔNG await alertModal() bên trong fn() của
-            // withLoadingShield() — xem giải thích chi tiết ở playlist/actions.js (window.playSong).
+            // withLoadingShield() — xem giải thích chi tiết ở core/playlist/actions.js (window.playSong).
             // Tóm tắt: isShieldBusy chỉ giải phóng SAU KHI fn() resolve, còn alertModal() chỉ resolve
             // khi người dùng bấm OK -> lồng vào nhau làm #loading-shield (z-[200]) treo, đè lên trên
             // modalChoice() (z-[130]) suốt thời gian chờ. Dùng cờ mang thông tin ra ngoài, hiện modal
