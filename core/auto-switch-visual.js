@@ -304,85 +304,73 @@
         }
 
         /**
-         * Đồng bộ TOÀN BỘ UI auto-switch-visual theo vizConfig hiện tại + gắn listener (idempotent
-         * — addEventListener trùng lặp do gọi initAutoSwitchVisualUI() nhiều lần, ví dụ mỗi lần
-         * loadConfig() chạy lại, sẽ KHÔNG xảy ra vì hàm này chỉ gắn listener ĐÚNG 1 LẦN nhờ cờ
-         * _autoSwitchVisualUiBound — các lần gọi sau chỉ làm việc đồng bộ giá trị hiển thị).
+         * Hiện ĐÚNG 1 trong 3 khối input theo elAutoSwitchTimeMode.value, ẩn 2 khối còn lại. Tách
+         * thành hàm core riêng (KHÔNG còn closure cục bộ trong initAutoSwitchVisualUI()) để router
+         * gọi lại được mỗi khi xử lý msg.type đổi timeMode (xem event/router/auto-switch-visual.js).
          */
-        let _autoSwitchVisualUiBound = false;
+        function syncAutoSwitchTimeModeBlocks() {
+            if (!elAutoSwitchTimeMode) return;
+            const tm = elAutoSwitchTimeMode.value;
+            elAutoSwitchBlockFixed.classList.toggle('hidden', tm !== 'fixed');
+            elAutoSwitchBlockRandom.classList.toggle('hidden', tm !== 'random');
+            elAutoSwitchBlockDuration.classList.toggle('hidden', tm !== 'duration');
+        }
+
+        /**
+         * Đồng bộ TOÀN BỘ UI auto-switch-visual theo vizConfig hiện tại — KHÔNG còn tự gắn
+         * listener ở đây (đã CHUYỂN sang event/listener/auto-switch-visual.js, kiến trúc /event/)
+         * — gọi lại MỖI LẦN loadConfig() chạy để đồng bộ giá trị hiển thị đúng theo config mới nạp.
+         */
         function initAutoSwitchVisualUI() {
-            const elEnable = document.getElementById('setting-auto-switch-enable');
-            const elOptions = document.getElementById('auto-switch-options');
-            const elMode = document.getElementById('setting-auto-switch-mode');
-            const elTimeMode = document.getElementById('setting-auto-switch-time-mode');
-            const elBlockFixed = document.getElementById('auto-switch-time-fixed-block');
-            const elBlockRandom = document.getElementById('auto-switch-time-random-block');
-            const elBlockDuration = document.getElementById('auto-switch-time-duration-block');
-            const elSecondsFixed = document.getElementById('setting-auto-switch-seconds-fixed');
-            const elSecondsRandom = document.getElementById('setting-auto-switch-seconds-random');
-            const elSecondsDuration = document.getElementById('setting-auto-switch-seconds-duration');
-            if (!elEnable || !elOptions || !elMode || !elTimeMode) return; // DOM chưa sẵn sàng — an toàn bỏ qua
+            if (!elAutoSwitchEnable || !elAutoSwitchOptions || !elAutoSwitchMode || !elAutoSwitchTimeMode) return; // DOM chưa sẵn sàng — an toàn bỏ qua
 
-            /** Hiện ĐÚNG 1 trong 3 khối input theo elTimeMode.value, ẩn 2 khối còn lại. */
-            const syncTimeModeBlocks = () => {
-                const tm = elTimeMode.value;
-                elBlockFixed.classList.toggle('hidden', tm !== 'fixed');
-                elBlockRandom.classList.toggle('hidden', tm !== 'random');
-                elBlockDuration.classList.toggle('hidden', tm !== 'duration');
-            };
-
-            // ---- Đồng bộ giá trị hiển thị theo vizConfig hiện tại (gọi lại mỗi lần loadConfig()) ----
-            elEnable.checked = vizConfig.autoSwitchVisualEnabled === true;
-            elOptions.classList.toggle('hidden', !elEnable.checked);
-            elMode.value = vizConfig.autoSwitchVisualMode;
-            elTimeMode.value = vizConfig.autoSwitchVisualTimeMode;
+            elAutoSwitchEnable.checked = vizConfig.autoSwitchVisualEnabled === true;
+            elAutoSwitchOptions.classList.toggle('hidden', !elAutoSwitchEnable.checked);
+            elAutoSwitchMode.value = vizConfig.autoSwitchVisualMode;
+            elAutoSwitchTimeMode.value = vizConfig.autoSwitchVisualTimeMode;
             // 3 field RIÊNG cho từng mode (xem config.js) — mỗi input đọc/ghi ĐÚNG field của
             // riêng nó, KHÔNG dùng chung 1 field nữa (bug đã sửa: dùng chung sẽ ghi đè mất giá trị
             // của mode khác mỗi khi đổi qua đổi lại giữa các mode).
-            if (elSecondsFixed) elSecondsFixed.value = vizConfig.autoSwitchVisualSecondsFixed;
-            if (elSecondsRandom) elSecondsRandom.value = vizConfig.autoSwitchVisualSecondsRandom;
-            if (elSecondsDuration) elSecondsDuration.value = vizConfig.autoSwitchVisualSecondsDuration;
-            syncTimeModeBlocks();
+            if (elAutoSwitchSecondsFixed) elAutoSwitchSecondsFixed.value = vizConfig.autoSwitchVisualSecondsFixed;
+            if (elAutoSwitchSecondsRandom) elAutoSwitchSecondsRandom.value = vizConfig.autoSwitchVisualSecondsRandom;
+            if (elAutoSwitchSecondsDuration) elAutoSwitchSecondsDuration.value = vizConfig.autoSwitchVisualSecondsDuration;
+            syncAutoSwitchTimeModeBlocks();
             updateCycleModeButtonState(); // đồng bộ khoá/mở #btn-cycle-mode ngay từ lúc loadConfig()
+        }
 
-            if (_autoSwitchVisualUiBound) return; // listener đã gắn ở lượt init() đầu tiên — không gắn lại
-            _autoSwitchVisualUiBound = true;
+        /** Core thuần: ứng với toggle bật/tắt "Tự động đổi hiệu ứng". */
+        function setAutoSwitchVisualEnabled(checked) {
+            vizConfig.autoSwitchVisualEnabled = checked;
+            elAutoSwitchOptions.classList.toggle('hidden', !checked);
+            saveConfig();
+            updateCycleModeButtonState(); // khoá/mở #btn-cycle-mode NGAY khi người dùng bật/tắt
+            startAutoSwitchVisualBranch(); // bật -> khởi động đúng nhánh; tắt -> hàm tự kill hết vì shouldRun=false
+        }
 
-            elEnable.addEventListener('change', (e) => {
-                vizConfig.autoSwitchVisualEnabled = e.target.checked;
-                elOptions.classList.toggle('hidden', !e.target.checked);
-                saveConfig();
-                updateCycleModeButtonState(); // khoá/mở #btn-cycle-mode NGAY khi người dùng bật/tắt
-                startAutoSwitchVisualBranch(); // bật -> khởi động đúng nhánh; tắt -> hàm tự kill hết vì shouldRun=false
-            });
+        /** Core thuần: ứng với select "Cách chọn kiểu kế tiếp" (sequential/random). */
+        function setAutoSwitchVisualMode(value) {
+            vizConfig.autoSwitchVisualMode = value;
+            saveConfig();
+            // KHÔNG cần khởi động lại gì — đổi cách CHỌN MỚI chỉ ảnh hưởng lần CHỌN MỚI kế tiếp
+            // (cả 2 nhánh đều gọi pickNextAutoSwitchVisualType() đúng lúc cần).
+        }
 
-            elMode.addEventListener('change', (e) => {
-                vizConfig.autoSwitchVisualMode = e.target.value;
-                saveConfig();
-                // KHÔNG cần khởi động lại gì — đổi cách CHỌN MỚI chỉ ảnh hưởng lần CHỌN MỚI kế
-                // tiếp (cả 2 nhánh đều gọi pickNextAutoSwitchVisualType() đúng lúc cần, không có
-                // gì cần tính toán lại trước).
-            });
+        /** Core thuần: ứng với select "Cách tính thời gian" (fixed/random/duration). */
+        function setAutoSwitchVisualTimeMode(value) {
+            vizConfig.autoSwitchVisualTimeMode = value;
+            syncAutoSwitchTimeModeBlocks();
+            saveConfig();
+            startAutoSwitchVisualBranch(); // đổi NHÁNH hẳn -> kill nhánh cũ, khởi động nhánh mới từ đầu
+        }
 
-            elTimeMode.addEventListener('change', (e) => {
-                vizConfig.autoSwitchVisualTimeMode = e.target.value;
-                syncTimeModeBlocks();
-                saveConfig();
-                startAutoSwitchVisualBranch(); // đổi NHÁNH hẳn -> kill nhánh cũ, khởi động nhánh mới từ đầu
-            });
-
-            /** Tạo handler riêng cho 1 field cụ thể — mỗi input ghi đúng field của NÓ, không lẫn sang field khác. */
-            const makeSecondsInputHandler = (fieldName) => (e) => {
-                let v = parseInt(e.target.value, 10);
-                if (!Number.isFinite(v) || v < AUTO_SWITCH_VISUAL_MIN_SECONDS) v = AUTO_SWITCH_VISUAL_MIN_SECONDS;
-                e.target.value = v;
-                vizConfig[fieldName] = v;
-                saveConfig();
-                startAutoSwitchVisualBranch(); // đổi X giây -> áp dụng lại từ đầu cho nhánh đang chạy
-            };
-            if (elSecondsFixed) elSecondsFixed.addEventListener('change', makeSecondsInputHandler('autoSwitchVisualSecondsFixed'));
-            if (elSecondsRandom) elSecondsRandom.addEventListener('change', makeSecondsInputHandler('autoSwitchVisualSecondsRandom'));
-            if (elSecondsDuration) elSecondsDuration.addEventListener('change', makeSecondsInputHandler('autoSwitchVisualSecondsDuration'));
+        /** Core thuần: ứng với 1 trong 3 input số giây (fieldName tương ứng đúng field vizConfig). */
+        function setAutoSwitchVisualSecondsField(fieldName, rawValue, inputEl) {
+            let v = parseInt(rawValue, 10);
+            if (!Number.isFinite(v) || v < AUTO_SWITCH_VISUAL_MIN_SECONDS) v = AUTO_SWITCH_VISUAL_MIN_SECONDS;
+            if (inputEl) inputEl.value = v;
+            vizConfig[fieldName] = v;
+            saveConfig();
+            startAutoSwitchVisualBranch(); // đổi X giây -> áp dụng lại từ đầu cho nhánh đang chạy
         }
 
         // ===================== Liên kết với trạng thái phát nhạc =====================

@@ -1,11 +1,14 @@
 /**
- * State playlist/subtitle bổ sung + xử lý video nền (handleVideoBackground và các listener liên quan).
- * (Trích từ file gốc, dòng 273-314 trong khối <script>)
+ * State playlist/subtitle bổ sung + xử lý video nền (handleVideoBackground và các hàm liên quan).
  *
- * Ver 10 refine: listener đổi chế độ xem playlist (grid/list, trước đây ở #btn-toggle-view) ĐÃ
- * CHUYỂN sang js/playlist/main.js (PlaylistMain.initViewMode) — UI điều khiển giờ là select
- * trong Settings (#setting-playlist-view-mode), không còn icon riêng ở header Playlist nữa. Hợp
- * lý hơn khi đặt cùng nhà với initSortMenu() (cùng nhóm "cách hiển thị danh sách Playlist").
+ * ÁP DỤNG /event/ (cụm "visualizerControlCenter"): `addEventListener` cũ của btnReturnVisual/
+ * btnOpenControlCenter/controlCenterOverlay/visualizerControlCenter/videoEnableToggle/
+ * visualEnabledToggle/videoUploadInput đã CHUYỂN sang event/listener/visualizer-control-center.js.
+ * 2 nhánh cần shield/modal (đổi videoEnableToggle, upload video) đặt ở
+ * event/workflow/visualizer-control-center.js — core không biết withLoadingShield/alertModal tồn
+ * tại. `bgVideoElement.addEventListener('loadeddata'/'playing', fadeVideoIn, {once:true})` GIỮ
+ * NGUYÊN ở setupVideoBgSource() — đây là listener nội bộ tự gỡ sau 1 lần (mục 2b.6), KHÔNG thuộc
+ * `/event/`.
  */
 
         // isSubtitlesEnabled: biến runtime dùng trực tiếp trong processSubtitles()/updateSubToggleUI()
@@ -18,14 +21,15 @@
         let isShuffle = false, shuffleIndices = [], repeatMode = 0;
         window.currentMediaSessionCover = null; window.lastValidNoteStr = null; window.lastValidNoteTime = 0; window.lastValidMidiNote = null;
 
-        btnReturnVisual.addEventListener('click', () => { if(currentKey) switchToVisualizer(); });
+        /** Core thuần: quay về màn Visualizer (nếu đang có bài hiện tại). */
+        function returnToVisualizer() {
+            if (currentKey) switchToVisualizer();
+        }
 
         // ===================== "Control Center" của màn Visualizer (ver 8 refine) =====================
-        // Thay cho dải dọc 6 nút cũ — 1 nút mở ở góc trái, panel grid icon PHÓNG RA TỪ TRUNG TÂM
-        // (scale từ vị trí nút bấm, kiểu Control Center iPhone thật — ver 8 refine lần 2, trước đó
-        // panel trượt từ trên xuống full chiều rộng). Đóng bằng 3 cách: bấm lại nút mở, bấm overlay
-        // mờ phía dưới panel, hoặc bấm 1 icon bên trong grid (data-cc-action — tự đóng sau khi chọn,
-        // vì hành động đó thường là điểm kết của tương tác, ví dụ đổi hiệu ứng/mở Settings).
+        // 1 nút mở ở góc trái, panel grid icon PHÓNG RA TỪ TRUNG TÂM (scale từ vị trí nút bấm).
+        // Đóng bằng 3 cách: bấm lại nút mở, bấm overlay mờ phía dưới panel, hoặc bấm 1 icon bên
+        // trong grid (data-cc-action — tự đóng sau khi chọn).
         function openControlCenter() {
             visualizerControlCenter.classList.remove('scale-0', 'opacity-0');
             controlCenterOverlay.classList.remove('hidden');
@@ -36,16 +40,15 @@
             controlCenterOverlay.classList.add('hidden');
             iconControlCenterDown.classList.remove('rotate-180');
         }
-        btnOpenControlCenter.addEventListener('click', () => {
+        /** Core thuần: toggle mở/đóng Control Center theo trạng thái hiện tại. */
+        function toggleControlCenter() {
             const isOpen = !visualizerControlCenter.classList.contains('scale-0');
             if (isOpen) closeControlCenter(); else openControlCenter();
-        });
-        controlCenterOverlay.addEventListener('click', closeControlCenter);
-        // Bấm bất kỳ icon nào trong grid (data-cc-action) -> đóng panel ngay (không đợi animation
-        // của hành động đó, ví dụ chuyển màn Settings) để không che mất phần UI vừa mở ra.
-        visualizerControlCenter.addEventListener('click', (e) => {
-            if (e.target.closest('[data-cc-action]')) closeControlCenter();
-        });
+        }
+        /** Core thuần: bấm icon trong grid (data-cc-action) -> đóng panel ngay, không đợi animation. */
+        function handleControlCenterGridClick(target) {
+            if (target.closest('[data-cc-action]')) closeControlCenter();
+        }
 
         // Khi đóng drawer Cài đặt: nếu người dùng đã bật "Sử dụng Video Background" nhưng CHƯA
         // chọn video nào (vizConfig.videoBgUrl rỗng) thì tự tắt lại — tránh trạng thái "on" ảo
@@ -74,6 +77,7 @@
             bgVideoElement.style.opacity = '0'; // ẩn cho tới khi có khung hình thật -> không chớp trắng
             bgVideoElement.src = vizConfig.videoBgUrl;
             const fadeVideoIn = () => { bgVideoElement.style.opacity = '1'; _videoBgLoadedUrl = vizConfig.videoBgUrl; };
+            // Listener NỘI BỘ tự gỡ sau 1 lần (mục 2b.6) — KHÔNG thuộc /event/.
             bgVideoElement.addEventListener('loadeddata', fadeVideoIn, { once: true });
             bgVideoElement.addEventListener('playing', fadeVideoIn, { once: true });
         }
@@ -112,41 +116,36 @@
             }
         }
 
-        videoEnableToggle.addEventListener('change', (e) => {
-            vizConfig.videoBgEnabled = e.target.checked;
-            if (!vizConfig.videoBgEnabled) {
-                withLoadingShield(t('common.loading.deletingVideoBg'), async () => {
-                    await delMeta('videoBg');
-                    if (vizConfig.videoBgUrl && vizConfig.videoBgUrl.startsWith('blob:')) URL.revokeObjectURL(vizConfig.videoBgUrl);
-                    vizConfig.videoBgUrl = '';
-                    handleVideoBackground(); saveConfig();
-                });
-            } else { handleVideoBackground(); saveConfig(); }
-        });
-        // Toggle "Tắt Visual" (ver 8 refine) — ĐỘC LẬP khỏi video nền, không còn nằm trong khối
-        // cài đặt Video Background nữa (xem js/components/settings/playlist-background.js, mục
-        // "Hiệu ứng Visualizer" riêng). Đổi vizConfig.visualEnabled rồi lưu — vòng lặp vẽ chính
-        // (draw-visualizer.js) tự đọc field này mỗi khung hình, không cần gọi thêm hàm nào ở đây.
-        // Nền hiển thị khi tắt visual tự đúng theo setting đã chọn vì handleVideoBackground()/
-        // updateDOMBackground() vốn không phụ thuộc field này — chúng vẫn chạy độc lập như cũ.
-        if (typeof visualEnabledToggle !== 'undefined' && visualEnabledToggle) {
-            visualEnabledToggle.addEventListener('change', (e) => {
-                vizConfig.visualEnabled = e.target.checked;
-                saveConfig();
-            });
+        /** Core thuần: thực thi BẬT video nền (đã biết chắc videoBgUrl đã có sẵn từ trước). */
+        function enableVideoBackground() {
+            vizConfig.videoBgEnabled = true;
+            handleVideoBackground(); saveConfig();
         }
-        videoUploadInput.addEventListener('change', async (e) => {
-            const file = e.target.files[0]; if (!file) return;
-            e.target.value = '';
-            // (3c) Chỉ chấp nhận định dạng video phổ biến (mp4/webm/ogg/mov) — xem
-            // upload-validation.js. Chặn TRƯỚC khi đụng tới IndexedDB/blob URL.
+
+        /** Core thuần: thực thi TẮT video nền + xoá blob/meta đã lưu (phần KHÔNG cần shield —
+         *  shield bọc quanh phần xoá IndexedDB ở workflow, core chỉ làm phần đồng bộ state/UI). */
+        function disableVideoBackgroundState() {
+            vizConfig.videoBgEnabled = false;
+            if (vizConfig.videoBgUrl && vizConfig.videoBgUrl.startsWith('blob:')) URL.revokeObjectURL(vizConfig.videoBgUrl);
+            vizConfig.videoBgUrl = '';
+            handleVideoBackground(); saveConfig();
+        }
+
+        /** Core thuần: ứng với toggle "Tắt Visual" — độc lập hoàn toàn khỏi video nền. */
+        function setVisualEnabled(checked) {
+            vizConfig.visualEnabled = checked;
+            saveConfig();
+        }
+
+        /** Core thuần: lưu blob video mới vào IndexedDB + áp dụng làm video nền hiện tại (phần
+         *  KHÔNG cần shield — shield bọc quanh lệnh setMeta() ở workflow). Trả {status} rõ ràng,
+         *  KHÔNG tự alertModal (đặt ở workflow). */
+        function applyUploadedVideoBg(file) {
             const check = validateVideoFile(file);
-            if (!check.valid) { await alertModal(check.reason); return; }
-            withLoadingShield(t('common.loading.savingVideoBg'), async () => {
-                await setMeta('videoBg', file);
-                if (vizConfig.videoBgUrl && vizConfig.videoBgUrl.startsWith('blob:')) URL.revokeObjectURL(vizConfig.videoBgUrl);
-                vizConfig.videoBgUrl = URL.createObjectURL(file);
-                vizConfig.videoBgEnabled = true; videoEnableToggle.checked = true;
-                handleVideoBackground(); saveConfig();
-            });
-        });
+            if (!check.valid) return { status: 'invalid', reason: check.reason };
+            if (vizConfig.videoBgUrl && vizConfig.videoBgUrl.startsWith('blob:')) URL.revokeObjectURL(vizConfig.videoBgUrl);
+            vizConfig.videoBgUrl = URL.createObjectURL(file);
+            vizConfig.videoBgEnabled = true; videoEnableToggle.checked = true;
+            handleVideoBackground(); saveConfig();
+            return { status: 'ok' };
+        }

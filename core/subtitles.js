@@ -1,6 +1,12 @@
 /**
  * Module phụ đề: parse/build SRT, render danh sách sub, sửa/xóa/thêm dòng sub, auto-timing, export .srt.
- * (Trích từ file gốc, dòng 315-433 trong khối <script>)
+ *
+ * ÁP DỤNG /event/ (cụm "subtitleModal"): `addEventListener` cũ của btnAutoTiming/btnAddSub/
+ * btnExportSrt/srtUpload/btnApplySub đã CHUYỂN sang event/listener/subtitle-modal.js. 2 nút
+ * "Sửa"/"Xóa" + click vào dòng xem (render trong renderSubList(), TRƯỚC ĐÂY dùng
+ * onclick="saveSubItem(...)"/onclick="deleteSubItem(...)"/onclick="editSubItem(...)" inline) đã
+ * đổi sang `data-action`/`data-sub-id` + 1 listener delegation DUY NHẤT trên subListContainer
+ * (xem mục 2b.8 plan.md) — KHÔNG còn window.editSubItem/saveSubItem/deleteSubItem global.
  */
         function secToStr(sec) {
             if (isNaN(sec)) return "00:00:00,000";
@@ -48,14 +54,14 @@
                                 <textarea id="edit-text-${sub.id}" rows="2" class="w-full text-white bg-black/60 border border-slate-600 rounded resize-none" placeholder="${t('subtitleModal.editor.placeholder')}">${sub.text}</textarea>
                             </div>
                             <div class="flex sm:flex-col gap-2 shrink-0 justify-end sm:justify-start mt-2 sm:mt-0">
-                                <button onclick="saveSubItem('${sub.id}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded shadow transition-colors">${t('subtitleModal.editor.btnSave')}</button>
-                                <button onclick="deleteSubItem('${sub.id}')" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded shadow transition-colors">${t('subtitleModal.editor.btnDelete')}</button>
+                                <button data-action="save-sub" data-sub-id="${sub.id}" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded shadow transition-colors">${t('subtitleModal.editor.btnSave')}</button>
+                                <button data-action="delete-sub" data-sub-id="${sub.id}" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded shadow transition-colors">${t('subtitleModal.editor.btnDelete')}</button>
                             </div>
                         </div>`;
                 } else {
                     let formattedText = sub.text.replace(/\n/g, '<br>');
                     card.innerHTML = `
-                        <div class="flex justify-between items-center gap-4 px-5 py-3 cursor-pointer" onclick="editSubItem('${sub.id}')">
+                        <div class="flex justify-between items-center gap-4 px-5 py-3 cursor-pointer" data-action="edit-sub" data-sub-id="${sub.id}">
                             <div class="flex-grow">
                                 <div class="text-xs font-mono text-sky-400 mb-1 flex items-center gap-2">
                                     ${isActive ? '<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>' : ''}
@@ -72,22 +78,28 @@
             });
         }
 
-        window.editSubItem = function(id) { editingSubId = id; renderSubList(); };
-        window.saveSubItem = function(id) {
+        /** Core thuần: bắt đầu sửa 1 dòng sub (chuyển sang sub-edit-mode). */
+        function editSubItem(id) { editingSubId = id; renderSubList(); }
+
+        /** Core thuần: lưu nội dung đang sửa của 1 dòng sub (đọc 3 input động theo đúng id đó). */
+        function saveSubItem(id) {
             let sub = subtitles.find(s => s.id === id); if(!sub) return;
             sub.startStr = document.getElementById(`edit-start-${id}`).value; sub.endStr = document.getElementById(`edit-end-${id}`).value; sub.text = document.getElementById(`edit-text-${id}`).value;
             sub.start = strToSec(sub.startStr); sub.end = strToSec(sub.endStr);
             editingSubId = null; renderSubList();
-        };
-        window.deleteSubItem = function(id) { subtitles = subtitles.filter(s => s.id !== id); editingSubId = null; renderSubList(); };
-        
+        }
+
+        /** Core thuần: xóa 1 dòng sub theo id. */
+        function deleteSubItem(id) { subtitles = subtitles.filter(s => s.id !== id); editingSubId = null; renderSubList(); }
+
         function resetAutoSub() {
             autoSubStartTime = null;
             btnAutoTiming.classList.remove('bg-red-500', 'animate-pulse'); btnAutoTiming.classList.add('bg-rose-600');
             iconAutoTimingRecording.classList.add('hidden'); iconAutoTimingIdle.classList.remove('hidden');
         }
 
-        btnAutoTiming.addEventListener('click', () => {
+        /** Core thuần: nhịp bấm 1 (bắt đầu auto-timing) hoặc nhịp 2 (kết thúc, tạo dòng sub mới). */
+        function handleAutoTimingClick() {
             if (autoSubStartTime === null) {
                 autoSubStartTime = audioPlayer.currentTime; btnAutoTiming.classList.remove('bg-rose-600'); btnAutoTiming.classList.add('bg-red-500', 'animate-pulse');
                 iconAutoTimingIdle.classList.add('hidden'); iconAutoTimingRecording.classList.remove('hidden');
@@ -98,29 +110,35 @@
                 subtitles.push(newSub); resetAutoSub(); renderSubList();
                 taskManager.once(() => { document.getElementById('sub-list-container').scrollTop = document.getElementById('sub-list-container').scrollHeight; }, 100);
             }
-        });
+        }
 
-        btnAddSub.addEventListener('click', () => {
+        /** Core thuần: thêm 1 dòng sub trống mới, nối ngay sau dòng cuối hiện có. */
+        function addNewSubLine() {
             let lastSub = subtitles[subtitles.length - 1]; let newStart = lastSub ? lastSub.end + 0.1 : 0; let newEnd = newStart + 2;
             let newSub = { id: Date.now().toString(), start: newStart, end: newEnd, startStr: secToStr(newStart), endStr: secToStr(newEnd), text: t('subtitleModal.newLine.defaultText') };
             subtitles.push(newSub); editingSubId = newSub.id; renderSubList();
             taskManager.once(() => { document.getElementById('sub-list-container').scrollTop = document.getElementById('sub-list-container').scrollHeight; }, 100);
-        });
+        }
 
-        btnExportSrt.addEventListener('click', async () => {
-            if(subtitles.length === 0) { await alertModal(t('common.subtitle.exportEmpty')); return; }
+        /** Core thuần: trả {status} — 'empty' nếu chưa có sub nào, ngược lại tự build + tải file
+         *  .srt ngay (download không cần modal/shield gì cả). */
+        function exportSubtitlesAsSrt() {
+            if (subtitles.length === 0) return { status: 'empty' };
             const blob = new Blob([buildSRTString()], { type: "text/plain;charset=utf-8" });
             const url = URL.createObjectURL(blob); const a = document.createElement('a');
             const cached = currentKey ? playlistCache.get(currentKey) : null;
             a.href = url; a.download = `${cached?.tag?.title || 'VisualMaster_Sub'}.srt`; a.click(); URL.revokeObjectURL(url);
-        });
+            return { status: 'ok' };
+        }
 
-        srtUpload.addEventListener('change', (e) => {
-            const file = e.target.files[0]; if (!file) return;
+        /** Core thuần: đọc 1 file .srt vừa upload, parse + render lại danh sách. */
+        function importSrtFile(file) {
             const reader = new FileReader(); reader.onload = (evt) => { subtitles = parseSRT(evt.target.result); renderSubList(); }; reader.readAsText(file);
-        });
+        }
 
-        btnApplySub.addEventListener('click', async () => {
+        /** Core thuần: áp dụng toàn bộ phụ đề đang soạn — đóng modal, bật lại "Hiện phụ đề" nếu
+         *  cần, persist vào IndexedDB, rồi tua nhạc về đầu + phát lại. */
+        async function applySubtitlesAndClose() {
             editingSubId = null; resetAutoSub(); renderSubList();
             // Tự bật lại "Hiện phụ đề" nếu đang tắt — người dùng vừa soạn xong, hợp lý là muốn xem
             // ngay. Đồng bộ LUÔN vào vizConfig + lưu (ver 8 refine) để checkbox trong Cài đặt khớp
@@ -140,5 +158,5 @@
             }
 
             if (!audioPlayer.paused || audioPlayer.currentTime > 0) { audioPlayer.currentTime = 0; audioPlayer.play(); }
-        });
+        }
 

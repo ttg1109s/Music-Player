@@ -29,6 +29,11 @@
         const playlistView = document.getElementById('playlist-view'), visualizerUI = document.getElementById('visualizer-ui'), playerContainer = document.getElementById('player-container');
         const playlistBg = document.getElementById('playlist-bg');
         const playlistEmpty = document.getElementById('playlist-empty'), playlistContainer = document.getElementById('playlist-container');
+        // 2 nút "Phát"/"Trộn bài" của empty-state (ver 11, cụm /event/ "playlistEmptyState") —
+        // TRƯỚC ĐÂY dùng onclick="..." inline trong components/playlist-view.js (xem plan.md mục
+        // 2b.8) — đã đổi sang id + addEventListener qua event/listener/playlist-empty-state.js.
+        const btnPlaylistEmptyPlay = document.getElementById('btn-playlist-empty-play');
+        const btnPlaylistEmptyShuffle = document.getElementById('btn-playlist-empty-shuffle');
         const btnBackPlaylist = document.getElementById('btn-back-playlist'), loadingShield = document.getElementById('loading-shield'), loadingText = document.getElementById('loading-text');
         const btnReturnVisual = document.getElementById('btn-return-visual');
         // "Control Center" của màn Visualizer (ver 8 refine) — thay cho dải dọc 6 nút cũ. Nút mở
@@ -67,62 +72,28 @@
         // comment trong playlist-view.js): bản trước dùng THUẦN CSS `:hover`/`group-hover`. Trên
         // mobile, phần tử này là <div> chữ thường (không phải <button>/<a>) — trình duyệt có thể
         // hiểu lầm 1 chạm là "double-tap vào đoạn văn bản" và ZOOM trang vào đúng đó, khiến toạ độ
-        // chạm các lần sau lệch khỏi vị trí logo thật (trông như "không bấm được" nữa).
-        //
-        // SỬA: bỏ hẳn :hover/group-hover, chuyển hẳn sang JS — desktop (chuột thật) dùng
-        // 'mouseenter'/'mouseleave' để GIỮ ĐÚNG cảm giác hover như cũ. Dùng matchMedia('(hover:
-        // hover) and (pointer:fine)') để chọn đúng cơ chế cho đúng loại thiết bị.
-        //
-        // FIX #2 (yêu cầu bổ sung — mobile phải "tự thu khi bấm chỗ khác", giống đúng cảm giác bỏ
-        // hover trên desktop, không bắt người dùng phải bấm LẠI ĐÚNG logo lần nữa mới thu được):
-        // đã NGHIÊN CỨU kỹ — mobile Safari/Chrome (cả iOS lẫn Android) hoàn toàn KHÔNG có khái
-        // niệm con trỏ "rời khỏi" 1 phần tử như chuột thật, nên 'mouseleave' không phải là tín hiệu
-        // đáng tin cậy để dùng trên cảm ứng:
-        //   - WebKit/Mobile Safari CHỈ giả lập 'mouseenter'/'mouseover' khi tap vào 1 phần tử được
-        //     coi là "clickable" (có onclick/role=button) — KHÔNG bao giờ tự bắn 'mouseleave' khi
-        //     người dùng tap sang chỗ khác; hiệu ứng hover giả lập đó chỉ mất khi trang điều
-        //     hướng/tap vào 1 link khác, không có cách nào bắt được lúc "rời" bằng sự kiện mouse.
-        //   - Bug lịch sử của WebKit (#128534) còn ghi nhận 'mouseenter' đôi khi KHÔNG bắn ra đúng
-        //     khi phần tử có gắn thêm touch listener — không đáng tin cậy để dùng làm cơ chế chính.
-        //   - Vì vậy pattern ĐÚNG cho "tự thu khi bấm ra ngoài" trên cảm ứng không phải dựa vào
-        //     mouseenter/mouseleave, mà là lắng nghe 'click' ở CẤP DOCUMENT (giống đúng pattern đã
-        //     dùng cho #song-action-overlay/#control-center-overlay trong app) — nếu điểm bấm nằm
-        //     NGOÀI logo, tự thu lại; nếu nằm TRÊN logo, để handler riêng của logo xử lý toggle.
+        // Logo "SAV" — mở/thu chữ khi hover (desktop) hoặc tap (mobile). Logic ĐÃ CHUYỂN sang
+        // core/sav-logo.js (cụm "savLogo", kiến trúc /event/) — chỉ giữ DOM ref ở đây theo đúng
+        // quy ước "dom-refs.js là nơi DUY NHẤT gọi getElementById".
         const savLogo = document.getElementById('sav-logo');
-        const savLogoExpandSpans = savLogo ? Array.from(savLogo.querySelectorAll('.sav-logo-expand')) : [];
-        let savLogoExpanded = false;
-        function setSavLogoExpanded(expand) {
-            if (!savLogo) return;
-            savLogoExpanded = expand;
-            savLogoExpandSpans.forEach(span => {
-                span.style.maxWidth = expand ? (span.dataset.expandWidth || '0') : '0';
-            });
-        }
-        if (savLogo) {
-            const hasRealHover = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
-            if (hasRealHover) {
-                // Desktop có chuột thật — hover tự nhiên như bản gốc, không cần toggle/click.
-                savLogo.addEventListener('mouseenter', () => setSavLogoExpanded(true));
-                savLogo.addEventListener('mouseleave', () => setSavLogoExpanded(false));
-            } else {
-                // Mobile/cảm ứng — 'click' trên chính logo TOGGLE mở/thu (bắn ra từ đúng 1 tap
-                // thật, không phải gesture đoán, nên không bị ảnh hưởng bởi heuristic zoom đoạn văn
-                // bản). 'click' ở DOCUMENT (capture phase, chạy TRƯỚC handler của logo ở bubble
-                // phase phía dưới) tự THU LẠI nếu điểm bấm nằm ngoài logo — đúng cảm giác "bấm chỗ
-                // khác thì tự đóng" như hover thật, không cần bấm lại đúng logo mới thu được.
-                savLogo.addEventListener('click', (e) => {
-                    e.stopPropagation(); // không để listener document (đăng ký dưới đây) coi đây là "bấm ra ngoài"
-                    setSavLogoExpanded(!savLogoExpanded);
-                });
-                document.addEventListener('click', () => {
-                    if (savLogoExpanded) setSavLogoExpanded(false);
-                });
-            }
-        }
+
         // Ver 10 refine: KHÔNG còn #btn-toggle-view/#icon-grid-view/#icon-list-view trong HTML —
         // "Kiểu xem" (grid/list) đã chuyển vào Settings (#setting-playlist-view-mode, xem
         // js/playlist/main.js: PlaylistMain.initViewMode()). Đã xoá 3 ref tương ứng ở đây.
         const btnCycleMode = document.getElementById('btn-cycle-mode'), modeBadge = document.getElementById('mode-badge');
+        // "Tự động đổi hiệu ứng" (Settings, ver 10) — xem core/auto-switch-visual.js. FIX (kiến
+        // trúc /event/, cụm "autoSwitchVisual"): 10 biến này TRƯỚC ĐÂY tự getElementById ngay
+        // trong initAutoSwitchVisualUI() — vi phạm quy ước CHUNG. Gom về đây.
+        const elAutoSwitchEnable = document.getElementById('setting-auto-switch-enable');
+        const elAutoSwitchOptions = document.getElementById('auto-switch-options');
+        const elAutoSwitchMode = document.getElementById('setting-auto-switch-mode');
+        const elAutoSwitchTimeMode = document.getElementById('setting-auto-switch-time-mode');
+        const elAutoSwitchBlockFixed = document.getElementById('auto-switch-time-fixed-block');
+        const elAutoSwitchBlockRandom = document.getElementById('auto-switch-time-random-block');
+        const elAutoSwitchBlockDuration = document.getElementById('auto-switch-time-duration-block');
+        const elAutoSwitchSecondsFixed = document.getElementById('setting-auto-switch-seconds-fixed');
+        const elAutoSwitchSecondsRandom = document.getElementById('setting-auto-switch-seconds-random');
+        const elAutoSwitchSecondsDuration = document.getElementById('setting-auto-switch-seconds-duration');
         const qualitySelect = document.getElementById('setting-quality'), bgColorPicker = document.getElementById('bg-color-picker');
         const bgUploadInput = document.getElementById('setting-bg-upload'), bgBlurSlider = document.getElementById('setting-bg-blur'), valBgBlurDisplay = document.getElementById('val-bg-blur');
         const bgImageEnableToggle = document.getElementById('setting-bg-image-enable');
@@ -146,6 +117,14 @@
         const keepScreenOnToggle = document.getElementById('setting-keep-screen-on');
         // Khắc phục sự cố (ver 10 refine, bổ sung) — xem js/core/app-recovery.js.
         const btnRestartApp = document.getElementById('setting-restart-app'), btnRestoreDefaults = document.getElementById('setting-restore-defaults');
+
+        // Ngôn ngữ (Settings) — xem js/lang/language-settings.js.
+        // FIX (kiến trúc /event/, cụm "languageSettings"): 3 biến này TRƯỚC ĐÂY tự getElementById
+        // ngay trong lang/language-settings.js — vi phạm quy ước CHUNG (dom-refs.js PHẢI là nơi
+        // DUY NHẤT gọi getElementById). Gom về đây.
+        const settingLanguageSelect = document.getElementById('setting-language-select');
+        const settingLanguageUpload = document.getElementById('setting-language-upload');
+        const settingLanguageDelete = document.getElementById('setting-language-delete');
 
         const btnSubtitle = document.getElementById('btn-subtitle'), subToggleBadge = document.getElementById('sub-toggle-badge');
         const subtitleModal = document.getElementById('subtitle-modal'), btnCloseSubModal = document.getElementById('btn-close-sub-modal');
@@ -214,6 +193,18 @@
         
         // System variables cho Vortex Engine
         let tCurrentWarpZ = 0; 
+
+        // ===================== About Drawer (Về trình phát) =====================
+        // FIX (kiến trúc /event/, cụm "settingsNav"): trước đây 3 biến này tự getElementById ngay
+        // trong about-stats.js — vi phạm quy ước CHUNG (dom-refs.js PHẢI là nơi DUY NHẤT gọi
+        // getElementById). Gom về đây, đúng style các khối khác. About là CHA của Storage trong
+        // cây điều hướng Settings -> About -> Storage (xem khối Storage ngay dưới).
+        const drawerAbout = document.getElementById('drawer-about');
+        const btnOpenAbout = document.getElementById('setting-open-about');
+        const btnBackAbout = document.getElementById('btn-back-about');
+        const statAboutTotalSongs = document.getElementById('stat-about-total-songs');
+        const statAboutTotalDuration = document.getElementById('stat-about-total-duration');
+        const statAboutListenSeconds = document.getElementById('stat-about-listen-seconds');
 
         // ===================== Quản lý dung lượng (Storage Management) =====================
         // FIX (kiến trúc /event/): toàn bộ getElementById của cụm này TRƯỚC ĐÂY nằm rải rác ngay
