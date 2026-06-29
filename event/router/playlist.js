@@ -27,15 +27,15 @@
  * STATE CONTEXT: TRƯỚC ĐÂY (mẫu storage) state context sống Ở ROUTER. Ở cụm playlist này, sau khi
  * cân nhắc, đã CHỐT khác đi: 6 field state của các modal (songActionMenuKey, playbackErrorKey,
  * songEditCurrentKey, songEditPendingCover, songEditPendingCoverPreviewUrl, songInfoCurrentKey)
- * SỐNG TRONG `playlistStore` (event/store.js), được CÁC HÀM CORE trong playlist/actions.js trực
+ * SỐNG TRONG `playlistStore` (event/store.js), được CÁC HÀM CORE trong core/playlist/actions.js trực
  * tiếp đọc/ghi — KHÔNG sống ở đây. Lý do: đây là state "modal nào đang mở, đang hiện bài gì" —
  * gắn chặt với vòng đời UI của modal (mở/đóng/đổi tab/đổi preview), không phải "hồ sơ vụ việc
  * giữa 2 lượt nghiệp vụ" như lastScanResults ở storage. Router playlist do đó KHÔNG giữ state
  * riêng nào của mình — mọi msg.type ở đây chỉ gọi thẳng hoặc giao workflow, không có nhánh
  * if (state...) nào dựa trên context riêng của router.
  *
- * NẠP SAU: event/bus.js, event/store.js (playlistStore đã được new ở playlist/actions.js, KHÔNG
- * phải ở file này), playlist/actions.js + playlist/loader.js + playlist/main.js (cần toàn bộ hàm
+ * NẠP SAU: event/bus.js, event/store.js (playlistStore đã được new ở core/playlist/actions.js, KHÔNG
+ * phải ở file này), core/playlist/actions.js + core/playlist/loader.js + core/playlist/main.js (cần toàn bộ hàm
  * core), event/workflow/playlist.js (cần workflowPlaylist tồn tại). NẠP TRƯỚC:
  * event/listener/playlist.js.
  */
@@ -157,7 +157,7 @@ const routerPlaylist = (() => {
             // ===================== Sắp xếp / Kiểu xem / Tìm kiếm =====================
             case 'playlist.sortMode.change': {
                 const { mode } = msg.payload;
-                setDisplaySortMode(mode); // hàm core có sẵn ở playlist/order.js -> gọi thẳng
+                setDisplaySortMode(mode); // hàm core có sẵn ở core/playlist/order.js -> gọi thẳng
                 break;
             }
 

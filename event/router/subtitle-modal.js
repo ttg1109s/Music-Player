@@ -4,10 +4,23 @@
  * 3 msg.type (editSub/saveSub/deleteSub) đến từ listener DELEGATION duy nhất trên
  * subListContainer (xem mục 2b.8 — TRƯỚC ĐÂY là onclick inline gọi window.editSubItem/
  * saveSubItem/deleteSubItem). KHÔNG giữ state context riêng.
+ *
+ * MỚI: `openModal`/`closeModal` — 2 nút TRƯỚC ĐÂY "lạc" trong core/equalizer-settings.js (đã
+ * xoá), nay gọi thẳng `openSubtitleModal()`/`closeSubtitleModalWithoutSaving()` (core/subtitle/subtitles.js).
  */
 const routerSubtitleModal = (() => {
     function handle(msg) {
         switch (msg.type) {
+
+            case 'subtitleModal.openModal.click': {
+                openSubtitleModal();
+                break;
+            }
+
+            case 'subtitleModal.closeModal.click': {
+                closeSubtitleModalWithoutSaving();
+                break;
+            }
 
             case 'subtitleModal.editSub.click': {
                 editSubItem(msg.payload.id);

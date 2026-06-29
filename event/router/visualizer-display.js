@@ -2,7 +2,7 @@
  * event/router/visualizer-display.js — Router tên "visualizerDisplay", tự đăng ký với eventBus
  * lúc nạp.
  *
- * PHẠM VI: toàn bộ 20 `addEventListener` cũ của visualizers/visualizer-display.js — kiểu hiệu ứng
+ * PHẠM VI: toàn bộ 20 `addEventListener` cũ của core/visualizer/visualizer-display.js — kiểu hiệu ứng
  * (cycle button), chất lượng canvas, ảnh nền (upload/toggle/blur), màu sắc (mode/solid/dynamic),
  * style con (vortex/bar/rain), glass flash, kích thước bar/mirror, volume, EQ mode.
  *
@@ -21,7 +21,7 @@
  * trước /event/, KHÔNG thuộc phạm vi patch này (xem plan.md, đã chốt lùi việc đưa cross-call qua
  * bus tới khi 134 listener gốc tách xong hết).
  *
- * NẠP SAU: event/bus.js, visualizers/visualizer-display.js (cần toàn bộ hàm core ở trên),
+ * NẠP SAU: event/bus.js, core/visualizer/visualizer-display.js (cần toàn bộ hàm core ở trên),
  * event/workflow/visualizer-display.js (cần workflowVisualizerDisplay tồn tại). NẠP TRƯỚC:
  * event/listener/visualizer-display.js.
  */
