@@ -24,6 +24,6 @@ window.addEventListener('pagehide', triggerHideAndReload);
 
 // ── F5 / đóng tab / điều hướng thật ─────────────────────────────────────────
 window.addEventListener('beforeunload', () => {
-    _isRealUnloadHappening = true; // huỷ triggerHideAndReload() đang chờ (nếu có)
+    appState.set('_isRealUnloadHappening', true); // huỷ triggerHideAndReload() đang chờ (nếu có)
     executeAppCleanup();
 });
