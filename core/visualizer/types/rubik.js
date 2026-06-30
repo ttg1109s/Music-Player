@@ -18,11 +18,17 @@
  *     kích hoạt lượt xoay lớp tương ứng — không còn chọn random như bản cũ.
  */
         function drawRubik(ctx, perf, isPlaying) {
+            const dpr = appState.get('dpr');
+            const smoothedEnergy = appState.get('smoothedEnergy');
+            const beatScale = appState.get('beatScale');
+            const vizDataArray = appState.get('vizDataArray');
+            const cfg = appState.get('vizConfig');
             // ----- Kiểu 1: xoay tự thân theo pitch (nhanh/chậm so với pha trung bình động) -----
             const currentMidi = window.lastValidMidiNote;
             // Hệ số tốc độ: 1.0 = trung bình (giống tốc độ gốc); >1 khi nốt cao hơn pha, <1 khi thấp
             // hơn pha. Lệch tối đa quy về ±12 nửa cung (1 quãng tám) để hệ số không vọt quá đà.
             let pitchSpeedFactor = 1;
+            const rubikPitchAvg = appState.get('rubikPitchAvg');
             if (isPlaying && currentMidi != null && rubikPitchAvg > 0) {
                 const semitoneDiff = Math.max(-12, Math.min(12, currentMidi - rubikPitchAvg));
                 pitchSpeedFactor = 1 + (semitoneDiff / 12) * 0.9; // dao động khoảng 0.25x .. 1.75x
@@ -48,6 +54,7 @@
             const unitVertices = [{x:-0.5,y:-0.5,z:-0.5}, {x:0.5,y:-0.5,z:-0.5}, {x:0.5,y:0.5,z:-0.5}, {x:-0.5,y:0.5,z:-0.5}, {x:-0.5,y:-0.5,z:0.5}, {x:0.5,y:-0.5,z:0.5}, {x:0.5,y:0.5,z:0.5}, {x:-0.5,y:0.5,z:0.5}];
             const faces = [ [0,1,2,3], [1,5,6,2], [5,4,7,6], [4,0,3,7], [3,2,6,7], [4,5,1,0] ]; let drawnCubes = [];
             const centerX = canvas.width / 2, centerY = canvas.height / 2;
+            const rubikCubes = appState.get('rubikCubes');
             for(let i=0; i<rubikCubes.length; i++) {
                 let rc = rubikCubes[i]; let val = vizDataArray[rc.binIdx * 4] || 0;
                 // Phóng to/thu nhỏ NGAY TẠI TÂM RIÊNG của mảnh: kết hợp biên độ tần số riêng (val,
@@ -80,7 +87,7 @@
                     let dx1 = p1.x - p0.x, dy1 = p1.y - p0.y; let dx2 = p2.x - p1.x, dy2 = p2.y - p1.y; let crossZ = dx1 * dy2 - dy1 * dx2;
                     if (crossZ > 0) { 
                         ctx.beginPath(); ctx.moveTo(p0.x, p0.y); for(let vIdx=1; vIdx<4; vIdx++) ctx.lineTo(projVerts[face[vIdx]].x, projVerts[face[vIdx]].y); ctx.closePath();
-                        let lightFactor = 0.5 + (f * 0.1); ctx.fillStyle = colors.fill; ctx.globalAlpha = 0.8 * lightFactor; ctx.fill(); ctx.globalAlpha = 1.0; ctx.strokeStyle = vizConfig.bgColor; ctx.stroke();
+                        let lightFactor = 0.5 + (f * 0.1); ctx.fillStyle = colors.fill; ctx.globalAlpha = 0.8 * lightFactor; ctx.fill(); ctx.globalAlpha = 1.0; ctx.strokeStyle = cfg.bgColor; ctx.stroke();
                     }
                 }
                 if (c.val > 200 && perf.blurMult > 0) {

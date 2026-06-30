@@ -18,13 +18,16 @@
         const BAR_MIRROR_COUNT_PER_SIDE = 32;
 
         function drawBarMirror(ctx, perf) {
+            const cfg = appState.get('vizConfig');
+            const dpr = appState.get('dpr');
+            const vizDataArray = appState.get('vizDataArray');
             const centerX = canvas.width / 2, centerY = canvas.height / 2;
             const halfWidth = canvas.width / 2;
-            const maxBarLen = vizConfig.maxH * dpr * 0.5;
+            const maxBarLen = cfg.maxH * dpr * 0.5;
 
             // Số lượng thanh mỗi bên: tùy chỉnh 10-32 qua setting (mirrorBarCount). Mặc định 32
             // (hành vi gốc) nếu chưa từng đặt.
-            const barCount = Math.max(10, Math.min(32, vizConfig.mirrorBarCount || BAR_MIRROR_COUNT_PER_SIDE));
+            const barCount = Math.max(10, Math.min(32, cfg.mirrorBarCount || BAR_MIRROR_COUNT_PER_SIDE));
 
             // Bề rộng mỗi slot chia đều toàn bộ nửa màn hình cho barCount thanh. Độ rộng thật của
             // mỗi bar là slotW = barSlotWidth * 0.6 -> khoảng hở TỰ THÂN giữa 2 bar liền kề trong
@@ -32,7 +35,7 @@
             const barSlotWidth = halfWidth / barCount;
             const slotW = barSlotWidth * 0.6;
             const gapW = barSlotWidth - slotW;
-            const maxBin = analyser.frequencyBinCount * 0.5;
+            const maxBin = appState.get('analyser').frequencyBinCount * 0.5;
 
             // BAR TRUNG TÂM chiếm phần giữa rộng slotW; lấy đúng gapW làm khoảng cách với bar gần
             // nhất của mỗi dải (cùng "nhịp" khoảng hở tự thân như các bar khác) -> toàn bộ dải
@@ -71,8 +74,9 @@
             // BAR TRUNG TÂM — nhỏ mặc định, đập theo beat nhạc thật (beatScale, không tĩnh). Cộng
             // một sàn nhỏ (minH) để luôn hiện hình ngay cả khi không có nhạc/biên độ = 0, cộng
             // thêm theo beatScale + smoothedEnergy để nhảy động giống cách vòng tròn cũ từng đập.
-            const centerScaledMinH = vizConfig.minH * dpr;
-            const centerLen = centerScaledMinH + beatScale * maxBarLen * 0.7 + smoothedEnergy * maxBarLen * 0.3;
+            const centerScaledMinH = cfg.minH * dpr;
+            const beatScale = appState.get('beatScale');
+            const centerLen = centerScaledMinH + beatScale * maxBarLen * 0.7 + appState.get('smoothedEnergy') * maxBarLen * 0.3;
             const centerColors = getComputedColor(0, barCount, Math.round(beatScale * 255));
             ctx.shadowBlur = 15 * dpr * perf.blurMult;
             ctx.shadowColor = perf.blurMult > 0 ? centerColors.glow : 'transparent';
@@ -87,10 +91,13 @@
             // phím rơi từ trên xuống đáy màn hình theo cường độ tần số tương ứng. Độ dày mỗi phím
             // không còn lấy từ setting "Độ dày thanh" (setting đó giờ chỉ dùng cho Black Hole) —
             // thay vào đó tự tính theo độ rộng slot (kw) để luôn khớp đều với bố cục 64 phím.
-            const scaledMinH = vizConfig.minH * dpr;
+            const cfg = appState.get('vizConfig');
+            const dpr = appState.get('dpr');
+            const vizDataArray = appState.get('vizDataArray');
+            const scaledMinH = cfg.minH * dpr;
             const keysY = canvas.height; const NUM_KEYS = 64; const keyWidth = canvas.width / NUM_KEYS;
             for(let i=0; i<NUM_KEYS; i++) {
-                let val = vizDataArray[i + 5] || 0; let finalHeight = scaledMinH + ((val / 255) * vizConfig.maxH * dpr);
+                let val = vizDataArray[i + 5] || 0; let finalHeight = scaledMinH + ((val / 255) * cfg.maxH * dpr);
                 let kx = i * keyWidth; let kw = keyWidth * 0.8; let cx = kx + kw/2; const colors = getComputedColor(i, NUM_KEYS, val);
                 ctx.shadowBlur = 10 * dpr * perf.blurMult; ctx.shadowColor = perf.blurMult > 0 ? colors.glow : 'transparent';
                 ctx.fillStyle = colors.fill; ctx.globalAlpha = 0.2; ctx.fillRect(cx - kw/2, keysY - finalHeight, kw, finalHeight);
@@ -100,6 +107,6 @@
         }
 
         function drawBar(ctx, perf) {
-            if (vizConfig.barStyle === 'cascade') drawBarCascade(ctx, perf);
+            if (appState.get('vizConfig').barStyle === 'cascade') drawBarCascade(ctx, perf);
             else drawBarMirror(ctx, perf);
         }

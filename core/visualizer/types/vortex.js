@@ -5,8 +5,11 @@
  * nguyên 1:1.
  */
         function drawVortex(perf, isPlaying) {
-            if (!tInitialized) return;
-            const bufferLength = analyser.frequencyBinCount;
+            if (!appState.get('tInitialized')) return;
+            const bufferLength = appState.get('analyser').frequencyBinCount;
+            const smoothedEnergy = appState.get('smoothedEnergy');
+            const cfg = appState.get('vizConfig');
+            const vizDataArray = appState.get('vizDataArray');
 
             // 1. Cập nhật đường ống bay (Cinematic Path) — đổi hướng thưa hơn và nhẹ nhàng hơn để tránh giật
             if(isPlaying && smoothedEnergy > 0.65 && Math.random() > 0.985) rollNewVortexCurve();
@@ -15,11 +18,13 @@
             // 2. Cập nhật tốc độ bay (Gia tốc rất mượt theo nhạc, tránh tăng/giảm tốc đột ngột)
             const targetWarpSpeed = 10 + smoothedEnergy * 40;
             tWarpSpeed += (targetWarpSpeed - tWarpSpeed) * 0.025;
-            tCurrentWarpZ -= tWarpSpeed; // Bay sâu vào âm Z
+            appState.set('tCurrentWarpZ', appState.get('tCurrentWarpZ') - tWarpSpeed, { skipCheck: true }); // Bay sâu vào âm Z
+            const tCurrentWarpZ = appState.get('tCurrentWarpZ');
 
             // -> STYLE: RINGS (Vòng ánh sáng)
-            if (vizConfig.vortexStyle === 'rings') {
-                tRings.forEach((ring, idx) => {
+            if (cfg.vortexStyle === 'rings') {
+                const tRings = appState.get('tRings');
+                appState.mutate('tRings', arr => arr.forEach((ring, idx) => {
                     ring.position.z += tWarpSpeed * 0.8;
                     if (ring.position.z > tCurrentWarpZ + 200) ring.position.z -= TUNNEL_DEPTH;
                     
@@ -32,25 +37,28 @@
                     ring.scale.set(s, s, s);
 
                     const color = getComputedColor(idx, tRings.length, val);
-                    if (vizConfig.mode === 'gradient') ring.material.color.setStyle(color.fill);
-                    else if (vizConfig.mode === 'dynamic') ring.material.color.setStyle(idx % 2 === 0 ? vizConfig.dynA : vizConfig.dynB);
-                    else ring.material.color.setStyle(vizConfig.solidColor);
-                });
+                    if (cfg.mode === 'gradient') ring.material.color.setStyle(color.fill);
+                    else if (cfg.mode === 'dynamic') ring.material.color.setStyle(idx % 2 === 0 ? cfg.dynA : cfg.dynB);
+                    else ring.material.color.setStyle(cfg.solidColor);
+                }), { skipCheck: true });
             }
 
             // -> STYLE: BARS 3D (kiểu xoắn chuỗi / lò xo DNA)
-            else if (vizConfig.vortexStyle === 'bars') {
+            else if (cfg.vortexStyle === 'bars') {
                 const dummy = new THREE.Object3D();
                 // Mỗi vòng lệch thêm một góc cố định so với vòng trước -> tạo hình xoắn lò xo dọc ống.
                 // Toàn bộ "lò xo" còn tự xoay chậm theo thời gian để luôn có cảm giác sống động.
                 const twistPerRing = (Math.PI * 2 / BARS_RINGS_COUNT) * 2.4; // số vòng xoắn trọn ống
-                const globalTwist = frameCounter * 0.004;
+                const globalTwist = appState.get('frameCounter') * 0.004;
+                const tBarsMesh = appState.get('tBarsMesh');
 
                 for(let r=0; r<BARS_RINGS_COUNT; r++) {
                     // Sliding window đúng cách: tích lũy vị trí mỗi frame (giống tRings), không tính lại từ modulo
-                    tBarRingZs[r] += tWarpSpeed * 0.8;
-                    if (tBarRingZs[r] > tCurrentWarpZ + 200) tBarRingZs[r] -= TUNNEL_DEPTH;
-                    const z = tBarRingZs[r];
+                    appState.mutate('tBarRingZs', arr => {
+                        arr[r] += tWarpSpeed * 0.8;
+                        if (arr[r] > tCurrentWarpZ + 200) arr[r] -= TUNNEL_DEPTH;
+                    }, { skipCheck: true });
+                    const z = appState.get('tBarRingZs')[r];
 
                     const center = getVortexCenterAt(z);
                     const val = vizDataArray[r % 40] || 0;
@@ -59,9 +67,9 @@
 
                     const color = getComputedColor(r, BARS_RINGS_COUNT, val);
                     let ringColor;
-                    if (vizConfig.mode === 'gradient') ringColor = color.fill;
-                    else if (vizConfig.mode === 'dynamic') ringColor = (r % 2 === 0) ? vizConfig.dynA : vizConfig.dynB;
-                    else ringColor = vizConfig.solidColor;
+                    if (cfg.mode === 'gradient') ringColor = color.fill;
+                    else if (cfg.mode === 'dynamic') ringColor = (r % 2 === 0) ? cfg.dynA : cfg.dynB;
+                    else ringColor = cfg.solidColor;
                     const threeColor = new THREE.Color(ringColor);
 
                     for(let b=0; b<BARS_PER_RING; b++) {
@@ -79,8 +87,9 @@
             }
 
             // -> STYLE: WAVE FADE
-            else if (vizConfig.vortexStyle === 'wave') {
-                tWaveMeshes.forEach((wave, idx) => {
+            else if (cfg.vortexStyle === 'wave') {
+                const tWaveMeshes = appState.get('tWaveMeshes');
+                appState.mutate('tWaveMeshes', arr => arr.forEach((wave, idx) => {
                     wave.position.z += tWarpSpeed * 1.2;
                     if (wave.position.z > tCurrentWarpZ + 200) wave.position.z -= TUNNEL_DEPTH;
                     
@@ -93,16 +102,17 @@
 
                     const val = vizDataArray[idx % bufferLength] || 0;
                     const color = getComputedColor(idx, tWaveMeshes.length, val);
-                    if (vizConfig.mode === 'gradient') wave.material.color.setStyle(color.fill);
-                    else if (vizConfig.mode === 'dynamic') wave.material.color.setStyle(idx % 2 === 0 ? vizConfig.dynA : vizConfig.dynB);
-                    else wave.material.color.setStyle(vizConfig.solidColor);
-                });
+                    if (cfg.mode === 'gradient') wave.material.color.setStyle(color.fill);
+                    else if (cfg.mode === 'dynamic') wave.material.color.setStyle(idx % 2 === 0 ? cfg.dynA : cfg.dynB);
+                    else wave.material.color.setStyle(cfg.solidColor);
+                }), { skipCheck: true });
             }
 
             // 4. Cinematic Camera — chỉ bám theo độ cong của ống (trái/phải/trên/dưới), hoàn toàn
             // không có dao động/rung lắc nào khác (không sway, không FOV breathing).
             const camTargetPos = getVortexCenterAt(tCurrentWarpZ);
             // Camera bắt kịp rất chậm rãi (Smooth damping nhẹ hơn để tránh giật khi đường ống đổi hướng)
+            const tCamera = appState.get('tCamera');
             tCamera.position.x += (camTargetPos.x - tCamera.position.x) * 0.045;
             tCamera.position.y += (camTargetPos.y - tCamera.position.y) * 0.045;
             tCamera.position.z = tCurrentWarpZ;
@@ -112,5 +122,5 @@
             const lookPos = getVortexCenterAt(lookAheadZ);
             tCamera.lookAt(lookPos.x, lookPos.y, lookAheadZ);
 
-            tRenderer.render(tScene, tCamera);
+            appState.get('tRenderer').render(appState.get('tScene'), tCamera);
         }
