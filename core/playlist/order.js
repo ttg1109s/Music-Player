@@ -10,28 +10,28 @@
 
         /** Mảng key đã lọc bỏ bài lỗi (confirmedBrokenKeys) — nền chung cho cả render lẫn hàng đợi. */
         function liveKeys() {
-            return playlistOrder.filter(k => !confirmedBrokenKeys.has(k));
+            return appState.get('playlistOrder').filter(k => !appState.get('confirmedBrokenKeys').has(k));
         }
 
         /** So sánh & trả về MẢNG MỚI đã sắp theo displaySortMode. 'default' giữ nguyên thứ tự thêm. */
         function sortKeysByMode(keys) {
-            if (displaySortMode === 'az' || displaySortMode === 'za') {
+            if (appState.get('displaySortMode') === 'az' || appState.get('displaySortMode') === 'za') {
                 return keys.slice().sort((a, b) => {
-                    const nameA = songNameIndex.get(a) || ''; const nameB = songNameIndex.get(b) || '';
+                    const nameA = appState.get('songNameIndex').get(a) || ''; const nameB = appState.get('songNameIndex').get(b) || '';
                     const cmp = nameA.localeCompare(nameB, 'vi');
-                    return displaySortMode === 'az' ? cmp : -cmp;
+                    return appState.get('displaySortMode') === 'az' ? cmp : -cmp;
                 });
             }
             return keys.slice(); // 'default'
         }
 
         function matchesSearch(key) {
-            if (!searchQuery) return true;
-            const cached = playlistCache.get(key);
+            if (!appState.get('searchQuery')) return true;
+            const cached = appState.get('playlistCache').get(key);
             const title = normalizeSongName(cached ? cached.tag.title : key);
             const artist = normalizeSongName(cached ? cached.tag.artist : '');
             const album = normalizeSongName(cached ? cached.tag.album : '');
-            return title.includes(searchQuery) || artist.includes(searchQuery) || album.includes(searchQuery);
+            return title.includes(appState.get('searchQuery')) || artist.includes(appState.get('searchQuery')) || album.includes(appState.get('searchQuery'));
         }
 
         // ===================== (A) DANH SÁCH HIỂN THỊ =====================
@@ -40,14 +40,14 @@
          * KHÔNG bao giờ phụ thuộc currentKey / pending / hàng đợi phát — UI luôn "đúng như mắt thấy".
          */
         function recomputeRenderOrder() {
-            renderOrder = sortKeysByMode(liveKeys().filter(matchesSearch));
+            appState.set('renderOrder', sortKeysByMode(liveKeys().filter(matchesSearch)));
         }
 
         // ===================== (B) HÀNG ĐỢI PHÁT =====================
         /** Tính lại displayOrder thật (sort theo mode), xoá pending. Dùng khi đổi mode / chạm biên. */
         function recomputeDisplayOrder() {
-            displayOrder = sortKeysByMode(liveKeys());
-            pendingResortKeys.clear();
+            appState.set('displayOrder', sortKeysByMode(liveKeys()));
+            appState.mutate('pendingResortKeys', s => s.clear());
         }
 
         /**
@@ -64,31 +64,36 @@
          */
         function applyNewSongsToDisplayOrder(newKeys) {
             if (newKeys.length === 0) {
-                if (displayOrder.length !== liveKeys().length) recomputeDisplayOrder();
+                if (appState.get('displayOrder').length !== liveKeys().length) recomputeDisplayOrder();
                 return;
             }
-            if (!currentKey) { recomputeDisplayOrder(); return; }
-            const displaySet = new Set(displayOrder); // tra cứu O(1) thay cho .includes() O(n)
+            if (!appState.get('currentKey')) { recomputeDisplayOrder(); return; }
+            const displaySet = new Set(appState.get('displayOrder')); // tra cứu O(1) thay cho .includes() O(n)
             for (const k of newKeys) {
-                if (!displaySet.has(k)) { displayOrder.push(k); displaySet.add(k); }
-                pendingResortKeys.add(k);
+                if (!displaySet.has(k)) {
+                    appState.mutate('displayOrder', arr => arr.push(k));
+                    displaySet.add(k);
+                }
+                appState.mutate('pendingResortKeys', s => s.add(k));
             }
         }
 
         function updateShuffleArray() {
-            shuffleIndices = playlistOrder.slice();
-            if (isShuffle) {
-                for (let i = shuffleIndices.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [shuffleIndices[i], shuffleIndices[j]] = [shuffleIndices[j], shuffleIndices[i]];
-                }
+            appState.set('shuffleIndices', appState.get('playlistOrder').slice());
+            if (appState.get('isShuffle')) {
+                appState.mutate('shuffleIndices', arr => {
+                    for (let i = arr.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [arr[i], arr[j]] = [arr[j], arr[i]];
+                    }
+                });
             }
         }
 
         /** Đổi kiểu sắp xếp hiển thị (default/az/za) — cập nhật CẢ render lẫn hàng đợi phát rồi vẽ lại. */
         function setDisplaySortMode(mode) {
             if (!['default', 'az', 'za'].includes(mode)) return;
-            displaySortMode = mode;
+            appState.set('displaySortMode', mode);
             recomputeDisplayOrder();   // hàng đợi: resort thật (đổi mode là hành động chủ động)
             recomputeRenderOrder();    // UI: sắp lại ngay
             renderPlaylistDiff();

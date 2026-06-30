@@ -35,14 +35,14 @@
             // ---- "Sắp xếp" (default / A→Z / Z→A; v6 đã bỏ "Ngẫu nhiên") — select trong Settings ----
             initSortMenu() {
                 if (!sortSelect) return;
-                sortSelect.value = displaySortMode; // đồng bộ giá trị hiện tại lúc Settings mở ra
+                sortSelect.value = appState.get('displaySortMode'); // đồng bộ giá trị hiện tại lúc Settings mở ra
             },
 
             // ---- "Kiểu xem" (Danh sách / Lưới) — select trong Settings, thay cho #btn-toggle-view
             //      cũ (logic chuyển nguyên từ state-and-video-bg.js, không đổi gì về hành vi). ----
             initViewMode() {
                 if (!viewModeSelect) return;
-                viewModeSelect.value = isGridView ? 'grid' : 'list'; // đồng bộ giá trị hiện tại lúc Settings mở ra
+                viewModeSelect.value = appState.get('isGridView') ? 'grid' : 'list'; // đồng bộ giá trị hiện tại lúc Settings mở ra
             },
 
             init() {
@@ -57,8 +57,8 @@
          * @param {string} mode - 'grid' | 'list'
          */
         function setPlaylistViewMode(mode) {
-            isGridView = (mode === 'grid');
-            playlistContainer.className = isGridView
+            appState.set('isGridView', mode === 'grid');
+            playlistContainer.className = appState.get('isGridView')
                 ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-4 gap-y-6 px-5 pb-32'
                 : 'flex flex-col pb-32';
             renderPlaylistFull();

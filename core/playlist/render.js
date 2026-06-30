@@ -48,7 +48,7 @@
         }
 
         function buildSongNode(key) {
-            const cached = playlistCache.get(key);
+            const cached = appState.get('playlistCache').get(key);
             const title = cached ? cached.tag.title : key;
             const artist = cached ? cached.tag.artist : '';
             // Chỉ Blob cover (record.cover) mới cần tạo + theo dõi object URL để revoke sau; ảnh
@@ -57,7 +57,7 @@
             const hasRealCover = !!(cached && cached.cover);
             const coverUrl = hasRealCover ? URL.createObjectURL(cached.cover) : DEFAULT_VINYL;
 
-            const isPlaying = (key === currentKey); const isActuallyPlaying = isPlaying && !audioPlayer.paused;
+            const isPlaying = (key === appState.get('currentKey')); const isActuallyPlaying = isPlaying && !audioPlayer.paused;
             const eqIconHtml = isActuallyPlaying ? `<div class="flex items-end gap-[2px] h-3 w-3"><div class="w-[3px] bg-sky-400 eq-1"></div><div class="w-[3px] bg-sky-400 eq-2"></div><div class="w-[3px] bg-sky-400 eq-3"></div></div>` : (isPlaying ? `<div class="w-2 h-2 rounded-full bg-sky-500 shadow-[0_0_5px_rgba(14,165,233,0.8)]"></div>` : '');
             const menuBtnHtml = songActionMenuButtonHtml(key);
 
@@ -65,7 +65,7 @@
             wrapper.dataset.key = key;
             wrapper._coverObjectUrl = hasRealCover ? coverUrl : null;
 
-            if (isGridView) {
+            if (appState.get('isGridView')) {
                 wrapper.className = `flex flex-col cursor-pointer active:scale-[0.98] transition-transform group relative w-full`;
                 wrapper.dataset.role = 'play-item';
                 wrapper.innerHTML = `
@@ -121,11 +121,11 @@
             const searchEmptyEl = document.getElementById('playlist-search-empty');
             // Khi đã có dữ liệu thật để dựng list (renderOrder > 0) thì lớp "đang nạp" không còn cần
             // -> fade out (an toàn nếu nó đang hiện; no-op nếu đã ẩn).
-            if (renderOrder.length > 0) hidePlaylistLoading();
+            if (appState.get('renderOrder').length > 0) hidePlaylistLoading();
             if (totalSongs === 0) {
                 emptyEl.classList.remove('hidden');
                 if (searchEmptyEl) searchEmptyEl.classList.add('hidden');
-            } else if (renderOrder.length === 0) {
+            } else if (appState.get('renderOrder').length === 0) {
                 emptyEl.classList.add('hidden');
                 if (searchEmptyEl) searchEmptyEl.classList.remove('hidden');
             } else {
@@ -138,40 +138,40 @@
             // Revoke TOÀN BỘ object URL cover của các node cũ TRƯỚC khi xoá — renderPlaylistFull
             // dựng lại từ đầu (layout grid/list đổi, hoặc lệch số lượng node), mọi node cũ chắc
             // chắn bị bỏ, không có ngoại lệ nào cần giữ lại.
-            domNodesByKey.forEach(revokeNodeCoverUrl);
+            appState.get('domNodesByKey').forEach(revokeNodeCoverUrl);
             playlistContainer.innerHTML = '';
-            domNodesByKey.clear();
-            renderOrder.forEach((key) => {
+            appState.mutate('domNodesByKey', m => m.clear());
+            appState.get('renderOrder').forEach((key) => {
                 const node = buildSongNode(key);
-                domNodesByKey.set(key, node);
+                appState.mutate('domNodesByKey', m => m.set(key, node));
                 playlistContainer.appendChild(node);
             });
-            if (currentKey) btnReturnVisual.classList.remove('hidden'); else btnReturnVisual.classList.add('hidden');
+            if (appState.get('currentKey')) btnReturnVisual.classList.remove('hidden'); else btnReturnVisual.classList.add('hidden');
             updateEmptyState();
         }
 
         function renderPlaylistDiff() {
-            if (playlistContainer.children.length !== domNodesByKey.size) {
+            if (playlistContainer.children.length !== appState.get('domNodesByKey').size) {
                 renderPlaylistFull();
                 return;
             }
 
-            const renderKeySet = new Set(renderOrder);
+            const renderKeySet = new Set(appState.get('renderOrder'));
 
-            for (const [key, node] of Array.from(domNodesByKey.entries())) {
+            for (const [key, node] of Array.from(appState.get('domNodesByKey').entries())) {
                 if (!renderKeySet.has(key)) {
                     revokeNodeCoverUrl(node); // bài đã bị lọc khỏi danh sách hiển thị (xoá/tìm kiếm) -> node này bỏ vĩnh viễn
                     node.remove();
-                    domNodesByKey.delete(key);
+                    appState.mutate('domNodesByKey', m => m.delete(key));
                 }
             }
 
             let prevNode = null;
-            for (const key of renderOrder) {
-                let node = domNodesByKey.get(key);
+            for (const key of appState.get('renderOrder')) {
+                let node = appState.get('domNodesByKey').get(key);
                 if (!node) {
                     node = buildSongNode(key);
-                    domNodesByKey.set(key, node);
+                    appState.mutate('domNodesByKey', m => m.set(key, node));
                 }
                 const expectedNextSibling = prevNode ? prevNode.nextSibling : playlistContainer.firstChild;
                 if (expectedNextSibling !== node) {
@@ -180,22 +180,22 @@
                 prevNode = node;
             }
 
-            if (currentKey) btnReturnVisual.classList.remove('hidden'); else btnReturnVisual.classList.add('hidden');
+            if (appState.get('currentKey')) btnReturnVisual.classList.remove('hidden'); else btnReturnVisual.classList.add('hidden');
             updateEmptyState();
         }
 
         function refreshSongNode(key) {
-            const oldNode = domNodesByKey.get(key);
+            const oldNode = appState.get('domNodesByKey').get(key);
             if (!oldNode) return;
             const newNode = buildSongNode(key);
             revokeNodeCoverUrl(oldNode); // node cũ bị thay hẳn bằng node mới (cover mới tạo riêng ở buildSongNode trên) -> revoke URL cũ ngay
             oldNode.replaceWith(newNode);
-            domNodesByKey.set(key, newNode);
+            appState.mutate('domNodesByKey', m => m.set(key, newNode));
         }
 
         /** Ô tìm kiếm thay đổi: CHỈ lọc lại danh sách hiển thị (renderOrder) — KHÔNG đụng hàng đợi phát. */
         function applySearchQuery(raw) {
-            searchQuery = normalizeSongName(raw);
+            appState.set('searchQuery', normalizeSongName(raw));
             recomputeRenderOrder();
             renderPlaylistDiff();
         }

@@ -62,7 +62,7 @@
             // push key mới (kể cả khi 2 file trùng tên trong CÙNG 1 lượt chọn — resolveSongKey() có
             // thể trả cùng 1 key cho 2 file liên tiếp, Set phải thấy được key đó NGAY để không bị
             // hiểu sai thành "bài mới" ở vòng lặp kế). Kết quả/logic giữ nguyên 100% so với bản cũ.
-            const playlistOrderSet = new Set(playlistOrder);
+            const playlistOrderSet = new Set(appState.get('playlistOrder'));
 
             // FIX (ver 8 refine #2): withLoadingShield() im lặng return (không làm gì, không throw)
             // nếu đã có 1 tác vụ khác đang dùng shield (isShieldBusy = true) — ví dụ người dùng bấm
@@ -142,10 +142,10 @@
                         }
                         await setSongRecord(key, record);
 
-                        if (!isOverwrite) { playlistOrder.push(key); playlistOrderSet.add(key); newlyAddedKeys.push(key); }
-                        playlistCache.set(key, { filename: record.filename, tag: record.tag, cover: record.cover, duration: record.duration });
-                        songNameIndex.set(key, normalizeSongName(record.tag.title));
-                        confirmedBrokenKeys.delete(key);
+                        if (!isOverwrite) { appState.mutate('playlistOrder', arr => arr.push(key)); playlistOrderSet.add(key); newlyAddedKeys.push(key); }
+                        appState.mutate('playlistCache', m => m.set(key, { filename: record.filename, tag: record.tag, cover: record.cover, duration: record.duration }));
+                        appState.mutate('songNameIndex', m => m.set(key, normalizeSongName(record.tag.title)));
+                        appState.mutate('confirmedBrokenKeys', s => s.delete(key));
                     } catch (err) {
                         console.error(`[playlist] Không nạp được "${file.name}":`, err);
                         const errMsg = (err && err.name && err.message) ? `${err.name}: ${err.message}` : String(err && err.message || err || t('common.unknownError'));
@@ -288,18 +288,18 @@
         async function scanValidSongsFromDB(onProgress) {
             const keys = await getAllSongKeys();
             const validKeys = [];
-            playlistCache.clear(); songNameIndex.clear();
+            appState.mutate('playlistCache', m => m.clear()); appState.mutate('songNameIndex', m => m.clear());
             let processed = 0;
             for (const key of keys) {
                 processed++;
                 if (typeof onProgress === 'function') onProgress(processed, keys.length);
-                if (confirmedBrokenKeys.has(key)) continue;
+                if (appState.get('confirmedBrokenKeys').has(key)) continue;
                 const record = await getSongRecord(key);
                 if (!record || !record.blob || !record.tag) continue;
                 if (!isQuickValidMime(record.blob.type)) continue;
                 validKeys.push(key);
-                playlistCache.set(key, { filename: record.filename, tag: record.tag, cover: record.cover, duration: record.duration });
-                songNameIndex.set(key, normalizeSongName(record.tag.title));
+                appState.mutate('playlistCache', m => m.set(key, { filename: record.filename, tag: record.tag, cover: record.cover, duration: record.duration }));
+                appState.mutate('songNameIndex', m => m.set(key, normalizeSongName(record.tag.title)));
             }
             return validKeys;
         }
@@ -329,7 +329,7 @@
             const rawKeys = await getAllSongKeys();
             if (rawKeys.length <= 0) {
                 // Thực sự rỗng -> hiện luôn trạng thái "chưa có bài nào", KHÔNG nháy lớp loading.
-                playlistOrder = [];
+                appState.set('playlistOrder', []);
                 updateShuffleArray();
                 recomputeDisplayOrder();
                 recomputeRenderOrder();
@@ -340,7 +340,7 @@
             // Có dữ liệu -> phủ lớp "đang nạp danh sách x / y bài" trong lúc đọc từng record, tránh nháy
             // "chưa có bài nào". Lớp này sẽ tự fade out khi DOM list dựng xong (updateEmptyState).
             showPlaylistLoading(0, rawKeys.length);
-            playlistOrder = await scanValidSongsFromDB((done, total) => updatePlaylistLoading(done, total));
+            appState.set('playlistOrder', await scanValidSongsFromDB((done, total) => updatePlaylistLoading(done, total)));
             updateShuffleArray();
             recomputeDisplayOrder();   // hàng đợi phát
             recomputeRenderOrder();    // danh sách hiển thị

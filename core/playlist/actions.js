@@ -28,10 +28,10 @@
          * nguồn chân lý, hàng đợi phát LẪN danh sách hiển thị rồi vẽ lại.
          */
         function removeKeyFromDisplay(key) {
-            playlistOrder = playlistOrder.filter(k => k !== key);
-            displayOrder = displayOrder.filter(k => k !== key);
-            pendingResortKeys.delete(key);
-            playlistCache.delete(key); songNameIndex.delete(key);
+            appState.set('playlistOrder', appState.get('playlistOrder').filter(k => k !== key));
+            appState.set('displayOrder', appState.get('displayOrder').filter(k => k !== key));
+            appState.mutate('pendingResortKeys', s => s.delete(key));
+            appState.mutate('playlistCache', m => m.delete(key)); appState.mutate('songNameIndex', m => m.delete(key));
             updateShuffleArray();
             recomputeRenderOrder();
             renderPlaylistDiff();
@@ -39,7 +39,7 @@
         }
 
         window.removeSong = function(key) {
-            if (key === currentKey) return;
+            if (key === appState.get('currentKey')) return;
             withLoadingShield(t('common.loading.deleting'), async () => {
                 await deleteSongRecord(key);
                 removeSongStats(key); // dọn luôn thống kê nghe của bài đã xoá
@@ -48,7 +48,7 @@
         };
 
         window.playSong = function(key) {
-            if (key === currentKey) { switchToVisualizer(); if (audioPlayer.paused) audioPlayer.play(); return; }
+            if (key === appState.get('currentKey')) { switchToVisualizer(); if (audioPlayer.paused) audioPlayer.play(); return; }
             requestWakeLock();
 
             // display=false: chuyển bài chạy logic trong shield (khoá chồng lệnh) nhưng KHÔNG hiện
@@ -71,10 +71,10 @@
             // #loading-shield khác đang chạy (alert() native từng gây "đứng" cảm giác app crash).
             let notFoundAlert = false; // cờ mang ra ngoài withLoadingShield — KHÔNG await alertModal() ngay trong fn() của shield (xem giải thích dưới)
             return withLoadingShield(t('common.loading.switchingSong'), async () => {
-                if (currentObjectURL) { URL.revokeObjectURL(currentObjectURL); currentObjectURL = null; }
-                if (currentCoverObjectURL) { URL.revokeObjectURL(currentCoverObjectURL); currentCoverObjectURL = null; }
+                if (appState.get('currentObjectURL')) { URL.revokeObjectURL(appState.get('currentObjectURL')); appState.set('currentObjectURL', null); }
+                if (appState.get('currentCoverObjectURL')) { URL.revokeObjectURL(appState.get('currentCoverObjectURL')); appState.set('currentCoverObjectURL', null); }
                 audioPlayer.pause();
-                const previousKey = currentKey;
+                const previousKey = appState.get('currentKey');
 
                 const record = await getSongRecord(key);
                 if (!record) {
@@ -92,13 +92,13 @@
                     return;
                 }
 
-                currentKey = key;
-                currentCoverObjectURL = record.cover ? URL.createObjectURL(record.cover) : DEFAULT_VINYL;
-                currentObjectURL = URL.createObjectURL(record.blob);
-                audioPlayer.src = currentObjectURL;
+                appState.set('currentKey', key);
+                appState.set('currentCoverObjectURL', record.cover ? URL.createObjectURL(record.cover) : DEFAULT_VINYL);
+                appState.set('currentObjectURL', URL.createObjectURL(record.blob));
+                audioPlayer.src = appState.get('currentObjectURL');
 
                 playerTitle.textContent = record.tag.title; playerArtist.textContent = record.tag.artist;
-                recordContainer.innerHTML = `<img id="record-art" src="${currentCoverObjectURL}" class="w-full h-full rounded-full object-cover shadow-lg relative z-20 ${audioPlayer.paused ? 'paused' : 'animate-spin-slow'}" alt="Record"><div class="absolute inset-0 m-auto w-3 h-3 bg-slate-900 rounded-full border border-slate-700 z-30"></div>`;
+                recordContainer.innerHTML = `<img id="record-art" src="${appState.get('currentCoverObjectURL')}" class="w-full h-full rounded-full object-cover shadow-lg relative z-20 ${audioPlayer.paused ? 'paused' : 'animate-spin-slow'}" alt="Record"><div class="absolute inset-0 m-auto w-3 h-3 bg-slate-900 rounded-full border border-slate-700 z-30"></div>`;
                 // Ver 8 refine (mục 4): cover Blob có thể không decode được làm ảnh thật (ID3 cover
                 // lỗi/cắt cụt, jsmediatags đọc nhầm định dạng...) -> <img> "vỡ" thay vì hiện vinyl
                 // mặc định. attachCoverFallback() (định nghĩa ở render.js) gắn onerror tự fallback
@@ -116,7 +116,7 @@
                         // ảnh hoàn toàn hợp lệ. Fallback 'image/jpeg' chỉ dùng khi vì lý do nào đó
                         // record.cover.type rỗng (hiếm, nhưng Blob.type có thể rỗng trên 1 số trình
                         // duyệt cũ dù nội dung vẫn đúng).
-                        artwork: record.cover ? [{ src: currentCoverObjectURL, sizes: '512x512', type: record.cover.type || 'image/jpeg' }] : []
+                        artwork: record.cover ? [{ src: appState.get('currentCoverObjectURL'), sizes: '512x512', type: record.cover.type || 'image/jpeg' }] : []
                     });
                 }
 
@@ -125,17 +125,17 @@
                 audioPlayer.play(); switchToVisualizer();
                 if (previousKey) refreshSongNode(previousKey);
                 refreshSongNode(key);
-                if (!domNodesByKey.has(key)) renderPlaylistDiff();
-                if (currentKey) btnReturnVisual.classList.remove('hidden');
-                beatTimes = []; fluxHistory = []; currentCalculatedBpm = "---"; statBpm.textContent = "---"; statNote.textContent = "---";
+                if (!appState.get('domNodesByKey').has(key)) renderPlaylistDiff();
+                if (appState.get('currentKey')) btnReturnVisual.classList.remove('hidden');
+                appState.set('beatTimes', []); appState.set('fluxHistory', []); appState.set('currentCalculatedBpm', "---"); statBpm.textContent = "---"; statNote.textContent = "---";
                 // Reset trạng thái pitch worker — tránh hiện sót nốt nhạc của bài VỪA đổi trong vài
                 // chục ms đầu (worker là bất đồng bộ, kết quả cũ có thể vẫn đang "bay" lúc đổi bài).
-                latestPitchFrequency = -1; window.lastValidNoteStr = null; window.lastValidNoteTime = 0; window.lastValidMidiNote = null;
-                rubikPitchHistory = []; rubikPitchAvg = 0;
-                raindrops = []; ripples = []; glassStaticDrops = []; glassStreaks = []; activeLightnings = []; starFlashes = [];
+                appState.set('latestPitchFrequency', -1); window.lastValidNoteStr = null; window.lastValidNoteTime = 0; window.lastValidMidiNote = null;
+                appState.set('rubikPitchHistory', []); appState.set('rubikPitchAvg', 0);
+                appState.set('raindrops', []); appState.set('ripples', []); appState.set('glassStaticDrops', []); appState.set('glassStreaks', []); appState.set('activeLightnings', []); appState.set('starFlashes', []);
                 setupAudioContext(); updateTypeUI();
 
-                subtitles = record.subtitles ? record.subtitles.slice() : [];
+                appState.set('subtitles', record.subtitles ? record.subtitles.slice() : []);
                 clearAllActiveSubBlocks(); resetAutoSub(); renderSubList();
             }, false).then(async () => {
                 // Shield đã đóng HẲN (isShieldBusy = false) tới đây — an toàn để hiện modal, không
@@ -199,7 +199,7 @@
 
         function handlePlaybackError(key) {
             playlistStore.set({ playbackErrorKey: key });
-            const cached = playlistCache.get(key);
+            const cached = appState.get('playlistCache').get(key);
             playbackErrorFilename.textContent = cached ? cached.filename : key;
             playbackErrorModal.classList.remove('hidden');
         }
@@ -212,7 +212,7 @@
         function confirmKeepBrokenSong() {
             const key = playlistStore.get('playbackErrorKey');
             if (!key) return { status: 'noop' };
-            confirmedBrokenKeys.add(key);
+            appState.mutate('confirmedBrokenKeys', s => s.add(key));
             removeKeyFromDisplay(key);
             playbackErrorModal.classList.add('hidden');
             playlistStore.set({ playbackErrorKey: null });
@@ -285,7 +285,7 @@
         }
 
         async function openSongEditModal(key) {
-            const cached = playlistCache.get(key); if (!cached) return;
+            const cached = appState.get('playlistCache').get(key); if (!cached) return;
             playlistStore.set({ songEditCurrentKey: key, songEditPendingCover: null });
             songEditTitleInput.value = cached.tag.title || '';
             songEditArtistInput.value = cached.tag.artist || '';
@@ -369,20 +369,20 @@
             else if (pendingCover === 'remove') delete record.cover;
             await setSongRecord(key, record);
 
-            const cached = playlistCache.get(key);
+            const cached = appState.get('playlistCache').get(key);
             if (cached) { cached.tag = record.tag; cached.cover = record.cover || null; }
-            songNameIndex.set(key, normalizeSongName(record.tag.title));
+            appState.mutate('songNameIndex', m => m.set(key, normalizeSongName(record.tag.title)));
 
-            if (key === currentKey) {
+            if (key === appState.get('currentKey')) {
                 playerTitle.textContent = record.tag.title; playerArtist.textContent = record.tag.artist;
-                if (currentCoverObjectURL && currentCoverObjectURL.startsWith('blob:')) URL.revokeObjectURL(currentCoverObjectURL);
-                currentCoverObjectURL = record.cover ? URL.createObjectURL(record.cover) : DEFAULT_VINYL;
+                if (appState.get('currentCoverObjectURL') && appState.get('currentCoverObjectURL').startsWith('blob:')) URL.revokeObjectURL(appState.get('currentCoverObjectURL'));
+                appState.set('currentCoverObjectURL', record.cover ? URL.createObjectURL(record.cover) : DEFAULT_VINYL);
                 // NGOẠI LỆ CỐ Ý: #record-art là phần tử ĐỘNG (tạo lại qua innerHTML mỗi lần đổi
                 // bài) — không thể dùng biến cố định từ dom-refs.js, phải tự getElementById tại
                 // chỗ cần (xem comment chi tiết ở khối "Playlist actions" trong dom-refs.js).
                 const recordArtEl = document.getElementById('record-art');
                 if (recordArtEl) {
-                    recordArtEl.src = currentCoverObjectURL;
+                    recordArtEl.src = appState.get('currentCoverObjectURL');
                     // Gắn lại fallback mỗi khi đổi src (ver 8 refine, mục 4) — listener cũ tự
                     // gỡ sau 1 lần lỗi (xem attachCoverFallback ở render.js), nên ảnh MỚI vừa
                     // đổi sang cần listener mới của riêng nó để vẫn được bảo vệ.
@@ -394,7 +394,7 @@
                         artist: record.tag.artist || "Unknown Artist",
                         // Ver 8 refine (mục 4): dùng đúng record.cover.type thật, xem comment
                         // tương tự ở playSong() phía trên.
-                        artwork: record.cover ? [{ src: currentCoverObjectURL, sizes: '512x512', type: record.cover.type || 'image/jpeg' }] : []
+                        artwork: record.cover ? [{ src: appState.get('currentCoverObjectURL'), sizes: '512x512', type: record.cover.type || 'image/jpeg' }] : []
                     });
                 }
             }
@@ -409,7 +409,7 @@
         function refreshAfterSongEditSave(key) {
             refreshSongNode(key); // vẽ lại ảnh/tên mới ngay trong danh sách (ảnh cũ trong DOM không tự đổi)
             // Đổi tên -> ảnh hưởng sort: cập nhật cả hàng đợi phát (nếu az/za) lẫn danh sách hiển thị.
-            if (displaySortMode === 'az' || displaySortMode === 'za') recomputeDisplayOrder();
+            if (appState.get('displaySortMode') === 'az' || appState.get('displaySortMode') === 'za') recomputeDisplayOrder();
             recomputeRenderOrder();
             renderPlaylistDiff();
         }
@@ -436,7 +436,7 @@
         }
 
         function openSongInfoModal(key) {
-            const cached = playlistCache.get(key); if (!cached) return;
+            const cached = appState.get('playlistCache').get(key); if (!cached) return;
             playlistStore.set({ songInfoCurrentKey: key });
             const stats = getSongStats(key); // { count, totalTime }
             const emptyVal = t('playlistView.songInfo.empty');
