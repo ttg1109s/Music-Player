@@ -66,24 +66,24 @@
          * Trả về true nếu ĐÃ LƯU THẬT (có bài đang phát), false nếu không có gì để lưu hoặc lưu lỗi.
          */
         function saveResumeStateToLocalStorage() {
-            if (typeof currentKey === 'undefined' || currentKey === null) return false; // không có gì đang phát -> không cần lưu
+            if (typeof appState === 'undefined' || appState.get('currentKey') === null) return false; // không có gì đang phát -> không cần lưu
             try {
                 const snapshot = {
                     v: 2,
                     savedAt: Date.now(),
-                    currentKey: currentKey,
+                    currentKey: appState.get('currentKey'),
                     currentTime: (typeof audioPlayer !== 'undefined' && audioPlayer) ? (audioPlayer.currentTime || 0) : 0,
-                    isShuffle: typeof isShuffle !== 'undefined' ? !!isShuffle : false,
-                    repeatMode: typeof repeatMode !== 'undefined' ? repeatMode : 0,
-                    shuffleIndices: typeof shuffleIndices !== 'undefined' ? shuffleIndices.slice() : [],
-                    displayOrder: typeof displayOrder !== 'undefined' ? displayOrder.slice() : [],
-                    videoCurrentTime: (vizConfig && vizConfig.videoBgEnabled && vizConfig.videoBgUrl
+                    isShuffle: !!appState.get('isShuffle'),
+                    repeatMode: appState.get('repeatMode'),
+                    shuffleIndices: appState.get('shuffleIndices').slice(),
+                    displayOrder: appState.get('displayOrder').slice(),
+                    videoCurrentTime: (appState.get('vizConfig') && appState.get('vizConfig').videoBgEnabled && appState.get('vizConfig').videoBgUrl
                         && typeof bgVideoElement !== 'undefined' && bgVideoElement)
                         ? (bgVideoElement.currentTime || 0) : null,
-                    autoSwitchVisualMarksSnapshot: (vizConfig && vizConfig.autoSwitchVisualEnabled
-                        && vizConfig.autoSwitchVisualTimeMode === 'duration'
-                        && typeof autoSwitchVisualMarks !== 'undefined' && Array.isArray(autoSwitchVisualMarks) && autoSwitchVisualMarks.length > 0)
-                        ? autoSwitchVisualMarks.slice() : null,
+                    autoSwitchVisualMarksSnapshot: (appState.get('vizConfig') && appState.get('vizConfig').autoSwitchVisualEnabled
+                        && appState.get('vizConfig').autoSwitchVisualTimeMode === 'duration'
+                        && Array.isArray(appState.get('autoSwitchVisualMarks')) && appState.get('autoSwitchVisualMarks').length > 0)
+                        ? appState.get('autoSwitchVisualMarks').slice() : null,
                 };
                 localStorage.setItem(RESUME_STATE_STORAGE_KEY, JSON.stringify(snapshot));
                 return true;
@@ -141,9 +141,9 @@
                 clearResumeFlag();
                 return;
             }
-            _pendingResumeSnapshot = snapshot;
-            if (typeof lastStoppedKey !== 'undefined') lastStoppedKey = snapshot.currentKey;
-            if (typeof lastStoppedTime !== 'undefined') lastStoppedTime = snapshot.currentTime || 0;
+            appState.set('_pendingResumeSnapshot', snapshot);
+            if (typeof appState !== 'undefined') appState.set('lastStoppedKey', snapshot.currentKey);
+            if (typeof appState !== 'undefined') appState.set('lastStoppedTime', snapshot.currentTime || 0);
             // KHÔNG clearResumeFlag()/clearResumeStateFromLocalStorage() ở đây — chỉ tắt khi modal
             // đã được xử lý xong (1 trong 3 lựa chọn), đúng yêu cầu: để modal treo/lại reload tay/
             // lại ẩn-hiện tab nhiều lần đều không ảnh hưởng, quy trình hỏi vẫn nguyên vẹn.
@@ -163,11 +163,11 @@
         function enableResumeModalButtonsWhenPlaylistReady() {
             const overlay = document.getElementById('modal-choice-overlay');
             if (!overlay) return; // không có modal đang mở -> không có gì để mở khoá
-            const pendingKey = _pendingResumeSnapshot ? _pendingResumeSnapshot.currentKey : null;
-            if (pendingKey && typeof playlistCache !== 'undefined' && !playlistCache.has(pendingKey)) {
+            const pendingKey = appState.get('_pendingResumeSnapshot') ? appState.get('_pendingResumeSnapshot').currentKey : null;
+            if (pendingKey && typeof appState !== 'undefined' && !appState.get('playlistCache').has(pendingKey)) {
                 // Bài đã lưu không còn tồn tại nữa -> không có gì để hỏi thật, tự đóng modal + dọn cờ.
                 overlay.remove();
-                if (typeof isResumeModalOpen !== 'undefined') isResumeModalOpen = false;
+                appState.set('isResumeModalOpen', false);
                 discardPendingResumeState();
                 return;
             }
@@ -194,36 +194,36 @@
          *      KHÔNG build mới (sẽ xoá hết các mốc đã "nhớ" visual của đoạn đã nghe qua).
          */
         function applyResumeStateToRam() {
-            const snapshot = _pendingResumeSnapshot;
-            _pendingResumeSnapshot = null;
+            const snapshot = appState.get('_pendingResumeSnapshot');
+            appState.set('_pendingResumeSnapshot', null);
             if (!snapshot) return;
 
             // ---- 1. Shuffle/Repeat/displayOrder ----
-            if (typeof isShuffle !== 'undefined') isShuffle = !!snapshot.isShuffle;
-            if (typeof repeatMode !== 'undefined') repeatMode = snapshot.repeatMode || 0;
-            if (Array.isArray(snapshot.shuffleIndices) && snapshot.shuffleIndices.length > 0 && typeof playlistCache !== 'undefined') {
-                shuffleIndices = snapshot.shuffleIndices.filter(k => playlistCache.has(k));
+            appState.set('isShuffle', !!snapshot.isShuffle);
+            appState.set('repeatMode', snapshot.repeatMode || 0);
+            if (Array.isArray(snapshot.shuffleIndices) && snapshot.shuffleIndices.length > 0) {
+                appState.set('shuffleIndices', snapshot.shuffleIndices.filter(k => appState.get('playlistCache').has(k)));
             }
-            if (Array.isArray(snapshot.displayOrder) && snapshot.displayOrder.length > 0 && typeof playlistCache !== 'undefined') {
-                const filtered = snapshot.displayOrder.filter(k => playlistCache.has(k));
-                if (filtered.length > 0) displayOrder = filtered;
+            if (Array.isArray(snapshot.displayOrder) && snapshot.displayOrder.length > 0) {
+                const filtered = snapshot.displayOrder.filter(k => appState.get('playlistCache').has(k));
+                if (filtered.length > 0) appState.set('displayOrder', filtered);
             }
             // Đồng bộ UI nút Trộn bài/Lặp lại theo giá trị vừa phục hồi — dùng ĐÚNG class đã thấy ở
             // listener click của 2 nút này (player-controls.js).
             if (typeof btnShuffle !== 'undefined' && btnShuffle) {
-                btnShuffle.classList.toggle('!text-sky-400', isShuffle);
-                btnShuffle.classList.toggle('text-slate-400', !isShuffle);
+                btnShuffle.classList.toggle('!text-sky-400', appState.get('isShuffle'));
+                btnShuffle.classList.toggle('text-slate-400', !appState.get('isShuffle'));
             }
             if (typeof btnRepeat !== 'undefined' && btnRepeat && typeof repeatBadge !== 'undefined' && repeatBadge) {
-                if (repeatMode === 0) { btnRepeat.classList.remove('!text-sky-400'); btnRepeat.classList.add('text-slate-400'); repeatBadge.classList.add('hidden'); }
-                else if (repeatMode === 1) { btnRepeat.classList.remove('text-slate-400'); btnRepeat.classList.add('!text-sky-400'); repeatBadge.classList.add('hidden'); }
-                else if (repeatMode === 2) { btnRepeat.classList.add('!text-sky-400'); repeatBadge.classList.remove('hidden'); }
+                if (appState.get('repeatMode') === 0) { btnRepeat.classList.remove('!text-sky-400'); btnRepeat.classList.add('text-slate-400'); repeatBadge.classList.add('hidden'); }
+                else if (appState.get('repeatMode') === 1) { btnRepeat.classList.remove('text-slate-400'); btnRepeat.classList.add('!text-sky-400'); repeatBadge.classList.add('hidden'); }
+                else if (appState.get('repeatMode') === 2) { btnRepeat.classList.add('!text-sky-400'); repeatBadge.classList.remove('hidden'); }
             }
 
             // ---- 2. Video nền — khôi phục đúng vị trí đang xem ----
             if (snapshot.videoCurrentTime !== null && snapshot.videoCurrentTime !== undefined
                 && typeof bgVideoElement !== 'undefined' && bgVideoElement
-                && typeof vizConfig !== 'undefined' && vizConfig.videoBgEnabled && vizConfig.videoBgUrl) {
+                && appState.get('vizConfig').videoBgEnabled && appState.get('vizConfig').videoBgUrl) {
                 const targetTime = snapshot.videoCurrentTime;
                 const trySeek = () => { try { bgVideoElement.currentTime = targetTime; } catch (e) {} };
                 if (bgVideoElement.readyState >= 1) trySeek();
@@ -242,7 +242,7 @@
 
         /** Gọi từ nhánh "Không" của showResumeChoiceModal() — KHÔNG áp gì vào RAM, chỉ tắt cờ + dọn data. */
         function discardPendingResumeState() {
-            _pendingResumeSnapshot = null;
+            appState.set('_pendingResumeSnapshot', null);
             clearResumeFlag();
             clearResumeStateFromLocalStorage();
         }

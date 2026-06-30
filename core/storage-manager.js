@@ -80,7 +80,7 @@
          *     vẫn tự retry đúng như kịch bản đóng tab.
          */
         async function clearAllStoredData() {
-            isDestructiveTaskInProgress = true;
+            appState.set('isDestructiveTaskInProgress', true);
             try {
                 await setMeta('clearingInProgress', true);
 
@@ -93,13 +93,13 @@
                 if (typeof clearAllSongStats === 'function') await clearAllSongStats();
 
                 // Đồng bộ lại toàn bộ state RAM — không reload trang, để người dùng thấy ngay kết quả.
-                playlistOrder = []; displayOrder = []; playlistCache.clear(); songNameIndex.clear(); confirmedBrokenKeys.clear();
-                pendingResortKeys.clear();
+                appState.set('playlistOrder', []); appState.set('displayOrder', []); appState.mutate('playlistCache', m => m.clear()); appState.mutate('songNameIndex', m => m.clear()); appState.mutate('confirmedBrokenKeys', s => s.clear());
+                appState.mutate('pendingResortKeys', s => s.clear());
                 if (typeof recomputeRenderOrder === 'function') recomputeRenderOrder();
-                if (currentKey) { audioPlayer.pause(); audioPlayer.src = ''; currentKey = null; }
+                if (appState.get('currentKey')) { audioPlayer.pause(); audioPlayer.src = ''; appState.set('currentKey', null); }
                 if (typeof killAllAutoSwitchVisualTasks === 'function') killAllAutoSwitchVisualTasks();
-                if (currentObjectURL) { URL.revokeObjectURL(currentObjectURL); currentObjectURL = null; }
-                if (currentCoverObjectURL) { URL.revokeObjectURL(currentCoverObjectURL); currentCoverObjectURL = null; }
+                if (appState.get('currentObjectURL')) { URL.revokeObjectURL(appState.get('currentObjectURL')); appState.set('currentObjectURL', null); }
+                if (appState.get('currentCoverObjectURL')) { URL.revokeObjectURL(appState.get('currentCoverObjectURL')); appState.set('currentCoverObjectURL', null); }
                 playerTitle.textContent = t('bottomPlayer.noSongSelected'); playerArtist.textContent = '---';
                 updateShuffleArray();
                 renderPlaylistFull();
@@ -108,7 +108,7 @@
 
                 await delMeta('clearingInProgress'); // chỉ xoá cờ SAU KHI mọi bước trên đã xong hoàn toàn
             } finally {
-                isDestructiveTaskInProgress = false;
+                appState.set('isDestructiveTaskInProgress', false);
             }
         }
 
@@ -179,7 +179,7 @@
                 const key = keys[i];
                 if (onScanProgress) onScanProgress(i + 1, keys.length);
                 const record = await getSongRecord(key);
-                if (confirmedBrokenKeys.has(key)) {
+                if (appState.get('confirmedBrokenKeys').has(key)) {
                     results.push({ key, filename: record ? record.filename : key, reason: t('common.storage.scanReasonKeptFromError') });
                     continue;
                 }
@@ -203,7 +203,7 @@
             for (const { key } of scanResults) {
                 if (key === currentKeyNow) continue;
                 await deleteSongRecord(key);
-                confirmedBrokenKeys.delete(key);
+                appState.mutate('confirmedBrokenKeys', s => s.delete(key));
                 removeKeyFromDisplay(key);
             }
         }

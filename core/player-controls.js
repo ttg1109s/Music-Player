@@ -46,40 +46,40 @@
          */
         function playNext(force = false) {
             requestWakeLock();
-            if (playlistOrder.length === 0) return;
-            if (!force && repeatMode === 2) { audioPlayer.currentTime = 0; audioPlayer.play(); return; }
+            if (appState.get('playlistOrder').length === 0) return;
+            if (!force && appState.get('repeatMode') === 2) { audioPlayer.currentTime = 0; audioPlayer.play(); return; }
             let nextKey;
-            if (isShuffle) {
-                let currentPos = shuffleIndices.indexOf(currentKey);
-                if (currentPos === -1 || currentPos === playlistOrder.length - 1) { if (repeatMode === 1 || force) nextKey = shuffleIndices[0]; else { audioPlayer.pause(); return; } }
-                else nextKey = shuffleIndices[currentPos + 1];
+            if (appState.get('isShuffle')) {
+                let currentPos = appState.get('shuffleIndices').indexOf(appState.get('currentKey'));
+                if (currentPos === -1 || currentPos === appState.get('playlistOrder').length - 1) { if (appState.get('repeatMode') === 1 || force) nextKey = appState.get('shuffleIndices')[0]; else { audioPlayer.pause(); return; } }
+                else nextKey = appState.get('shuffleIndices')[currentPos + 1];
             } else {
-                let currentPos = displayOrder.indexOf(currentKey);
-                const isWrappingToStart = (currentPos === displayOrder.length - 1);
+                let currentPos = appState.get('displayOrder').indexOf(appState.get('currentKey'));
+                const isWrappingToStart = (currentPos === appState.get('displayOrder').length - 1);
                 if (isWrappingToStart) {
-                    if (repeatMode === 1 || force) {
-                        if (pendingResortKeys.size > 0) recomputeDisplayOrder(); // chạm biên: áp lại sort thật cho bài mới thêm giữa lúc nghe
-                        nextKey = displayOrder[0];
+                    if (appState.get('repeatMode') === 1 || force) {
+                        if (appState.get('pendingResortKeys').size > 0) recomputeDisplayOrder(); // chạm biên: áp lại sort thật cho bài mới thêm giữa lúc nghe
+                        nextKey = appState.get('displayOrder')[0];
                     } else { audioPlayer.pause(); return; }
-                } else nextKey = displayOrder[currentPos + 1];
+                } else nextKey = appState.get('displayOrder')[currentPos + 1];
             }
             window.playSong(nextKey);
         }
 
         function playPrev() {
             requestWakeLock();
-            if (playlistOrder.length === 0) return;
+            if (appState.get('playlistOrder').length === 0) return;
             if (audioPlayer.currentTime > 3) { audioPlayer.currentTime = 0; return; }
             let prevKey;
-            if (isShuffle) {
-                let currentPos = shuffleIndices.indexOf(currentKey); prevKey = (currentPos <= 0) ? shuffleIndices[playlistOrder.length - 1] : shuffleIndices[currentPos - 1];
+            if (appState.get('isShuffle')) {
+                let currentPos = appState.get('shuffleIndices').indexOf(appState.get('currentKey')); prevKey = (currentPos <= 0) ? appState.get('shuffleIndices')[appState.get('playlistOrder').length - 1] : appState.get('shuffleIndices')[currentPos - 1];
             } else {
-                let currentPos = displayOrder.indexOf(currentKey);
+                let currentPos = appState.get('displayOrder').indexOf(appState.get('currentKey'));
                 const isWrappingToEnd = (currentPos <= 0);
                 if (isWrappingToEnd) {
-                    if (pendingResortKeys.size > 0) recomputeDisplayOrder(); // chạm biên: áp lại sort thật
-                    prevKey = displayOrder[displayOrder.length - 1];
-                } else prevKey = displayOrder[currentPos - 1];
+                    if (appState.get('pendingResortKeys').size > 0) recomputeDisplayOrder(); // chạm biên: áp lại sort thật
+                    prevKey = appState.get('displayOrder')[appState.get('displayOrder').length - 1];
+                } else prevKey = appState.get('displayOrder')[currentPos - 1];
             }
             window.playSong(prevKey);
         }
@@ -156,20 +156,20 @@
         let _isPlaylistReadyForResumeModal = false;
 
         function showResumeChoiceModal() {
-            if (isResumeModalOpen) return; // modal cũ vẫn đang mở chờ chọn -> không mở chồng/thay thế
-            if (!lastStoppedKey) return; // chưa từng nghe gì trước đó -> không có gì để hỏi
-            const key = lastStoppedKey;
-            const resumeTime = lastStoppedTime;
-            lastStoppedKey = null; lastStoppedTime = 0; // tránh gọi lại nhầm key cũ nếu hàm bị gọi lần 2
-            isResumeModalOpen = true;
+            if (appState.get('isResumeModalOpen')) return; // modal cũ vẫn đang mở chờ chọn -> không mở chồng/thay thế
+            if (!appState.get('lastStoppedKey')) return; // chưa từng nghe gì trước đó -> không có gì để hỏi
+            const key = appState.get('lastStoppedKey');
+            const resumeTime = appState.get('lastStoppedTime');
+            appState.set('lastStoppedKey', null); appState.set('lastStoppedTime', 0); // tránh gọi lại nhầm key cũ nếu hàm bị gọi lần 2
+            appState.set('isResumeModalOpen', true);
 
             // FIX (ver 10 refine #3, bổ sung — modal phải hiện NGAY từ đầu, không đợi load playlist
             // xong): gọi hàm này ngay sau loadConfig(), playlistCache rất có thể CHƯA có dữ liệu —
             // hiện tạm chính key (id bài) làm tiêu đề, updateResumeModalTitleIfPending() (gọi từ
             // draw-visualizer.js sau initPlaylistFromDB()) tự sửa lại đúng tên khi có.
-            const cached = (typeof playlistCache !== 'undefined') ? playlistCache.get(key) : null;
+            const cached = (typeof appState !== 'undefined') ? appState.get('playlistCache').get(key) : null;
             const title = cached && cached.tag && cached.tag.title ? cached.tag.title : key;
-            const needsPlaylist = !_isPlaylistReadyForResumeModal; // playlist chưa load xong -> khoá tạm 2 nút cần playSong()
+            const needsPlaylist = !appState.get('_isPlaylistReadyForResumeModal'); // playlist chưa load xong -> khoá tạm 2 nút cần playSong()
 
             modalChoice(
                 tFormat('common.resumeModal.question', { title }),
@@ -180,7 +180,7 @@
                         // "Không" KHÔNG cần playlist load xong — chỉ tắt cờ/dọn snapshot, không gọi
                         // playSong() nào cả — luôn bấm được ngay từ lúc modal vừa mở.
                         onClick: () => {
-                            isResumeModalOpen = false;
+                            appState.set('isResumeModalOpen', false);
                             if (typeof discardPendingResumeState === 'function') discardPendingResumeState();
                         }
                     },
@@ -195,10 +195,10 @@
                         // playSong()) và phục hồi shuffle/repeat/displayOrder cần có TRƯỚC khi người
                         // dùng bấm Next/Prev ngay sau đó.
                         onClick: async () => {
-                            isResumeModalOpen = false;
+                            appState.set('isResumeModalOpen', false);
                             if (typeof applyResumeStateToRam === 'function') applyResumeStateToRam();
                             await window.playSong(key);
-                            if (currentKey === key) audioPlayer.currentTime = resumeTime;
+                            if (appState.get('currentKey') === key) audioPlayer.currentTime = resumeTime;
                         }
                     },
                     {
@@ -211,7 +211,7 @@
                         // (playSong() đã tự đặt currentTime = 0 khi gán src mới — không cần seek
                         // thêm), mọi state khác vẫn nên khôi phục đúng như đã lưu.
                         onClick: () => {
-                            isResumeModalOpen = false;
+                            appState.set('isResumeModalOpen', false);
                             if (typeof applyResumeStateToRam === 'function') applyResumeStateToRam();
                             window.playSong(key);
                         }
@@ -222,7 +222,7 @@
 
             // Cache lại key/title hiện tại để updateResumeModalTitleIfPending() (gọi sau khi
             // playlist load xong) biết cần thay tiêu đề tạm bằng tên thật của ĐÚNG bài nào.
-            _resumeModalPendingKey = needsPlaylist ? key : null;
+            appState.set('_resumeModalPendingKey', needsPlaylist ? key : null);
         }
 
         /** Key đang chờ cập nhật lại tiêu đề modal (chỉ có giá trị nếu modal đang mở với tiêu đề
@@ -237,12 +237,12 @@
          * hoặc tiêu đề đã đúng từ đầu.
          */
         function updateResumeModalTitleIfPending() {
-            if (!_resumeModalPendingKey) return;
-            const key = _resumeModalPendingKey;
-            _resumeModalPendingKey = null;
+            if (!appState.get('_resumeModalPendingKey')) return;
+            const key = appState.get('_resumeModalPendingKey');
+            appState.set('_resumeModalPendingKey', null);
             const textEl = document.getElementById('modal-choice-text');
             if (!textEl) return; // modal đã đóng (người dùng bấm trước khi load xong) -> không có gì để sửa
-            const cached = (typeof playlistCache !== 'undefined') ? playlistCache.get(key) : null;
+            const cached = (typeof appState !== 'undefined') ? appState.get('playlistCache').get(key) : null;
             const title = cached && cached.tag && cached.tag.title ? cached.tag.title : key;
             textEl.innerHTML = tFormat('common.resumeModal.question', { title });
         }
@@ -253,7 +253,7 @@
             // (video chỉ bám theo trạng thái nhạc). Playlist đè z-[60] tự che video khi cần.
             taskManager.once(() => { 
                 visualizerUI.classList.add('fade-enter-active'); canvas.classList.remove('opacity-0'); 
-                if (vizConfig.type === 'vortex') document.getElementById('webgl-canvas').classList.remove('opacity-0');
+                if (appState.get('vizConfig').type === 'vortex') document.getElementById('webgl-canvas').classList.remove('opacity-0');
             }, 50, 'showVisualizerFadeIn');
         }
 
@@ -272,13 +272,13 @@
          * 'playerControls.playPause.click'.
          */
         function togglePlayPause() {
-            requestWakeLock(); if (playlistOrder.length === 0) return;
-            if (currentKey === null) { window.playSong(displayOrder[0] || playlistOrder[0]); return; }
+            requestWakeLock(); if (appState.get('playlistOrder').length === 0) return;
+            if (appState.get('currentKey') === null) { window.playSong(appState.get('displayOrder')[0] || appState.get('playlistOrder')[0]); return; }
             // FIX (log 9->10): 'interrupted' là trạng thái RIÊNG của iOS Safari khi audio bị hệ điều
             // hành "ngắt" lúc tab/app bị ẩn (khác 'suspended' — xem giải thích đầy đủ ở
             // setupAudioContext(), audio-engine.js). Thiếu check này thì audioContext.resume() không
             // được gọi, dù audioPlayer.play() có chạy thì vẫn không nghe được tiếng gì.
-            if (audioPlayer.paused) { audioPlayer.play(); if (audioContext && (audioContext.state === 'suspended' || audioContext.state === 'interrupted')) audioContext.resume(); } else { audioPlayer.pause(); }
+            if (audioPlayer.paused) { audioPlayer.play(); if (appState.get('audioContext') && (appState.get('audioContext').state === 'suspended' || appState.get('audioContext').state === 'interrupted')) appState.get('audioContext').resume(); } else { audioPlayer.pause(); }
         }
 
         /**
@@ -286,7 +286,7 @@
          * msg.type 'playerControls.shuffle.click'.
          */
         function toggleShuffle() {
-            isShuffle = !isShuffle; btnShuffle.classList.toggle('!text-sky-400', isShuffle); btnShuffle.classList.toggle('text-slate-400', !isShuffle); updateShuffleArray();
+            appState.set('isShuffle', !appState.get('isShuffle')); btnShuffle.classList.toggle('!text-sky-400', appState.get('isShuffle')); btnShuffle.classList.toggle('text-slate-400', !appState.get('isShuffle')); updateShuffleArray();
         }
 
         /**
@@ -294,10 +294,10 @@
          * Ứng với msg.type 'playerControls.repeat.click'.
          */
         function cycleRepeatMode() {
-            repeatMode = (repeatMode + 1) % 3;
-            if (repeatMode === 0) { btnRepeat.classList.remove('!text-sky-400'); btnRepeat.classList.add('text-slate-400'); repeatBadge.classList.add('hidden'); } 
-            else if (repeatMode === 1) { btnRepeat.classList.remove('text-slate-400'); btnRepeat.classList.add('!text-sky-400'); repeatBadge.classList.add('hidden'); } 
-            else if (repeatMode === 2) { btnRepeat.classList.add('!text-sky-400'); repeatBadge.classList.remove('hidden'); }
+            appState.set('repeatMode', (appState.get('repeatMode') + 1) % 3);
+            if (appState.get('repeatMode') === 0) { btnRepeat.classList.remove('!text-sky-400'); btnRepeat.classList.add('text-slate-400'); repeatBadge.classList.add('hidden'); } 
+            else if (appState.get('repeatMode') === 1) { btnRepeat.classList.remove('text-slate-400'); btnRepeat.classList.add('!text-sky-400'); repeatBadge.classList.add('hidden'); } 
+            else if (appState.get('repeatMode') === 2) { btnRepeat.classList.add('!text-sky-400'); repeatBadge.classList.remove('hidden'); }
         }
 
         /**
@@ -349,16 +349,16 @@
 
         function _listenTick() {
             const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-            let delta = (now - _listenLastTick) / 1000;
-            _listenLastTick = now;
+            let delta = (now - appState.get('_listenLastTick')) / 1000;
+            appState.set('_listenLastTick', now, { skipCheck: true }); // chạy mỗi giây qua taskManager — bỏ qua validate để đảm bảo hiệu năng
             if (!(delta > 0)) return;
             // Chặn delta bất thường khi tab bị treo/throttle nền hoặc máy ngủ rồi thức (tránh cộng
             // vọt hàng phút/giờ). Giới hạn 4s/tick (chu kỳ 1s nên bình thường delta ~1s).
             if (delta > 4) delta = 4;
-            pendingListenSeconds += delta;
-            if (currentKey && typeof addSongListenTime === 'function') addSongListenTime(currentKey, delta);
-            if (pendingListenSeconds >= 5) {
-                const toFlush = pendingListenSeconds; pendingListenSeconds = 0;
+            appState.set('pendingListenSeconds', appState.get('pendingListenSeconds') + delta, { skipCheck: true }); // chạy mỗi giây qua taskManager — bỏ qua validate để đảm bảo hiệu năng
+            if (appState.get('currentKey') && typeof addSongListenTime === 'function') addSongListenTime(appState.get('currentKey'), delta);
+            if (appState.get('pendingListenSeconds') >= 5) {
+                const toFlush = appState.get('pendingListenSeconds'); appState.set('pendingListenSeconds', 0, { skipCheck: true }); // chạy mỗi giây qua taskManager — bỏ qua validate để đảm bảo hiệu năng
                 // FIX (log 9->10, mục "Promise bị reject nhưng không ai .catch()"): hàm này chạy mỗi
                 // GIÂY qua taskManager (xem startListenClock()) SUỐT lúc nhạc đang phát — nếu tab bị
                 // ẩn trên iOS và connection IndexedDB bị hệ điều hành đóng/treo giữa lúc transaction
@@ -376,7 +376,7 @@
         }
         function startListenClock() {
             taskManager.kill(LISTEN_CLOCK_TASK); // phòng còn sót từ phiên trước (an toàn nếu gọi lại)
-            _listenLastTick = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+            appState.set('_listenLastTick', (typeof performance !== 'undefined' ? performance.now() : Date.now())); // chạy 1 lần lúc bắt đầu phiên — giữ validate bình thường
             taskManager.addNew(LISTEN_CLOCK_TASK, { time: 1000, exe: _listenTick, mode: 'timeout', count: 0 });
             taskManager.operator(LISTEN_CLOCK_TASK, 'enabled');
         }
@@ -395,7 +395,7 @@
             iconPlay.classList.add('hidden'); iconPause.classList.remove('hidden'); 
             let recordArtDynamic = document.getElementById('record-art'); if(recordArtDynamic) recordArtDynamic.classList.remove('paused');
             if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing";
-            if (currentKey) refreshSongNode(currentKey);
+            if (appState.get('currentKey')) refreshSongNode(appState.get('currentKey'));
             startListenClock();
             if (typeof syncAutoSwitchVisualPlayState === 'function') syncAutoSwitchVisualPlayState(); // ver 10: xem auto-switch-visual.js
             // Chỉ ĐỒNG BỘ phát video theo nhạc — KHÔNG fade lại. Nguồn + fade đã thiết lập 1 lần
@@ -411,7 +411,7 @@
             iconPlay.classList.remove('hidden'); iconPause.classList.add('hidden'); 
             let recordArtDynamic = document.getElementById('record-art'); if(recordArtDynamic) recordArtDynamic.classList.add('paused');
             releaseWakeLock(); if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "paused";
-            if (currentKey) refreshSongNode(currentKey);
+            if (appState.get('currentKey')) refreshSongNode(appState.get('currentKey'));
             stopListenClock();
             if (typeof syncAutoSwitchVisualPlayState === 'function') syncAutoSwitchVisualPlayState(); // ver 10: xem auto-switch-visual.js
             syncVideoBgToAudio();
@@ -446,8 +446,8 @@
          * playSong() sang bài khác. Ứng với msg.type 'playerControls.audio.error'.
          */
         function handleAudioError() {
-            if (currentKey && currentObjectURL && audioPlayer.src === currentObjectURL) {
-                handlePlaybackError(currentKey);
+            if (appState.get('currentKey') && appState.get('currentObjectURL') && audioPlayer.src === appState.get('currentObjectURL')) {
+                handlePlaybackError(appState.get('currentKey'));
             }
         }
 
@@ -461,7 +461,7 @@
          * Media Session mỗi 5s. Ứng với msg.type 'playerControls.audio.timeupdate'.
          */
         function handleAudioTimeUpdate() {
-            if (!isSeeking) { progressBar.value = audioPlayer.currentTime; updateProgressBarCSS(); } 
+            if (!appState.get('isSeeking')) { progressBar.value = audioPlayer.currentTime; updateProgressBarCSS(); } 
             currentTimeDisplay.textContent = formatTime(audioPlayer.currentTime); processSubtitles(audioPlayer.currentTime);
             if (Date.now() - lastPositionSync > 5000) { updateMediaPositionState(); lastPositionSync = Date.now(); }
             // (Thống kê thời lượng nghe KHÔNG còn tính ở đây — xem "Bộ đếm thời gian nghe thật"
@@ -476,7 +476,7 @@
          * @param {number} value - progressBar.value tại thời điểm kéo
          */
         function handleProgressBarSeeking(value) {
-            isSeeking = true; currentTimeDisplay.textContent = formatTime(value); updateProgressBarCSS(); processSubtitles(value);
+            appState.set('isSeeking', true); currentTimeDisplay.textContent = formatTime(value); updateProgressBarCSS(); processSubtitles(value);
         }
 
         /**
@@ -486,5 +486,5 @@
          * @param {number} value - progressBar.value tại thời điểm commit
          */
         function handleProgressBarSeekCommit(value) {
-            audioPlayer.currentTime = value; isSeeking = false; updateMediaPositionState();
+            audioPlayer.currentTime = value; appState.set('isSeeking', false); updateMediaPositionState();
         }
