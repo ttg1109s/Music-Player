@@ -258,7 +258,7 @@
             glassFlashToggle.checked = appState.get('vizConfig').glassFlash;
 
             volumeSlider.value = appState.get('vizConfig').volume; valVolumeDisplay.textContent = appState.get('vizConfig').volume + '%';
-            if(masterGainNode) masterGainNode.gain.value = appState.get('vizConfig').volume / 100;
+            if(appState.get('masterGainNode')) appState.get('masterGainNode').gain.value = appState.get('vizConfig').volume / 100;
 
             { let idx = MODES.indexOf(appState.get('vizConfig').type); if (idx === -1) idx = 0; appState.set('currentModeIndex', idx); }
             updateDOMBackground(); updatePlaylistBg(); updateColorMenuUI(); updateTypeUI();
