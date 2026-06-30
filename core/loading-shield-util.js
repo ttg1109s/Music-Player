@@ -16,14 +16,14 @@
         const SHIELD_FADE_MS = 200; // khớp duration-200 trong CSS của #loading-shield
 
         async function withLoadingShield(text, fn, display = true) {
-            if (isShieldBusy) {
+            if (appState.get('isShieldBusy')) {
                 // Im lặng theo thiết kế (chặn double-click/double-call hợp lệ) — chỉ log để dễ dò khi
                 // nghi ngờ bị "kẹt" khoá (ví dụ sau khi quay lại tab trên iOS, xem resetPlayerToIdle()
                 // ở player-controls.js — hàm đó tự giải phóng isShieldBusy để tránh kẹt vĩnh viễn).
                 console.warn(`[loading-shield] Bỏ qua "${text}" vì đang có tác vụ khác dùng shield.`);
                 return;
             }
-            isShieldBusy = true;
+            appState.set('isShieldBusy', true);
 
             if (display) {
                 loadingText.textContent = text;
@@ -50,6 +50,6 @@
                     loadingShield.classList.remove('pointer-events-auto');
                     loadingShield.classList.add('pointer-events-none');
                 }
-                isShieldBusy = false;
+                appState.set('isShieldBusy', false);
             }
         }

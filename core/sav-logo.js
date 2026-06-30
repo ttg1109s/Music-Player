@@ -19,7 +19,7 @@
         /** Core thuần: mở/thu chữ logo theo giá trị `expand`. */
         function setSavLogoExpanded(expand) {
             if (!savLogo) return;
-            savLogoExpanded = expand;
+            appState.set('savLogoExpanded', expand);
             savLogoExpandSpans.forEach(span => {
                 span.style.maxWidth = expand ? (span.dataset.expandWidth || '0') : '0';
             });

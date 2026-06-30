@@ -28,7 +28,7 @@
 
         /** Core thuần: reset vizConfig về default rồi reload. Không hỏi xác nhận gì ở đây. */
         function executeRestoreDefaults() {
-            vizConfig = { ...DEFAULT_VIZ_CONFIG };
+            appState.set('vizConfig', { ...DEFAULT_VIZ_CONFIG });
             saveConfig();
             location.reload();
         }

@@ -36,15 +36,16 @@
          * và biến isStatsPanelVisible ở trên.
          */
         function toggleStatsPanelVisibility() {
-            isStatsPanelVisible = !isStatsPanelVisible;
-            if (typeof statsPanel !== 'undefined' && statsPanel) statsPanel.classList.toggle('hidden', !isStatsPanelVisible);
-            if (typeof iconStatsPanelVisible !== 'undefined' && iconStatsPanelVisible) iconStatsPanelVisible.classList.toggle('hidden', !isStatsPanelVisible);
-            if (typeof iconStatsPanelHidden !== 'undefined' && iconStatsPanelHidden) iconStatsPanelHidden.classList.toggle('hidden', isStatsPanelVisible);
+            appState.set('isStatsPanelVisible', !appState.get('isStatsPanelVisible'));
+            const visible = appState.get('isStatsPanelVisible');
+            if (typeof statsPanel !== 'undefined' && statsPanel) statsPanel.classList.toggle('hidden', !visible);
+            if (typeof iconStatsPanelVisible !== 'undefined' && iconStatsPanelVisible) iconStatsPanelVisible.classList.toggle('hidden', !visible);
+            if (typeof iconStatsPanelHidden !== 'undefined' && iconStatsPanelHidden) iconStatsPanelHidden.classList.toggle('hidden', visible);
             // Khi ẨN trở lại: đưa 3 ô số liệu về "---"/"0%" ngay lúc ẩn (không để giá trị cũ
             // đứng yên "đông cứng" — dù không ai nhìn thấy lúc panel đang ẩn, vẫn nên sạch sẽ
             // đúng trạng thái ban đầu nếu HIỆN LẠI ngay sau đó trước khi audio-analysis.js kịp
             // ghi giá trị mới — tránh nhấp nháy 1 khung hình giá trị cũ từ trước khi ẩn).
-            if (!isStatsPanelVisible) {
+            if (!visible) {
                 if (typeof statBpm !== 'undefined' && statBpm) statBpm.textContent = '---';
                 if (typeof statNote !== 'undefined' && statNote) statNote.textContent = '---';
                 if (typeof statEnergy !== 'undefined' && statEnergy) statEnergy.textContent = '0%';

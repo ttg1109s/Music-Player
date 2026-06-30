@@ -16,12 +16,14 @@
         }
 
         function updateDOMBackground() { 
-            if(!vizConfig.videoBgEnabled) document.body.style.backgroundColor = vizConfig.bgColor; 
+            const cfg = appState.get('vizConfig');
+            if(!cfg.videoBgEnabled) document.body.style.backgroundColor = cfg.bgColor; 
             else document.body.style.backgroundColor = '#000000';
         }
         
         function updatePlaylistBg() {
-            if (vizConfig.bgImage) { playlistBg.style.backgroundImage = `url(${vizConfig.bgImage})`; playlistBg.style.filter = `blur(${vizConfig.bgBlur}px)`; } 
+            const cfg = appState.get('vizConfig');
+            if (cfg.bgImage) { playlistBg.style.backgroundImage = `url(${cfg.bgImage})`; playlistBg.style.filter = `blur(${cfg.bgBlur}px)`; } 
             else { playlistBg.style.backgroundImage = 'none'; playlistBg.style.filter = `blur(0px)`;}
         }
         

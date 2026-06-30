@@ -10,13 +10,13 @@
         }
         function project3D(p, fov, viewDist, cx, cy) { let factor = fov / (viewDist + p.z); return { x: p.x * factor + cx, y: p.y * factor + cy, z: p.z }; }
         function rotateRubikIndices(axis, layer, dir) {
-            rubikCubes.forEach(rc => {
+            appState.mutate('rubikCubes', arr => arr.forEach(rc => {
                 if (rc['c' + axis] === layer) {
                     let tempX = rc.cx, tempY = rc.cy, tempZ = rc.cz;
                     if (axis === 'x') { rc.cy = dir > 0 ? -tempZ : tempZ; rc.cz = dir > 0 ? tempY : -tempY; } 
                     else if (axis === 'y') { rc.cx = dir > 0 ? tempZ : -tempZ; rc.cz = dir > 0 ? -tempX : tempX; } 
                     else if (axis === 'z') { rc.cx = dir > 0 ? -tempY : tempY; rc.cy = dir > 0 ? tempX : -tempX; }
                 }
-            });
+            }));
         }
 

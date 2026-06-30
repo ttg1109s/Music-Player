@@ -86,7 +86,7 @@
                     // luôn, không phải đợi tới khi truy vấn đó thất bại rồi mới biết để mở lại.
                     db.onclose = () => {
                         console.warn('[db] Connection IndexedDB bị đóng ngoài ý muốn (có thể do tab/app vừa bị ẩn lâu) — tự mở lại connection mới.');
-                        dbReadyPromise = openDatabase();
+                        appState.set('dbReadyPromise', openDatabase());
                     };
                     resolve(db);
                 };
@@ -96,6 +96,7 @@
         }
 
         let dbReadyPromise = openDatabase();
+        appState.set('dbReadyPromise', dbReadyPromise); // đồng bộ giá trị khởi tạo vào STATE ngay — các hàm dưới đọc qua appState.get()
 
         /** true nếu lỗi rõ ràng là do connection IndexedDB đã chết (không phải lỗi dữ liệu/quyền khác). */
         function isDeadConnectionError(err) {
@@ -114,14 +115,14 @@
          * đúng 1 lần trên đó trước khi để lỗi bay ra ngoài.
          */
         function makeStoreAccessor(storeName) {
-            return (txMode, callback) => dbReadyPromise.then((db) => {
+            return (txMode, callback) => appState.get('dbReadyPromise').then((db) => {
                 try {
                     return callback(db.transaction(storeName, txMode).objectStore(storeName));
                 } catch (err) {
                     if (!isDeadConnectionError(err)) throw err; // lỗi khác (không liên quan connection chết) — không retry, để nguyên lỗi gốc
                     console.warn(`[db] Connection IndexedDB đã chết lúc mở transaction (store "${storeName}") — tự mở connection mới và thử lại 1 lần.`, err);
-                    dbReadyPromise = openDatabase();
-                    return dbReadyPromise.then((freshDb) => callback(freshDb.transaction(storeName, txMode).objectStore(storeName)));
+                    appState.set('dbReadyPromise', openDatabase());
+                    return appState.get('dbReadyPromise').then((freshDb) => callback(freshDb.transaction(storeName, txMode).objectStore(storeName)));
                 }
             });
         }

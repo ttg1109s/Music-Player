@@ -19,52 +19,55 @@
         async function loadSongStats() {
             try {
                 const raw = await getMeta('songStats');
-                songStatsMap = new Map();
+                const map = new Map();
                 if (raw && typeof raw === 'object') {
                     for (const k of Object.keys(raw)) {
                         const v = raw[k] || {};
-                        songStatsMap.set(k, { count: v.count || 0, totalTime: v.totalTime || 0 });
+                        map.set(k, { count: v.count || 0, totalTime: v.totalTime || 0 });
                     }
                 }
-            } catch (e) { console.warn('[listen-stats] Không đọc được songStats:', e); songStatsMap = new Map(); }
+                appState.set('songStatsMap', map);
+            } catch (e) { console.warn('[listen-stats] Không đọc được songStats:', e); appState.set('songStatsMap', new Map()); }
         }
 
         function getSongStats(key) {
-            const s = songStatsMap.get(key);
+            const s = appState.get('songStatsMap').get(key);
             return s ? { count: s.count, totalTime: s.totalTime } : { count: 0, totalTime: 0 };
         }
 
         function _ensureStats(key) {
-            let s = songStatsMap.get(key);
-            if (!s) { s = { count: 0, totalTime: 0 }; songStatsMap.set(key, s); }
+            let s = appState.get('songStatsMap').get(key);
+            if (!s) { s = { count: 0, totalTime: 0 }; appState.mutate('songStatsMap', m => m.set(key, s), { skipCheck: true }); }
             return s;
         }
 
         function bumpSongPlayCount(key) {
             if (!key) return;
-            _ensureStats(key).count += 1;
+            appState.mutate('songStatsMap', m => { _ensureStats(key); m.get(key).count += 1; });
             scheduleSongStatsSave();
         }
 
         function addSongListenTime(key, seconds) {
             if (!key || !(seconds > 0)) return;
-            _ensureStats(key).totalTime += seconds;
+            appState.mutate('songStatsMap', m => { _ensureStats(key); m.get(key).totalTime += seconds; }, { skipCheck: true }); // chạy mỗi giây qua _listenTick() — bỏ qua validate để đảm bảo hiệu năng
             scheduleSongStatsSave();
         }
 
         function removeSongStats(key) {
-            if (songStatsMap.delete(key)) scheduleSongStatsSave(true);
+            let deleted = false;
+            appState.mutate('songStatsMap', m => { deleted = m.delete(key); });
+            if (deleted) scheduleSongStatsSave(true);
         }
 
         function clearAllSongStats() {
-            songStatsMap = new Map();
+            appState.set('songStatsMap', new Map());
             // Ghi thẳng object rỗng (không debounce) để Quản lý dung lượng thấy kết quả ngay.
             return setMeta('songStats', {});
         }
 
         /** Ghi debounce (mặc định 4s gom nhiều cập nhật thành 1 lần ghi). immediate=true ghi ngay. */
         function scheduleSongStatsSave(immediate) {
-            _songStatsDirty = true;
+            appState.set('_songStatsDirty', true, { skipCheck: true }); // có thể gọi từ addSongListenTime (mỗi giây) — bỏ qua validate để đảm bảo hiệu năng
             if (immediate) { flushSongStats(); return; }
             // QUAN TRỌNG: giữ đúng hành vi THROTTLE cũ — chỉ đặt task nếu CHƯA có task nào đang chờ
             // (không phải debounce/reset-mỗi-lần-gọi). taskManager.once() với tên cố định sẽ TỰ HUỶ
@@ -77,10 +80,10 @@
 
         function flushSongStats() {
             taskManager.kill('songStatsSaveFlush');
-            if (!_songStatsDirty) return;
-            _songStatsDirty = false;
+            if (!appState.get('_songStatsDirty')) return;
+            appState.set('_songStatsDirty', false);
             const obj = {};
-            for (const [k, v] of songStatsMap.entries()) obj[k] = { count: v.count, totalTime: v.totalTime };
+            for (const [k, v] of appState.get('songStatsMap').entries()) obj[k] = { count: v.count, totalTime: v.totalTime };
             setMeta('songStats', obj).catch(e => console.warn('[listen-stats] Lưu songStats lỗi:', e));
         }
 
