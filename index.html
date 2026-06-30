@@ -98,7 +98,7 @@
             thật sự trong DOM và có thể dùng document.getElementById an toàn.
          ===================================================================== -->
     <script src="main.js?v=20260625v8e"></script>
-
+    <script src="service/state.js?v=20260625v8e"></script>
     <!-- =====================================================================
          3) CORE: logic nghiệp vụ. PHẢI nạp sau bước (2).
             Thứ tự dưới đây giữ đúng thứ tự phụ thuộc / thứ tự xuất hiện gốc.
@@ -162,7 +162,6 @@
          PHẢI nạp TRƯỚC player-controls.js (file đó tham chiếu playlistOrder/displayOrder/
          recomputeDisplayOrder/renderPlaylistDiff...). main.js (object-function) gọi PlaylistMain.init()
          ngay khi nạp — mọi #id đã có sẵn trong DOM vì js/main.js đã mount component trước nhóm core. -->
-    <script src="core/playlist/state.js?v=20260625v8e"></script>
     <script src="core/playlist/order.js?v=20260625v8e"></script>
     <script src="core/playlist/render.js?v=20260625v10"></script>
     <script src="core/playlist/loader.js?v=20260625v10"></script>
