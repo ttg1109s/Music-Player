@@ -35,23 +35,23 @@
         let latestPitchReqId = -1;
 
         function initPitchWorker() {
-            if (pitchWorker) return;
+            if (appState.get('pitchWorker')) return;
             try {
-                pitchWorker = new Worker('core/pitch-worker.js');
-                pitchWorker.onmessage = function(e) {
+                appState.set('pitchWorker', new Worker('core/pitch-worker.js'));
+                appState.get('pitchWorker').onmessage = function(e) {
                     const { frequency, reqId } = e.data;
                     // Chỉ nhận kết quả nếu nó MỚI HƠN reqId đã ghi nhận gần nhất — phòng trường hợp
                     // hiếm 2 message bay đồng thời (giật khung) trả về không đúng thứ tự gửi.
-                    if (reqId >= latestPitchReqId) { latestPitchReqId = reqId; latestPitchFrequency = frequency; }
-                    pitchWorkerBusy = false;
+                    if (reqId >= latestPitchReqId) { latestPitchReqId = reqId; appState.set('latestPitchFrequency', frequency); }
+                    appState.set('pitchWorkerBusy', false);
                 };
-                pitchWorker.onerror = function(err) {
+                appState.get('pitchWorker').onerror = function(err) {
                     console.error('[audio-engine] Lỗi pitch-worker, tắt phát hiện cao độ:', err);
-                    pitchWorker = null; pitchWorkerBusy = false;
+                    appState.set('pitchWorker', null); appState.set('pitchWorkerBusy', false);
                 };
             } catch (err) {
                 console.error('[audio-engine] Không tạo được pitch-worker (trình duyệt không hỗ trợ Worker qua file://?):', err);
-                pitchWorker = null;
+                appState.set('pitchWorker', null);
             }
         }
 
@@ -67,36 +67,36 @@
          * sẽ ghi vào một buffer đã chết.
          */
         function requestPitchDetection(buf, sampleRate) {
-            if (!pitchWorker) { initPitchWorker(); if (!pitchWorker) return; }
-            if (pitchWorkerBusy) return;
-            pitchWorkerBusy = true;
+            if (!appState.get('pitchWorker')) { initPitchWorker(); if (!appState.get('pitchWorker')) return; }
+            if (appState.get('pitchWorkerBusy')) return;
+            appState.set('pitchWorkerBusy', true);
             const clone = buf.slice(); // Float32Array.slice() cấp ArrayBuffer MỚI, an toàn để transfer
             pitchReqCounter++;
-            pitchWorker.postMessage({ buf: clone, sampleRate, reqId: pitchReqCounter }, [clone.buffer]);
+            appState.get('pitchWorker').postMessage({ buf: clone, sampleRate, reqId: pitchReqCounter }, [clone.buffer]);
         }
 
         function setupAudioContext() {
-            if (!audioContext) {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                source = audioContext.createMediaElementSource(audioPlayer);
-                
-                analyser = audioContext.createAnalyser(); analyser.fftSize = APP_CONFIG.fftSizeStandard;
-                analyserPitch = audioContext.createAnalyser(); analyserPitch.fftSize = APP_CONFIG.fftSizePitch; 
-                
-                masterGainNode = audioContext.createGain(); masterGainNode.gain.value = vizConfig.volume / 100;
+            if (!appState.get('audioContext')) {
+                appState.set('audioContext', new (window.AudioContext || window.webkitAudioContext)());
+                source = appState.get('audioContext').createMediaElementSource(audioPlayer);
 
-                let prevNode = source; eqBandNodes = [];
+                appState.set('analyser', appState.get('audioContext').createAnalyser()); appState.get('analyser').fftSize = APP_CONFIG.fftSizeStandard;
+                appState.set('analyserPitch', appState.get('audioContext').createAnalyser()); appState.get('analyserPitch').fftSize = APP_CONFIG.fftSizePitch;
+
+                appState.set('masterGainNode', appState.get('audioContext').createGain()); appState.get('masterGainNode').gain.value = appState.get('vizConfig').volume / 100;
+
+                let prevNode = source; appState.set('eqBandNodes', []);
                 EQ_FREQS.forEach(freq => {
-                    let filter = audioContext.createBiquadFilter();
+                    let filter = appState.get('audioContext').createBiquadFilter();
                     filter.type = "peaking"; filter.frequency.value = freq; filter.Q.value = 1; filter.gain.value = 0;
-                    prevNode.connect(filter); prevNode = filter; eqBandNodes.push(filter);
+                    prevNode.connect(filter); prevNode = filter; appState.mutate('eqBandNodes', arr => arr.push(filter));
                 });
-                
-                applyEQPreset(vizConfig.eqMode);
-                prevNode.connect(masterGainNode); masterGainNode.connect(analyser); masterGainNode.connect(analyserPitch); analyser.connect(audioContext.destination);
+
+                applyEQPreset(appState.get('vizConfig').eqMode);
+                prevNode.connect(appState.get('masterGainNode')); appState.get('masterGainNode').connect(appState.get('analyser')); appState.get('masterGainNode').connect(appState.get('analyserPitch')); appState.get('analyser').connect(appState.get('audioContext').destination);
 
                 initPitchWorker();
                 allocateBuffers(); resizeCanvas(); drawVisualizer(); updateDOMBackground();
-            } else if (audioContext.state === 'suspended' || audioContext.state === 'interrupted') audioContext.resume();
+            } else if (appState.get('audioContext').state === 'suspended' || appState.get('audioContext').state === 'interrupted') appState.get('audioContext').resume();
         }
 

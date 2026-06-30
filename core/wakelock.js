@@ -14,16 +14,16 @@
  * PHẢI nạp SAU: core/config.js (vizConfig), core/dom-refs.js (audioPlayer).
  */
         async function requestWakeLock() {
-            if (typeof vizConfig !== 'undefined' && vizConfig.keepScreenOn === false) { releaseWakeLock(); return; }
+            if (typeof appState !== 'undefined' && appState.get('vizConfig').keepScreenOn === false) { releaseWakeLock(); return; }
             try {
-                if ('wakeLock' in navigator) { nativeWakeLock = await navigator.wakeLock.request('screen'); nativeWakeLock.addEventListener('release', () => {}); }
+                if ('wakeLock' in navigator) { appState.set('nativeWakeLock', await navigator.wakeLock.request('screen')); appState.get('nativeWakeLock').addEventListener('release', () => {}); }
                 else { try { if (!noSleep.isEnabled) noSleep.enable(); } catch(e) {} }
             } catch (err) { try { if (!noSleep.isEnabled) noSleep.enable(); } catch (e) {} }
         }
 
         function releaseWakeLock() {
             try {
-                if (nativeWakeLock !== null) { nativeWakeLock.release().then(() => { nativeWakeLock = null; }).catch(()=>{}); }
+                if (appState.get('nativeWakeLock') !== null) { appState.get('nativeWakeLock').release().then(() => { appState.set('nativeWakeLock', null); }).catch(()=>{}); }
                 if (noSleep.isEnabled) noSleep.disable();
             } catch (e) {}
         }
