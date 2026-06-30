@@ -19,9 +19,10 @@
 
         // Tính toán tọa độ tâm của ống hầm tại một điểm Z bất kỳ
         function getVortexCenterAt(z) {
+            const params = appState.get('tPathParams');
             return {
-                x: Math.sin(z * tPathParams.freqX + tPathParams.phaseX) * tPathParams.ampX,
-                y: Math.cos(z * tPathParams.freqY + tPathParams.phaseY) * tPathParams.ampY
+                x: Math.sin(z * params.freqX + params.phaseX) * params.ampX,
+                y: Math.cos(z * params.freqY + params.phaseY) * params.ampY
             };
         }
 
@@ -29,45 +30,50 @@
         // tránh nhảy đột ngột sang một hình dạng hoàn toàn khác gây cảm giác giật khi nội suy.
         function rollNewVortexCurve() {
             const jitter = (base, range) => base + (Math.random() - 0.5) * range;
-            tPathTarget.freqX = Math.max(0.0004, Math.min(0.0022, jitter(tPathTarget.freqX, 0.0006)));
-            tPathTarget.freqY = Math.max(0.0004, Math.min(0.0022, jitter(tPathTarget.freqY, 0.0006)));
-            tPathTarget.ampX = Math.max(180, Math.min(620, jitter(tPathTarget.ampX, 160)));
-            tPathTarget.ampY = Math.max(130, Math.min(470, jitter(tPathTarget.ampY, 120)));
+            appState.mutate('tPathTarget', target => {
+                target.freqX = Math.max(0.0004, Math.min(0.0022, jitter(target.freqX, 0.0006)));
+                target.freqY = Math.max(0.0004, Math.min(0.0022, jitter(target.freqY, 0.0006)));
+                target.ampX = Math.max(180, Math.min(620, jitter(target.ampX, 160)));
+                target.ampY = Math.max(130, Math.min(470, jitter(target.ampY, 120)));
+            }, { skipCheck: true });
         }
 
         // Nội suy mượt mà hình dáng ống
         function updateVortexCurveLerp() {
             const k = 0.006;
-            tPathParams.freqX += (tPathTarget.freqX - tPathParams.freqX) * k;
-            tPathParams.freqY += (tPathTarget.freqY - tPathParams.freqY) * k;
-            tPathParams.ampX += (tPathTarget.ampX - tPathParams.ampX) * k;
-            tPathParams.ampY += (tPathTarget.ampY - tPathParams.ampY) * k;
-            // Tiến pha để ống luôn "sống"
-            tPathParams.phaseX += 0.005;
-            tPathParams.phaseY += 0.005;
+            const target = appState.get('tPathTarget');
+            appState.mutate('tPathParams', params => {
+                params.freqX += (target.freqX - params.freqX) * k;
+                params.freqY += (target.freqY - params.freqY) * k;
+                params.ampX += (target.ampX - params.ampX) * k;
+                params.ampY += (target.ampY - params.ampY) * k;
+                // Tiến pha để ống luôn "sống"
+                params.phaseX += 0.005;
+                params.phaseY += 0.005;
+            }, { skipCheck: true });
         }
 
         function initThreeJS() {
-            if (tInitialized && tScene) { while(tScene.children.length > 0){ tScene.remove(tScene.children[0]); } }
+            if (appState.get('tInitialized') && appState.get('tScene')) { const sc = appState.get('tScene'); while(sc.children.length > 0){ sc.remove(sc.children[0]); } }
             
             const tCanvas = document.getElementById('webgl-canvas');
-            tScene = new THREE.Scene();
-            tScene.fog = new THREE.FogExp2(0x000000, 0.0006); // Sương mù tạo chiều sâu fade
+            appState.set('tScene', new THREE.Scene(), { skipCheck: true });
+            appState.get('tScene').fog = new THREE.FogExp2(0x000000, 0.0006); // Sương mù tạo chiều sâu fade
 
-            tCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, TUNNEL_DEPTH);
-            tCamera.position.set(0, 0, 0);
+            appState.set('tCamera', new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, TUNNEL_DEPTH), { skipCheck: true });
+            appState.get('tCamera').position.set(0, 0, 0);
 
-            if(!tRenderer) {
-                tRenderer = new THREE.WebGLRenderer({ canvas: tCanvas, alpha: true, antialias: true });
-                tRenderer.setPixelRatio(window.devicePixelRatio);
+            if(!appState.get('tRenderer')) {
+                appState.set('tRenderer', new THREE.WebGLRenderer({ canvas: tCanvas, alpha: true, antialias: true }), { skipCheck: true });
+                appState.get('tRenderer').setPixelRatio(window.devicePixelRatio);
             }
-            tRenderer.setSize(window.innerWidth, window.innerHeight);
+            appState.get('tRenderer').setSize(window.innerWidth, window.innerHeight);
 
-            const perf = PERFORMANCE_PROFILES[vizConfig.quality];
+            const perf = PERFORMANCE_PROFILES[appState.get('vizConfig').quality];
 
             // Nhóm 1: Vòng Ring
-            tGroupRings = new THREE.Group();
-            tRings = [];
+            appState.set('tGroupRings', new THREE.Group(), { skipCheck: true });
+            appState.set('tRings', [], { skipCheck: true });
             const ringGeo = new THREE.TorusGeometry(350, 6, 8, 48);
             for(let i=0; i<perf.tunnelRings; i++) {
                 const z = -(i / perf.tunnelRings) * TUNNEL_DEPTH;
@@ -75,25 +81,27 @@
                 const mesh = new THREE.Mesh(ringGeo, mat);
                 mesh.position.z = z;
                 mesh.userData = { initialZ: z };
-                tRings.push(mesh);
-                tGroupRings.add(mesh);
+                appState.mutate('tRings', arr => arr.push(mesh), { skipCheck: true });
+                appState.get('tGroupRings').add(mesh);
             }
-            tScene.add(tGroupRings);
+            appState.get('tScene').add(appState.get('tGroupRings'));
 
             // Nhóm 2: Đoạn Bar 3D (InstancedMesh)
-            tGroupBars = new THREE.Group();
+            appState.set('tGroupBars', new THREE.Group(), { skipCheck: true });
             const barGeo = new THREE.BoxGeometry(15, 15, 60);
             // Dời tâm khối hộp lên một chút để scaleY mọc ra ngoài thay vì ra 2 hướng
             barGeo.translate(0, 7.5, 0); 
             const barMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
             const totalBars = BARS_RINGS_COUNT * BARS_PER_RING;
-            tBarsMesh = new THREE.InstancedMesh(barGeo, barMat, totalBars);
+            appState.set('tBarsMesh', new THREE.InstancedMesh(barGeo, barMat, totalBars), { skipCheck: true });
             
             // Vị trí Z ban đầu của từng vòng bar — dùng sliding window giống tRings, tránh trôi lệch theo thời gian
-            tBarRingZs = [];
-            for(let r=0; r<BARS_RINGS_COUNT; r++) tBarRingZs.push(-(r / BARS_RINGS_COUNT) * TUNNEL_DEPTH);
+            appState.set('tBarRingZs', [], { skipCheck: true });
+            for(let r=0; r<BARS_RINGS_COUNT; r++) appState.mutate('tBarRingZs', arr => arr.push(-(r / BARS_RINGS_COUNT) * TUNNEL_DEPTH), { skipCheck: true });
 
             const dummy = new THREE.Object3D();
+            const tBarsMesh = appState.get('tBarsMesh');
+            const tBarRingZs = appState.get('tBarRingZs');
             for(let r=0; r<BARS_RINGS_COUNT; r++) {
                 const z = tBarRingZs[r];
                 for(let b=0; b<BARS_PER_RING; b++) {
@@ -105,12 +113,12 @@
                     tBarsMesh.setMatrixAt(r * BARS_PER_RING + b, dummy.matrix);
                 }
             }
-            tGroupBars.add(tBarsMesh);
-            tScene.add(tGroupBars);
+            appState.get('tGroupBars').add(tBarsMesh);
+            appState.get('tScene').add(appState.get('tGroupBars'));
 
             // Nhóm 3: Nhiễu động sóng (Wave/Fade)
-            tGroupWaves = new THREE.Group();
-            tWaveMeshes = [];
+            appState.set('tGroupWaves', new THREE.Group(), { skipCheck: true });
+            appState.set('tWaveMeshes', [], { skipCheck: true });
             const waveGeo = new THREE.TorusGeometry(300, 40, 12, 48);
             const waveCount = 20;
             for(let i=0; i<waveCount; i++) {
@@ -120,25 +128,26 @@
                 const mesh = new THREE.Mesh(waveGeo, mat);
                 mesh.position.z = z;
                 mesh.userData = { initialZ: z, rotZOffset: Math.random() * Math.PI };
-                tWaveMeshes.push(mesh);
-                tGroupWaves.add(mesh);
+                appState.mutate('tWaveMeshes', arr => arr.push(mesh), { skipCheck: true });
+                appState.get('tGroupWaves').add(mesh);
             }
-            tScene.add(tGroupWaves);
+            appState.get('tScene').add(appState.get('tGroupWaves'));
 
-            tCurrentWarpZ = 0;
-            tInitialized = true;
+            appState.set('tCurrentWarpZ', 0, { skipCheck: true });
+            appState.set('tInitialized', true, { skipCheck: true });
             updateThreeJSColors();
             updateVortexVisibility();
         }
 
         function updateVortexVisibility() {
-            if(!tInitialized) return;
-            tGroupRings.visible = (vizConfig.vortexStyle === 'rings');
-            tGroupBars.visible = (vizConfig.vortexStyle === 'bars');
-            tGroupWaves.visible = (vizConfig.vortexStyle === 'wave');
+            if(!appState.get('tInitialized')) return;
+            const cfg = appState.get('vizConfig');
+            appState.get('tGroupRings').visible = (cfg.vortexStyle === 'rings');
+            appState.get('tGroupBars').visible = (cfg.vortexStyle === 'bars');
+            appState.get('tGroupWaves').visible = (cfg.vortexStyle === 'wave');
         }
 
         function updateThreeJSColors() {
-            if(!tInitialized) return;
+            if(!appState.get('tInitialized')) return;
             // Sẽ được gọi trong frame render để làm màu động, ở đây chỉ để reset
         }
