@@ -22,7 +22,7 @@
         };
 
         function drawVisualizer() {
-            animationId = requestAnimationFrame(drawVisualizer);
+            appState.set('animationId', requestAnimationFrame(drawVisualizer), { skipCheck: true });
 
             // "Tắt Visual" (ver 8 refine) — ĐỘC LẬP khỏi video nền: tắt -> luôn ẩn canvas + dừng
             // tính toán vẽ, để lộ ra nền THẬT đang được chọn (video nền nếu đang bật, ảnh/màu nền
@@ -32,7 +32,8 @@
             // (Ver 8 refine — lần 2: đã BỎ cờ isVisualForceHiddenByTab — khi tab/app bị ẩn giờ
             // resetPlayerToIdle() dừng hẳn nhạc + currentKey = null, không cần ẩn cưỡng chế visual
             // riêng nữa, vì không còn gì đang phát để mà vẽ. Xem wakelock.js.)
-            const isVisualOff = vizConfig.visualEnabled === false;
+            const cfg = appState.get('vizConfig');
+            const isVisualOff = cfg.visualEnabled === false;
 
             if (isVisualOff) {
                 if (canvas.style.visibility !== 'hidden') {
@@ -44,18 +45,19 @@
                 document.getElementById('webgl-canvas').style.visibility = '';
             }
 
-            frameCounter++;
-            const perf = PERFORMANCE_PROFILES[vizConfig.quality];
+            appState.set('frameCounter', appState.get('frameCounter') + 1, { skipCheck: true });
+            const perf = PERFORMANCE_PROFILES[cfg.quality];
+            const vizDataArray = appState.get('vizDataArray');
             if(!vizDataArray) return;
-            analyser.getByteFrequencyData(vizDataArray);
-            const bufferLength = analyser.frequencyBinCount;
+            appState.get('analyser').getByteFrequencyData(vizDataArray);
+            const bufferLength = appState.get('analyser').frequencyBinCount;
             
             const isPlaying = !audioPlayer.paused;
             let bassSum = 0; const bassCount = Math.floor(bufferLength * 0.1);
             for(let i = 0; i < bassCount; i++) bassSum += vizDataArray[i];
-            beatScale = (bassSum / bassCount) / 255; 
-            smoothedEnergy += (beatScale - smoothedEnergy) * 0.15; 
-            if (isPlaying) globalHueOffset = (globalHueOffset + 0.5 + (beatScale * 5)) % 360;
+            appState.set('beatScale', (bassSum / bassCount) / 255, { skipCheck: true });
+            appState.set('smoothedEnergy', appState.get('smoothedEnergy') + (appState.get('beatScale') - appState.get('smoothedEnergy')) * 0.15, { skipCheck: true });
+            if (isPlaying) appState.set('globalHueOffset', (appState.get('globalHueOffset') + 0.5 + (appState.get('beatScale') * 5)) % 360, { skipCheck: true });
             
             updateStatsDashboard(bufferLength);
 
@@ -63,17 +65,17 @@
             // visual 2D) — bỏ qua khi visual đang tắt, vì canvas đang invisible.
             if (isVisualOff) return;
 
-            if (isPlaying && (vizConfig.quality === 'high' || vizConfig.quality === 'medium') && smoothedEnergy > 0.3 && Math.random() > 0.6) spawnFlyingNote();
+            if (isPlaying && (cfg.quality === 'high' || cfg.quality === 'medium') && appState.get('smoothedEnergy') > 0.3 && Math.random() > 0.6) spawnFlyingNote();
 
             // ================== THREEJS VORTEX ENGINE ==================
             // Render qua canvas WebGL riêng (#webgl-canvas), TRƯỚC khi canvas 2D (#visualizer) được
             // clear ở dưới — 2 canvas xếp lớp lên nhau bằng CSS (xem styles.css, #webgl-canvas z-index).
-            if (vizConfig.type === 'vortex') drawVortex(perf, isPlaying);
+            if (cfg.type === 'vortex') drawVortex(perf, isPlaying);
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            const drawFn = VISUALIZER_DRAWERS[vizConfig.type];
-            if (drawFn) drawFn(ctx, perf, isPlaying, beatScale);
+            const drawFn = VISUALIZER_DRAWERS[cfg.type];
+            if (drawFn) drawFn(ctx, perf, isPlaying, appState.get('beatScale'));
         }
 
         // Điểm khởi động thực sự của toàn bộ app. loadConfig() giờ là async (đọc ảnh/video nền
@@ -98,6 +100,6 @@
             if (typeof checkPendingResumeStateOnBoot === 'function') checkPendingResumeStateOnBoot();
             if (typeof loadSongStats === 'function') await loadSongStats();
             await initPlaylistFromDB();
-            if (typeof _isPlaylistReadyForResumeModal !== 'undefined') _isPlaylistReadyForResumeModal = true;
+            if (typeof appState !== 'undefined') appState.set('_isPlaylistReadyForResumeModal', true);
             if (typeof enableResumeModalButtonsWhenPlaylistReady === 'function') enableResumeModalButtonsWhenPlaylistReady();
         });

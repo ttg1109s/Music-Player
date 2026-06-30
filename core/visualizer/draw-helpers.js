@@ -10,27 +10,27 @@
         }
 
         function drawWindowFrame(ctx) {
-            let fw = 25 * dpr; let midW = 15 * dpr; 
+            let fw = 25 * appState.get('dpr'); let midW = 15 * appState.get('dpr'); 
             ctx.fillStyle = '#11131a'; 
             ctx.fillRect(0, 0, canvas.width, fw); ctx.fillRect(0, canvas.height - fw, canvas.width, fw);
             ctx.fillRect(0, 0, fw, canvas.height); ctx.fillRect(canvas.width - fw, 0, fw, canvas.height);
             ctx.fillRect(canvas.width/2 - midW/2, 0, midW, canvas.height); ctx.fillRect(0, canvas.height/2 - midW/2, canvas.width, midW);
             
             ctx.fillStyle = 'rgba(255,255,255,0.1)';
-            ctx.fillRect(fw, fw, canvas.width/2 - fw - midW/2, 2*dpr); 
-            ctx.fillRect(canvas.width/2 + midW/2, fw, canvas.width/2 - fw - midW/2, 2*dpr);
-            ctx.fillRect(fw, canvas.height/2 - midW/2, canvas.width/2 - fw - midW/2, 2*dpr); ctx.fillRect(canvas.width/2 + midW/2, canvas.height/2 - midW/2, canvas.width/2 - fw - midW/2, 2*dpr);
+            ctx.fillRect(fw, fw, canvas.width/2 - fw - midW/2, 2*appState.get('dpr')); 
+            ctx.fillRect(canvas.width/2 + midW/2, fw, canvas.width/2 - fw - midW/2, 2*appState.get('dpr'));
+            ctx.fillRect(fw, canvas.height/2 - midW/2, canvas.width/2 - fw - midW/2, 2*appState.get('dpr')); ctx.fillRect(canvas.width/2 + midW/2, canvas.height/2 - midW/2, canvas.width/2 - fw - midW/2, 2*appState.get('dpr'));
             
             ctx.fillStyle = 'rgba(0,0,0,0.6)';
-            ctx.fillRect(canvas.width/2 - midW/2 - 2*dpr, 0, 2*dpr, canvas.height); ctx.fillRect(0, canvas.height/2 + midW/2, canvas.width, 2*dpr); 
+            ctx.fillRect(canvas.width/2 - midW/2 - 2*appState.get('dpr'), 0, 2*appState.get('dpr'), canvas.height); ctx.fillRect(0, canvas.height/2 + midW/2, canvas.width, 2*appState.get('dpr')); 
         }
 
         function spawnFlyingNote() {
-            if (frameCounter % 8 !== 0) return;
+            if (appState.get('frameCounter') % 8 !== 0) return;
             const symbols = ['♪', '♫', '♩', '♬'];
             const note = document.createElement('div'); note.className = 'music-note'; note.textContent = symbols[Math.floor(Math.random() * symbols.length)];
             const offsetX = Math.random() * 40 - 20; const offsetY = Math.random() * 20 - 10;
             note.style.left = `calc(50% + ${offsetX}px)`; note.style.top = `calc(50% + ${offsetY}px)`;
-            note.style.color = `hsl(${globalHueOffset + Math.random()*60}, 100%, 70%)`; recordContainer.appendChild(note);
+            note.style.color = `hsl(${appState.get('globalHueOffset') + Math.random()*60}, 100%, 70%)`; recordContainer.appendChild(note);
             taskManager.once(() => { if (note.parentNode) note.parentNode.removeChild(note); }, 1500);
         }
