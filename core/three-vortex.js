@@ -2,17 +2,8 @@
  * Hằng số & toàn bộ hàm khởi tạo / cập nhật Vortex Engine bằng Three.js (đường ống tunnel, particles, rings, bars, waves).
  * (Trích từ file gốc, dòng 100-272 trong khối <script>)
  */
-        let tWarpSpeed = 0;
-        let tPathParams = { freqX: 0.0012, freqY: 0.0009, ampX: 450, ampY: 300, phaseX: 0, phaseY: 0 };
-        let tPathTarget = { freqX: 0.0012, freqY: 0.0009, ampX: 450, ampY: 300, phaseX: 0, phaseY: 0 };
+        let tWarpSpeed = 0; // biến NỘI BỘ (không thuộc STATE) — chỉ dùng trong drawVortex()
         const TUNNEL_DEPTH = 3000;
-        
-        // Nhóm cho từng style
-        let tGroupRings, tGroupBars, tGroupWaves;
-        let tRings = [];
-        let tBarsMesh; // InstancedMesh
-        let tBarRingZs = []; // vị trí Z hiện tại của từng "vòng" bar (sliding window, giống tRings)
-        let tWaveMeshes = [];
 
         const BARS_RINGS_COUNT = 40;
         const BARS_PER_RING = 24;

@@ -12,7 +12,6 @@
  * PHẢI nạp sau khi #loading-shield/#loading-text đã có trong DOM (sau main.js, cùng nhóm
  * core đầu tiên — đặt cạnh db.js).
  */
-        let isShieldBusy = false;
         const SHIELD_FADE_MS = 200; // khớp duration-200 trong CSS của #loading-shield
 
         async function withLoadingShield(text, fn, display = true) {

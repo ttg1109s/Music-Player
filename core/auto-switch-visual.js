@@ -112,8 +112,8 @@
         // tự nhớ visual của riêng nó (xử lý đúng khi người dùng tua tới/lùi).
         // ============================================================================
 
-        /** Mảng mốc của BÀI ĐANG PHÁT hiện tại — [{ time: giây tuyệt đối, visual: 'bar'|null }, ...]. */
-        let autoSwitchVisualMarks = [];
+        /** Mảng mốc của BÀI ĐANG PHÁT hiện tại — [{ time: giây tuyệt đối, visual: 'bar'|null }, ...].
+         *  STATE — xem service/state.js. */
 
         /**
          * Build mảng mốc MỚI cho bài đang phát (nhánh 2 — 'duration' — DUY NHẤT mode dùng tới
@@ -185,8 +185,8 @@
          * (gọi từ 'loadedmetadata') biết liệu startAutoSwitchVisualBranch() đã chạy đúng cho bài
          * hiện tại rồi chưa (qua event 'play' bắn TRƯỚC 'loadedmetadata' trong playSong() — xem
          * giải thích đầy đủ ở comment startAutoSwitchVisualBranch()) — tránh build/gán LẠI LẦN 2,
-         * đè mất marks vừa phục hồi đúng từ applyResumeStateToRam() (resume-state-storage.js). */
-        let _lastMarksBuiltForKey = null;
+         * đè mất marks vừa phục hồi đúng từ applyResumeStateToRam() (resume-state-storage.js).
+         * STATE — xem service/state.js. */
 
         /**
          * Bắt đầu ĐÚNG 1 nhánh theo vizConfig.autoSwitchVisualTimeMode hiện tại — luôn kill cả 2

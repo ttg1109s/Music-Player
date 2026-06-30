@@ -59,12 +59,8 @@
 
         /**
          * Cờ RAM (sống trong phiên hiện tại, KHÔNG bền qua reload) — true SUỐT lúc
-         * clearAllStoredData() đang chạy. Đọc bởi resetPlayerToIdle() (player-controls.js) để
-         * KHÔNG giải phóng cứng isShieldBusy nếu đang có tác vụ phá-hủy-không-hoàn-tác dở dang —
-         * tránh 1 lượt withLoadingShield() khác chạy chồng lên giữa lúc đang xoá (xem giải thích
-         * đầy đủ ở comment resetPlayerToIdle()).
+         * clearAllStoredData() đang chạy. STATE — xem service/state.js.
          */
-        let isDestructiveTaskInProgress = false;
 
         /** Xóa TOÀN BỘ dữ liệu app khỏi IndexedDB: cả 2 store songs + meta — dùng chung cho cả 2 nút giải phóng bộ nhớ.
          *

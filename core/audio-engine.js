@@ -28,11 +28,9 @@
  * Sửa: thêm 'interrupted' vào điều kiện resume (gộp chung với 'suspended', cùng 1 cách xử lý —
  * resume() hợp lệ cho cả 2 trạng thái theo đúng spec). Không đổi gì khác trong hàm.
  */
-        let pitchWorker = null;
-        let pitchWorkerBusy = false;       // true khi đang có 1 request bay tới worker, chưa có hồi đáp
-        let pitchReqCounter = 0;           // tăng dần — đối chiếu reqId để loại bỏ hồi đáp cũ/lạc (hiếm, do giật khung)
-        let latestPitchFrequency = -1;     // kết quả YIN mới nhất nhận được từ worker (-1 = chưa phát hiện được)
-        let latestPitchReqId = -1;
+        // pitchWorker, pitchWorkerBusy, latestPitchFrequency — STATE, xem service/state.js.
+        let pitchReqCounter = 0;           // biến NỘI BỘ — tăng dần, đối chiếu reqId để loại bỏ hồi đáp cũ/lạc (hiếm, do giật khung)
+        let latestPitchReqId = -1;         // biến NỘI BỘ
 
         function initPitchWorker() {
             if (appState.get('pitchWorker')) return;

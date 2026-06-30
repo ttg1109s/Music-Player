@@ -2,8 +2,8 @@
  * Tham chiếu các phần tử DOM (getElementById) + toàn bộ biến trạng thái runtime toàn cục (audio, hiệu ứng, rubik, mưa phố, vortex...).
  * QUAN TRỌNG: phải nạp SAU KHI các component HTML (playlist-view, settings-drawer, ...) đã được chèn vào DOM, nếu không getElementById sẽ trả về null.
  * (Trích từ file gốc, dòng 26-99 trong khối <script>)
+ * isGridView — STATE, xem service/state.js.
  */
-        let isGridView = false;
 
         const fileInput = document.getElementById('audio-upload'), audioPlayer = document.getElementById('audio-player');
         // Input "Chọn cả thư mục" + "Chọn file nhạc" (ver 8 refine) — CẢ 2 đều nằm trong
@@ -134,7 +134,7 @@
         const subListContainer = document.getElementById('sub-list-container'), subEmptyState = document.getElementById('sub-empty-state');
         const btnAutoTiming = document.getElementById('btn-auto-timing');
         const iconAutoTimingIdle = document.getElementById('icon-auto-timing-idle'), iconAutoTimingRecording = document.getElementById('icon-auto-timing-recording');
-        let autoSubStartTime = null;
+        // autoSubStartTime — STATE, xem service/state.js.
 
         // Toggle "Hiện phụ đề" (ver 8 refine) — chuyển từ #btn-toggle-sub trong modal sub về đây,
         // lưu vào vizConfig.subtitlesEnabled (xem equalizer-settings.js).
@@ -148,25 +148,29 @@
         const settingSubLineHeight = document.getElementById('setting-sub-line-height'), valSubLineHeight = document.getElementById('val-sub-line-height');
         const settingSubLetterSpacing = document.getElementById('setting-sub-letter-spacing'), valSubLetterSpacing = document.getElementById('val-sub-letter-spacing');
 
-        let audioContext, analyser, analyserPitch, source, animationId;
-        let masterGainNode; let eqBandNodes = []; 
-        let isSeeking = false, dpr = 1, currentObjectURL = null, currentCoverObjectURL = null, frameCounter = 0; 
-        let smoothedBeatRadius = 0, smoothedEnergy = 0, globalHueOffset = 0, smoothedPitchY = 0, beatScale = 0;
-        let vizDataArray, pitchTimeDomainArray, previousSpectrumArray;
-        let beatTimes = [], lastBeatTime = 0, fluxHistory = [], runningFluxMean = 0;
+        let source; // biến NỘI BỘ (không thuộc STATE) — chỉ dùng trong audio-engine.js
+        // audioContext, analyser, analyserPitch, animationId, masterGainNode, eqBandNodes,
+        // isSeeking, dpr, currentObjectURL, currentCoverObjectURL, frameCounter, smoothedEnergy,
+        // globalHueOffset, beatScale, vizDataArray, pitchTimeDomainArray, previousSpectrumArray,
+        // beatTimes, fluxHistory — STATE, xem service/state.js.
+        let smoothedBeatRadius = 0, smoothedPitchY = 0; // biến NỘI BỘ (không thuộc STATE)
+        let lastBeatTime = 0, runningFluxMean = 0; // biến NỘI BỘ (không thuộc STATE)
 
-        let currentModeIndex = 0; 
+        // currentModeIndex — STATE, xem service/state.js.
         const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
-        let stars = [], tunnelAngle = 0;
-        let starFlashes = []; 
-        let rubikCubes = [], rubikRotX = 0, rubikRotY = 0, rubikAnim = { active: false, axis: 'x', layer: 0, angle: 0, dir: 1 };
+        // stars, starFlashes, rubikCubes, rubikPitchHistory, rubikPitchAvg, raindrops, ripples,
+        // glassStaticDrops, glassStreaks, cityBuildings, activeLightnings, streetLamps, streetRain,
+        // streetGroundY — STATE, xem service/state.js.
+        // (tunnelAngle, bgRaindrops — dead code: không được đọc/ghi ở bất kỳ đâu khác trong toàn
+        // bộ project, đã xác nhận lúc dọn Patch K — xoá hẳn, không migrate.)
+        let rubikRotX = 0, rubikRotY = 0, rubikAnim = { active: false, axis: 'x', layer: 0, angle: 0, dir: 1 }; // biến NỘI BỘ
         // Xoay TỰ THÂN của khối Rubik theo pitch (nốt nhạc):
-        //   - rubikPitchHistory/rubikPitchAvg: nốt MIDI trung bình động gần đây, dùng làm "pha"
-        //     tham chiếu — nốt hiện tại thấp hơn pha thì xoay chậm lại, cao hơn thì xoay nhanh lên.
-        //   - rubikSelfSpinDirX/Y: hướng xoay tự thân (1 hoặc -1) của mỗi trục, chọn ngẫu nhiên một
-        //     lần khi khởi động rồi giữ cố định (chỉ tốc độ đổi theo nhạc, hướng không đảo liên tục).
-        let rubikPitchHistory = [], rubikPitchAvg = 0;
+        //   - rubikPitchHistory/rubikPitchAvg (STATE): nốt MIDI trung bình động gần đây, dùng làm
+        //     "pha" tham chiếu — nốt hiện tại thấp hơn pha thì xoay chậm lại, cao hơn thì xoay nhanh lên.
+        //   - rubikSelfSpinDirX/Y (biến NỘI BỘ): hướng xoay tự thân (1 hoặc -1) của mỗi trục, chọn
+        //     ngẫu nhiên một lần khi khởi động rồi giữ cố định (chỉ tốc độ đổi theo nhạc, hướng
+        //     không đảo liên tục).
         let rubikSelfSpinDirX = Math.random() > 0.5 ? 1 : -1, rubikSelfSpinDirY = Math.random() > 0.5 ? 1 : -1;
         // Xoay LỚP (kiểu 2) theo nốt cụ thể: mỗi 1 trong 12 nốt (C..B) map cố định ra 1 cặp
         // (trục x/y/z, lớp -1/0/1) — khi phát hiện nốt mới (đổi so với nốt vừa rồi) và năng lượng
@@ -177,22 +181,14 @@
             { axis: 'z', layer: -1 }, { axis: 'z', layer:  0 }, { axis: 'z', layer:  1 }, // F#, G, G#
             { axis: 'x', layer: -1 }, { axis: 'y', layer:  1 }, { axis: 'z', layer:  0 }  // A, A#, B
         ];
-        let rubikLastTurnNote = null;
-        let raindrops = [], ripples = [], bgRaindrops = [];
-        let glassStaticDrops = [], glassStreaks = [], cityBuildings = [];
-        let activeLightnings = [];
+        let rubikLastTurnNote = null; // biến NỘI BỘ (không thuộc STATE)
 
         // Rain - Street scene (đèn đường, hàng rào công viên, mưa phố)
-        let streetLamps = [], streetRain = [];
-        let streetGroundY = 0; // mặt đất Street, luôn cao hơn vùng thanh điều khiển dưới cùng
 
         // ==========================================
-        // KHỞI TẠO THREE.JS CHO VORTEX ENGINE MỚI
+        // VORTEX ENGINE (Three.js) — tScene, tCamera, tRenderer, tInitialized, tCurrentWarpZ
+        // đều là STATE, xem service/state.js.
         // ==========================================
-        let tScene, tCamera, tRenderer, tInitialized = false;
-        
-        // System variables cho Vortex Engine
-        let tCurrentWarpZ = 0; 
 
         // ===================== About Drawer (Về trình phát) =====================
         // FIX (kiến trúc /event/, cụm "settingsNav"): trước đây 3 biến này tự getElementById ngay

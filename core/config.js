@@ -99,7 +99,9 @@
                 textColor: '#ffffff', fontSize: 8, lineHeight: 1.3, letterSpacing: 0
             }
         };
-        let vizConfig = { ...DEFAULT_VIZ_CONFIG };
+        // vizConfig — STATE, khởi tạo thật trong service/state.js (appState.set('vizConfig',
+        // { ...CONST.DEFAULT_VIZ_CONFIG }), dùng CONST.DEFAULT_VIZ_CONFIG riêng của chính
+        // service/state.js — không phụ thuộc DEFAULT_VIZ_CONFIG ở file này, xem service/state.js).
 
         /**
          * LƯU CONFIG (v7) — 2 lớp:

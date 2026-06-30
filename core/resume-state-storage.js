@@ -114,8 +114,8 @@
         }
 
         /** Cache tạm snapshot đang chờ người dùng quyết định — sống từ lúc checkPendingResumeStateOnBoot()
-         * gọi tới lúc applyResumeStateToRam()/discardPendingResumeState() được gọi (1 trong 3 lựa chọn). */
-        let _pendingResumeSnapshot = null;
+         * gọi tới lúc applyResumeStateToRam()/discardPendingResumeState() được gọi (1 trong 3 lựa chọn).
+         * STATE — xem service/state.js. */
 
         /**
          * Gọi lúc KHỞI ĐỘNG, NGAY SAU loadConfig() — KHÔNG đợi initPlaylistFromDB() (xem

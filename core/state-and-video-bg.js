@@ -11,14 +11,11 @@
  * `/event/`.
  */
 
-        // isSubtitlesEnabled: biến runtime dùng trực tiếp trong processSubtitles()/updateSubToggleUI()
-        // (giữ tên cũ để không phải đổi khắp nơi). Giá trị khởi tạo `true` ở đây chỉ là tạm — được
-        // ĐỒNG BỘ LẠI từ vizConfig.subtitlesEnabled (đã lưu) ngay trong loadConfig() (ver 8 refine,
-        // xem equalizer-settings.js), nên giá trị thật sau khi trang nạp xong luôn khớp với Cài đặt.
-        let subtitles = []; let isSubtitlesEnabled = true; let activeSubIds = new Set(); let editingSubId = null;
-        let currentCalculatedBpm = "---";
-
-        let isShuffle = false, shuffleIndices = [], repeatMode = 0;
+        // subtitles, isSubtitlesEnabled, activeSubIds, editingSubId, currentCalculatedBpm,
+        // isShuffle, shuffleIndices, repeatMode — STATE, xem service/state.js. isSubtitlesEnabled
+        // giá trị khởi tạo `true` chỉ là tạm — được ĐỒNG BỘ LẠI từ vizConfig.subtitlesEnabled
+        // (đã lưu) ngay trong loadConfig() (ver 8 refine, xem equalizer-settings.js), nên giá trị
+        // thật sau khi trang nạp xong luôn khớp với Cài đặt.
         window.currentMediaSessionCover = null; window.lastValidNoteStr = null; window.lastValidNoteTime = 0; window.lastValidMidiNote = null;
 
         /** Core thuần: quay về màn Visualizer (nếu đang có bài hiện tại). */
@@ -65,7 +62,7 @@
 
         // URL đã thực sự nạp xong + fade vào <video>. Dùng để KHÔNG fade lại khi Next/Prev:
         // cú "nền đen -> hiện video" chỉ xảy ra MỘT LẦN cho mỗi URL video, lúc nạp lần đầu.
-        let _videoBgLoadedUrl = null;
+        // STATE — xem service/state.js.
 
         /**
          * Chỉ lo NGUỒN video + fade-in MỘT LẦN cho mỗi URL. Gọi khi cấu hình video đổi

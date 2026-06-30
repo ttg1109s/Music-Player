@@ -95,8 +95,7 @@
             });
         }
 
-        let dbReadyPromise = openDatabase();
-        appState.set('dbReadyPromise', dbReadyPromise); // đồng bộ giá trị khởi tạo vào STATE ngay — các hàm dưới đọc qua appState.get()
+        appState.set('dbReadyPromise', openDatabase()); // STATE — xem service/state.js
 
         /** true nếu lỗi rõ ràng là do connection IndexedDB đã chết (không phải lỗi dữ liệu/quyền khác). */
         function isDeadConnectionError(err) {

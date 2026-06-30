@@ -13,8 +13,7 @@
  * PHẢI nạp SAU db.js (cần getMeta/setMeta) và TRƯỚC playlist/* + player-controls.js (các file đó
  * gọi bumpSongPlayCount / addSongListenTime / getSongStats / removeSongStats / formatListenTime).
  */
-        let songStatsMap = new Map(); // key -> { count, totalTime }
-        let _songStatsDirty = false;
+        // songStatsMap, _songStatsDirty — STATE, xem service/state.js
 
         async function loadSongStats() {
             try {

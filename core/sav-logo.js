@@ -14,7 +14,6 @@
  * core/dom-refs.js theo đúng quy ước.
  */
         const savLogoExpandSpans = savLogo ? Array.from(savLogo.querySelectorAll('.sav-logo-expand')) : [];
-        let savLogoExpanded = false;
 
         /** Core thuần: mở/thu chữ logo theo giá trị `expand`. */
         function setSavLogoExpanded(expand) {

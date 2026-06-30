@@ -27,8 +27,8 @@
  * sẽ làm ở 1 patch riêng sau, KHÔNG đụng ở cụm nhỏ này.
  */
         /** true = dải BPM/Pitch/Energy đang hiện (mặc định) — audio-analysis.js đọc cờ này trước
-         * mỗi lần ghi DOM text, KHÔNG đụng gì tới phần tính toán logic khác trong hàm đó. */
-        let isStatsPanelVisible = true;
+         * mỗi lần ghi DOM text, KHÔNG đụng gì tới phần tính toán logic khác trong hàm đó. Lưu trong
+         * STATE (appState.get/set('isStatsPanelVisible')) — xem service/state.js. */
 
         /**
          * Core thuần: đảo trạng thái hiện/ẩn dải BPM/Pitch/Energy + đồng bộ icon + dọn số liệu cũ

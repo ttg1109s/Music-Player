@@ -90,9 +90,8 @@
          * resume-state-storage.js, checkPendingResumeStateOnBoot() gán lại 2 biến này từ snapshot đã
          * lưu trước khi gọi showResumeChoiceModal()). `lastStoppedTime` là đúng `audioPlayer.currentTime`
          * tại thời điểm bị dừng — để "Tiếp tục phát" phát đúng từ chỗ cũ, "Nghe lại" phát lại từ đầu.
+         * STATE — xem service/state.js.
          */
-        let lastStoppedKey = null;
-        let lastStoppedTime = 0;
 
         /**
          * Đưa UI về màn Playlist, ẩn Visualizer/player-container — dùng bởi clearAllStoredData()
@@ -147,13 +146,13 @@
          * gọi 2 lần (hiếm, ví dụ race điều kiện nào đó gọi checkPendingResumeStateOnBoot() lần 2).
          * true  = modal đang mở, đang chờ người dùng chọn -> gọi lại lúc này KHÔNG làm gì cả.
          * false = không có modal nào đang mở. Đặt lại false ngay khi 1 trong 3 nút được bấm.
+         * STATE — xem service/state.js.
          */
-        let isResumeModalOpen = false;
 
         /** true khi initPlaylistFromDB() đã chạy xong (xem draw-visualizer.js) — dùng để biết
          * lúc showResumeChoiceModal() mở, có nên disable 2 nút "Tiếp tục phát"/"Nghe lại" hay
-         * không (chỉ disable nếu playlist CHƯA load xong tại đúng thời điểm modal mở). */
-        let _isPlaylistReadyForResumeModal = false;
+         * không (chỉ disable nếu playlist CHƯA load xong tại đúng thời điểm modal mở). STATE —
+         * xem service/state.js. */
 
         function showResumeChoiceModal() {
             if (appState.get('isResumeModalOpen')) return; // modal cũ vẫn đang mở chờ chọn -> không mở chồng/thay thế
@@ -227,8 +226,7 @@
 
         /** Key đang chờ cập nhật lại tiêu đề modal (chỉ có giá trị nếu modal đang mở với tiêu đề
          * TẠM — xem showResumeChoiceModal()). null nếu không cần cập nhật gì (đã có tên thật ngay
-         * từ đầu, hoặc modal đã đóng). */
-        let _resumeModalPendingKey = null;
+         * từ đầu, hoặc modal đã đóng). STATE — xem service/state.js. */
 
         /**
          * Gọi từ enableResumeModalButtonsWhenPlaylistReady() (resume-state-storage.js, sau khi
@@ -344,8 +342,8 @@
         // đầu, KHÔNG dùng taskManager.resume() (resume() giữ nguyên remainingTime để nối đúng pha
         // — đúng nghĩa cho việc tạm dừng/tiếp tục GIỮA chừng 1 phiên, không phải bắt đầu phiên mới).
         const LISTEN_CLOCK_TASK = 'listenClock';
-        let _listenLastTick = 0;
-        let pendingListenSeconds = 0; // phần tổng chưa flush vào IndexedDB (cũng được wakelock.js flush lúc unload)
+        // _listenLastTick, pendingListenSeconds — STATE (phần tổng chưa flush vào IndexedDB, cũng
+        // được app-cleanup.js flush lúc unload) — xem service/state.js.
 
         function _listenTick() {
             const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());

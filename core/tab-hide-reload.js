@@ -21,18 +21,18 @@
          * true ngay khi 'beforeunload' bắn ra — tín hiệu "đây THẬT SỰ là F5/đóng tab/
          * điều hướng sang trang khác", dùng để huỷ bỏ lưu/reload đang chờ trong
          * triggerHideAndReload(). Đọc từ event/tab.js để set trước executeAppCleanup().
+         * STATE — xem service/state.js.
          */
-        let _isRealUnloadHappening = false;
-        let _hideReloadInProgress = false;
+        let _hideReloadInProgress = false; // biến NỘI BỘ (không thuộc STATE) — chỉ dùng trong file này
 
         function triggerHideAndReload() {
             if (_hideReloadInProgress) return; // chặn gọi chồng (visibilitychange + pagehide cùng bắn)
             _hideReloadInProgress = true;
-            _isRealUnloadHappening = false; // reset trước khi chờ — đo lại đúng cho lượt này
+            appState.set('_isRealUnloadHappening', false); // reset trước khi chờ — đo lại đúng cho lượt này
 
             setTimeout(() => {
                 _hideReloadInProgress = false; // mở lại ngay, phòng trường hợp ẩn/hiện/ẩn liên tục
-                if (_isRealUnloadHappening) return; // F5/đóng tab/điều hướng thật → không làm gì cả
+                if (appState.get('_isRealUnloadHappening')) return; // F5/đóng tab/điều hướng thật → không làm gì cả
 
                 // Pause trước khi lưu: đảm bảo currentTime đọc được là chính xác tại thời điểm dừng
                 if (typeof audioPlayer !== 'undefined' && audioPlayer && !audioPlayer.paused) {
