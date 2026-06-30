@@ -19,11 +19,14 @@ const routerEqualizerSettings = (() => {
                 const { index, value } = msg.payload;
                 const valEl = document.getElementById(`eq-val-${index}`);
                 if (valEl) valEl.textContent = value > 0 ? `+${value}` : value;
-                vizConfig.manualEq[index] = value;
-                if (vizConfig.eqMode !== 'manual') {
-                    vizConfig.eqMode = 'manual';
-                    eqSelect.value = 'manual';
-                }
+                appState.mutate('vizConfig', cfg => {
+                    cfg.manualEq[index] = value;
+                    if (cfg.eqMode !== 'manual') {
+                        cfg.eqMode = 'manual';
+                        eqSelect.value = 'manual';
+                    }
+                });
+                const eqBandNodes = appState.get('eqBandNodes');
                 if (eqBandNodes[index]) eqBandNodes[index].gain.value = value;
                 saveConfig();
                 break;

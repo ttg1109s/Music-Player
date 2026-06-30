@@ -40,7 +40,7 @@ const routerVisualizerMiscSettings = (() => {
             case 'visualizerMiscSettings.visualizerType.change': {
                 const idx = MODES.indexOf(msg.payload.value);
                 if (idx === -1) break;
-                currentModeIndex = idx;
+                appState.set('currentModeIndex', idx);
                 updateTypeUI();
                 saveConfig();
                 break;
@@ -48,9 +48,9 @@ const routerVisualizerMiscSettings = (() => {
 
             // ── Giữ màn hình sáng ────────────────────────────────────────────
             case 'visualizerMiscSettings.keepScreenOn.change': {
-                vizConfig.keepScreenOn = msg.payload.checked;
+                appState.mutate('vizConfig', cfg => { cfg.keepScreenOn = msg.payload.checked; });
                 saveConfig();
-                if (vizConfig.keepScreenOn) {
+                if (appState.get('vizConfig').keepScreenOn) {
                     if (typeof audioPlayer !== 'undefined' && !audioPlayer.paused) requestWakeLock();
                 } else {
                     releaseWakeLock();
