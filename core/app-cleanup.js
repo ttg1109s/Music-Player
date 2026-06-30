@@ -16,19 +16,24 @@
  */
         function executeAppCleanup() {
             // ── Animation loop ────────────────────────────────────────────────
+            const animationId = appState.get('animationId');
             if (animationId) cancelAnimationFrame(animationId);
 
             // ── Audio context ─────────────────────────────────────────────────
+            const audioContext = appState.get('audioContext');
             if (audioContext && audioContext.state !== 'closed') audioContext.close();
 
             // ── Object URL (audio blob + cover) ──────────────────────────────
+            const currentObjectURL = appState.get('currentObjectURL');
+            const currentCoverObjectURL = appState.get('currentCoverObjectURL');
             if (currentObjectURL) URL.revokeObjectURL(currentObjectURL);
             if (currentCoverObjectURL) URL.revokeObjectURL(currentCoverObjectURL);
             if (window.currentMediaSessionCover) URL.revokeObjectURL(window.currentMediaSessionCover);
 
             // ── Listen stats: flush tổng giây nghe chưa ghi ──────────────────
             // Best-effort — IndexedDB có thể đã đóng lúc unload, bỏ qua lỗi.
-            if (typeof pendingListenSeconds !== 'undefined' && pendingListenSeconds > 0) {
+            const pendingListenSeconds = appState.get('pendingListenSeconds');
+            if (pendingListenSeconds > 0) {
                 getMeta('totalListenSeconds')
                     .then(v => setMeta('totalListenSeconds', (v || 0) + pendingListenSeconds))
                     .catch(err => console.warn('[app-cleanup] Không ghi được totalListenSeconds lúc unload (best-effort):', err));
