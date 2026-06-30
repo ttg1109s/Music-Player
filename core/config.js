@@ -121,7 +121,7 @@
          * hơn khi đặt cùng nhà với khai báo `vizConfig`/`DEFAULT_VIZ_CONFIG` ở trên.
          */
         function saveConfig() {
-            localStorage.setItem('visualMasterConfigV21', JSON.stringify(vizConfig));
+            localStorage.setItem('visualMasterConfigV21', JSON.stringify(appState.get('vizConfig')));
             scheduleConfigBackup();
         }
 
@@ -132,7 +132,7 @@
         }
         function flushConfigBackup() {
             taskManager.kill('configBackupFlush');
-            const { bgImage, videoBgUrl, ...persistable } = vizConfig; // loại trừ blob: URL runtime
+            const { bgImage, videoBgUrl, ...persistable } = appState.get('vizConfig'); // loại trừ blob: URL runtime
             setMeta('configBackup', persistable).catch(e => console.warn('[config] Lưu configBackup (IndexedDB) lỗi:', e));
         }
 
@@ -147,21 +147,23 @@
                 getMeta('videoBg')
             ]);
 
-            if (vizConfig.bgImageEnabled && !imgBlob) {
-                vizConfig.bgImageEnabled = false;
-            } else if (imgBlob && vizConfig.bgImageEnabled) {
-                vizConfig.bgImage = URL.createObjectURL(imgBlob);
-            }
+            appState.mutate('vizConfig', cfg => {
+                if (cfg.bgImageEnabled && !imgBlob) {
+                    cfg.bgImageEnabled = false;
+                } else if (imgBlob && cfg.bgImageEnabled) {
+                    cfg.bgImage = URL.createObjectURL(imgBlob);
+                }
 
-            if (vizConfig.videoBgEnabled && !videoBlob) {
-                vizConfig.videoBgEnabled = false;
-            } else if (videoBlob && vizConfig.videoBgEnabled) {
-                vizConfig.videoBgUrl = URL.createObjectURL(videoBlob);
-            }
+                if (cfg.videoBgEnabled && !videoBlob) {
+                    cfg.videoBgEnabled = false;
+                } else if (videoBlob && cfg.videoBgEnabled) {
+                    cfg.videoBgUrl = URL.createObjectURL(videoBlob);
+                }
+            });
 
             saveConfig();
-            bgImageEnableToggle.checked = vizConfig.bgImageEnabled;
-            videoEnableToggle.checked = vizConfig.videoBgEnabled;
+            bgImageEnableToggle.checked = appState.get('vizConfig').bgImageEnabled;
+            videoEnableToggle.checked = appState.get('vizConfig').videoBgEnabled;
             updatePlaylistBg(); handleVideoBackground();
         }
 
@@ -188,75 +190,77 @@
                     }
                 } catch (e) { console.warn('[config] Không đọc được configBackup (IndexedDB):', e); }
             }
-            if (saved) { try { vizConfig = { ...vizConfig, ...JSON.parse(saved) }; } catch(e) {} }
-            if(!vizConfig.manualEq) vizConfig.manualEq = [0,0,0,0,0,0,0,0,0,0];
-            if(vizConfig.vortexStyle === 'tardis' || vizConfig.vortexStyle === 'classic' || vizConfig.vortexStyle === 'dust') vizConfig.vortexStyle = 'rings';
-            // Cấu hình cũ từng có rainStyle 'classic', visualizer 'synthesia'/'firefly_forest'/'seasons'/'wave' đã
-            // bị loại bỏ — quy về giá trị tương đương gần nhất để không vỡ trải nghiệm của người dùng cũ.
-            if (vizConfig.rainStyle === 'classic') vizConfig.rainStyle = 'glass';
-            if (vizConfig.type === 'synthesia') { vizConfig.type = 'bar'; vizConfig.barStyle = 'cascade'; }
-            if (vizConfig.type === 'firefly_forest' || vizConfig.type === 'seasons' || vizConfig.type === 'wave') vizConfig.type = 'bar';
-            if (!vizConfig.barStyle) vizConfig.barStyle = 'mirror';
-            if (vizConfig.mirrorBarCount == null) vizConfig.mirrorBarCount = 32;
-            if (vizConfig.bgImageEnabled == null) vizConfig.bgImageEnabled = false;
-            if (vizConfig.keepScreenOn == null) vizConfig.keepScreenOn = true;
-            if (vizConfig.subtitlesEnabled == null) vizConfig.subtitlesEnabled = true;
-            if (vizConfig.visualEnabled == null) vizConfig.visualEnabled = true;
-            // Auto-switch-visual (ver 10) — migrate field mới + validate lại ngưỡng tối thiểu
-            // (phòng giá trị bị sửa tay/hỏng trong bản JSON cũ thấp hơn AUTO_SWITCH_VISUAL_MIN_SECONDS).
-            if (vizConfig.autoSwitchVisualEnabled == null) vizConfig.autoSwitchVisualEnabled = false;
-            if (vizConfig.autoSwitchVisualMode !== 'sequential' && vizConfig.autoSwitchVisualMode !== 'random') vizConfig.autoSwitchVisualMode = 'sequential';
-            if (!['fixed', 'random', 'duration'].includes(vizConfig.autoSwitchVisualTimeMode)) vizConfig.autoSwitchVisualTimeMode = 'fixed';
-            // 3 field RIÊNG cho từng mode (xem giải thích ở trên) — validate ĐỘC LẬP từng cái,
-            // không dùng chung 1 field nữa (bug bản đầu: đổi mode A rồi mode B sẽ ghi đè mất giá
-            // trị đã lưu của mode A). MIGRATE field cũ `autoSwitchVisualSeconds` (nếu config cũ từ
-            // trước khi tách field còn sót lại trong localStorage/IndexedDB) sang cả 3 field mới —
-            // dùng đúng giá trị cũ làm điểm khởi đầu cho cả 3, hợp lý hơn reset về default cứng.
-            if (typeof vizConfig.autoSwitchVisualSeconds === 'number') {
-                if (vizConfig.autoSwitchVisualSecondsFixed == null) vizConfig.autoSwitchVisualSecondsFixed = vizConfig.autoSwitchVisualSeconds;
-                if (vizConfig.autoSwitchVisualSecondsRandom == null) vizConfig.autoSwitchVisualSecondsRandom = vizConfig.autoSwitchVisualSeconds;
-                if (vizConfig.autoSwitchVisualSecondsDuration == null) vizConfig.autoSwitchVisualSecondsDuration = vizConfig.autoSwitchVisualSeconds;
-                delete vizConfig.autoSwitchVisualSeconds; // dọn field cũ, không lưu lại nữa từ lần saveConfig() kế tiếp
-            }
-            ['autoSwitchVisualSecondsFixed', 'autoSwitchVisualSecondsRandom', 'autoSwitchVisualSecondsDuration'].forEach((field) => {
-                if (typeof vizConfig[field] !== 'number' || vizConfig[field] < AUTO_SWITCH_VISUAL_MIN_SECONDS) {
-                    vizConfig[field] = Math.max(AUTO_SWITCH_VISUAL_MIN_SECONDS, DEFAULT_VIZ_CONFIG[field]);
+            if (saved) { try { appState.set('vizConfig', { ...appState.get('vizConfig'), ...JSON.parse(saved) }); } catch(e) {} }
+            appState.mutate('vizConfig', cfg => {
+                if(!cfg.manualEq) cfg.manualEq = [0,0,0,0,0,0,0,0,0,0];
+                if(cfg.vortexStyle === 'tardis' || cfg.vortexStyle === 'classic' || cfg.vortexStyle === 'dust') cfg.vortexStyle = 'rings';
+                // Cấu hình cũ từng có rainStyle 'classic', visualizer 'synthesia'/'firefly_forest'/'seasons'/'wave' đã
+                // bị loại bỏ — quy về giá trị tương đương gần nhất để không vỡ trải nghiệm của người dùng cũ.
+                if (cfg.rainStyle === 'classic') cfg.rainStyle = 'glass';
+                if (cfg.type === 'synthesia') { cfg.type = 'bar'; cfg.barStyle = 'cascade'; }
+                if (cfg.type === 'firefly_forest' || cfg.type === 'seasons' || cfg.type === 'wave') cfg.type = 'bar';
+                if (!cfg.barStyle) cfg.barStyle = 'mirror';
+                if (cfg.mirrorBarCount == null) cfg.mirrorBarCount = 32;
+                if (cfg.bgImageEnabled == null) cfg.bgImageEnabled = false;
+                if (cfg.keepScreenOn == null) cfg.keepScreenOn = true;
+                if (cfg.subtitlesEnabled == null) cfg.subtitlesEnabled = true;
+                if (cfg.visualEnabled == null) cfg.visualEnabled = true;
+                // Auto-switch-visual (ver 10) — migrate field mới + validate lại ngưỡng tối thiểu
+                // (phòng giá trị bị sửa tay/hỏng trong bản JSON cũ thấp hơn AUTO_SWITCH_VISUAL_MIN_SECONDS).
+                if (cfg.autoSwitchVisualEnabled == null) cfg.autoSwitchVisualEnabled = false;
+                if (cfg.autoSwitchVisualMode !== 'sequential' && cfg.autoSwitchVisualMode !== 'random') cfg.autoSwitchVisualMode = 'sequential';
+                if (!['fixed', 'random', 'duration'].includes(cfg.autoSwitchVisualTimeMode)) cfg.autoSwitchVisualTimeMode = 'fixed';
+                // 3 field RIÊNG cho từng mode (xem giải thích ở trên) — validate ĐỘC LẬP từng cái,
+                // không dùng chung 1 field nữa (bug bản đầu: đổi mode A rồi mode B sẽ ghi đè mất giá
+                // trị đã lưu của mode A). MIGRATE field cũ `autoSwitchVisualSeconds` (nếu config cũ từ
+                // trước khi tách field còn sót lại trong localStorage/IndexedDB) sang cả 3 field mới —
+                // dùng đúng giá trị cũ làm điểm khởi đầu cho cả 3, hợp lý hơn reset về default cứng.
+                if (typeof cfg.autoSwitchVisualSeconds === 'number') {
+                    if (cfg.autoSwitchVisualSecondsFixed == null) cfg.autoSwitchVisualSecondsFixed = cfg.autoSwitchVisualSeconds;
+                    if (cfg.autoSwitchVisualSecondsRandom == null) cfg.autoSwitchVisualSecondsRandom = cfg.autoSwitchVisualSeconds;
+                    if (cfg.autoSwitchVisualSecondsDuration == null) cfg.autoSwitchVisualSecondsDuration = cfg.autoSwitchVisualSeconds;
+                    delete cfg.autoSwitchVisualSeconds; // dọn field cũ, không lưu lại nữa từ lần saveConfig() kế tiếp
                 }
+                ['autoSwitchVisualSecondsFixed', 'autoSwitchVisualSecondsRandom', 'autoSwitchVisualSecondsDuration'].forEach((field) => {
+                    if (typeof cfg[field] !== 'number' || cfg[field] < AUTO_SWITCH_VISUAL_MIN_SECONDS) {
+                        cfg[field] = Math.max(AUTO_SWITCH_VISUAL_MIN_SECONDS, DEFAULT_VIZ_CONFIG[field]);
+                    }
+                });
+                // Dữ liệu cũ (trước ver 8) có thể còn field `videoHideVisual` (đã loại bỏ, thay bằng
+                // `visualEnabled` độc lập khỏi video nền) — không cần migrate giá trị qua, vì ý nghĩa
+                // 2 field khác nhau (cũ: ẩn visual CHỈ khi có video; mới: ẩn visual LUÔN LUÔN khi tắt).
+                // Field thừa này vô hại nếu còn tồn tại trong bản JSON cũ, JS đơn giản bỏ qua nó.
+                if (!cfg.subtitleStyle) cfg.subtitleStyle = { ...DEFAULT_VIZ_CONFIG.subtitleStyle };
+                else cfg.subtitleStyle = { ...DEFAULT_VIZ_CONFIG.subtitleStyle, ...cfg.subtitleStyle };
+                // Cấu hình cũ (trước khi thang cỡ chữ đổi thành 8-16px) có thể đã lưu giá trị lớn hơn —
+                // giới hạn lại để khớp với range slider hiện tại, tránh lệch giữa dữ liệu và UI.
+                cfg.subtitleStyle.fontSize = Math.min(16, Math.max(8, cfg.subtitleStyle.fontSize));
             });
-            // Dữ liệu cũ (trước ver 8) có thể còn field `videoHideVisual` (đã loại bỏ, thay bằng
-            // `visualEnabled` độc lập khỏi video nền) — không cần migrate giá trị qua, vì ý nghĩa
-            // 2 field khác nhau (cũ: ẩn visual CHỈ khi có video; mới: ẩn visual LUÔN LUÔN khi tắt).
-            // Field thừa này vô hại nếu còn tồn tại trong bản JSON cũ, JS đơn giản bỏ qua nó.
-            if (!vizConfig.subtitleStyle) vizConfig.subtitleStyle = { ...DEFAULT_VIZ_CONFIG.subtitleStyle };
-            else vizConfig.subtitleStyle = { ...DEFAULT_VIZ_CONFIG.subtitleStyle, ...vizConfig.subtitleStyle };
-            // Cấu hình cũ (trước khi thang cỡ chữ đổi thành 8-16px) có thể đã lưu giá trị lớn hơn —
-            // giới hạn lại để khớp với range slider hiện tại, tránh lệch giữa dữ liệu và UI.
-            vizConfig.subtitleStyle.fontSize = Math.min(16, Math.max(8, vizConfig.subtitleStyle.fontSize));
 
-            qualitySelect.value = vizConfig.quality; bgColorPicker.value = vizConfig.bgColor;
-            bgBlurSlider.value = vizConfig.bgBlur; valBgBlurDisplay.textContent = vizConfig.bgBlur + 'px';
+            qualitySelect.value = appState.get('vizConfig').quality; bgColorPicker.value = appState.get('vizConfig').bgColor;
+            bgBlurSlider.value = appState.get('vizConfig').bgBlur; valBgBlurDisplay.textContent = appState.get('vizConfig').bgBlur + 'px';
 
             // bgImage/videoBgUrl giờ là blob: URL runtime, tạo lại mỗi session từ IndexedDB — KHÔNG
             // sống sót qua reload, nên luôn reset về rỗng ở đây TRƯỚC khi loadBackgroundAssets() đọc
             // lại Blob thật và tự sửa trạng thái "on ảo" nếu cần (mục 6).
-            vizConfig.bgImage = ''; vizConfig.videoBgUrl = '';
+            appState.mutate('vizConfig', cfg => { cfg.bgImage = ''; cfg.videoBgUrl = ''; });
             await loadBackgroundAssets();
 
-            colorModeSelect.value = vizConfig.mode;
-            solidColorPicker.value = vizConfig.solidColor; solidColorText.value = vizConfig.solidColor;
-            dynColorA.value = vizConfig.dynA; dynColorB.value = vizConfig.dynB;
-            maxHeightSlider.value = vizConfig.maxH; valMaxDisplay.textContent = vizConfig.maxH;
-            barWidthSlider.value = vizConfig.barWidth; valWidthDisplay.textContent = vizConfig.barWidth;
-            mirrorCountSlider.value = vizConfig.mirrorBarCount; valMirrorCountDisplay.textContent = vizConfig.mirrorBarCount;
-            vortexStyleSelect.value = vizConfig.vortexStyle;
-            barStyleSelect.value = vizConfig.barStyle;
-            rainStyleSelect.value = vizConfig.rainStyle;
-            glassFlashToggle.checked = vizConfig.glassFlash;
+            colorModeSelect.value = appState.get('vizConfig').mode;
+            solidColorPicker.value = appState.get('vizConfig').solidColor; solidColorText.value = appState.get('vizConfig').solidColor;
+            dynColorA.value = appState.get('vizConfig').dynA; dynColorB.value = appState.get('vizConfig').dynB;
+            maxHeightSlider.value = appState.get('vizConfig').maxH; valMaxDisplay.textContent = appState.get('vizConfig').maxH;
+            barWidthSlider.value = appState.get('vizConfig').barWidth; valWidthDisplay.textContent = appState.get('vizConfig').barWidth;
+            mirrorCountSlider.value = appState.get('vizConfig').mirrorBarCount; valMirrorCountDisplay.textContent = appState.get('vizConfig').mirrorBarCount;
+            vortexStyleSelect.value = appState.get('vizConfig').vortexStyle;
+            barStyleSelect.value = appState.get('vizConfig').barStyle;
+            rainStyleSelect.value = appState.get('vizConfig').rainStyle;
+            glassFlashToggle.checked = appState.get('vizConfig').glassFlash;
 
-            volumeSlider.value = vizConfig.volume; valVolumeDisplay.textContent = vizConfig.volume + '%';
-            if(masterGainNode) masterGainNode.gain.value = vizConfig.volume / 100;
+            volumeSlider.value = appState.get('vizConfig').volume; valVolumeDisplay.textContent = appState.get('vizConfig').volume + '%';
+            if(masterGainNode) masterGainNode.gain.value = appState.get('vizConfig').volume / 100;
 
-            currentModeIndex = MODES.indexOf(vizConfig.type); if(currentModeIndex === -1) currentModeIndex = 0;
+            { let idx = MODES.indexOf(appState.get('vizConfig').type); if (idx === -1) idx = 0; appState.set('currentModeIndex', idx); }
             updateDOMBackground(); updatePlaylistBg(); updateColorMenuUI(); updateTypeUI();
 
             // Mỗi module con tự lo đồng bộ UI CỦA NÓ (EQ, misc settings visualizer, subtitle
