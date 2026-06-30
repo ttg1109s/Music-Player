@@ -23,7 +23,7 @@
 
         /** Core thuần: quay về màn Visualizer (nếu đang có bài hiện tại). */
         function returnToVisualizer() {
-            if (currentKey) switchToVisualizer();
+            if (appState.get('currentKey')) switchToVisualizer();
         }
 
         // ===================== "Control Center" của màn Visualizer (ver 8 refine) =====================
@@ -55,8 +55,9 @@
         // không có video thật phía sau. "Tắt Visual" (ver 8 refine) KHÔNG còn phụ thuộc video bg
         // nên không tắt theo nữa.
         function validateVideoBgOnClose() {
-            if (vizConfig.videoBgEnabled && !vizConfig.videoBgUrl) {
-                vizConfig.videoBgEnabled = false;
+            const cfg = appState.get('vizConfig');
+            if (cfg.videoBgEnabled && !cfg.videoBgUrl) {
+                appState.mutate('vizConfig', c => { c.videoBgEnabled = false; });
                 videoEnableToggle.checked = false;
                 handleVideoBackground(); saveConfig();
             }
@@ -71,12 +72,13 @@
          * (bật/tắt, upload, nạp lại lúc mở trang) — KHÔNG gọi mỗi lần chuyển bài.
          */
         function setupVideoBgSource() {
+            const videoBgUrl = appState.get('vizConfig').videoBgUrl;
             // Đã đúng URL và đã fade xong rồi -> không làm gì (tránh fade lặp lại khi Next/Prev).
-            if (bgVideoElement.getAttribute('src') === vizConfig.videoBgUrl && _videoBgLoadedUrl === vizConfig.videoBgUrl) return;
-            _videoBgLoadedUrl = null;
+            if (bgVideoElement.getAttribute('src') === videoBgUrl && appState.get('_videoBgLoadedUrl') === videoBgUrl) return;
+            appState.set('_videoBgLoadedUrl', null);
             bgVideoElement.style.opacity = '0'; // ẩn cho tới khi có khung hình thật -> không chớp trắng
-            bgVideoElement.src = vizConfig.videoBgUrl;
-            const fadeVideoIn = () => { bgVideoElement.style.opacity = '1'; _videoBgLoadedUrl = vizConfig.videoBgUrl; };
+            bgVideoElement.src = videoBgUrl;
+            const fadeVideoIn = () => { bgVideoElement.style.opacity = '1'; appState.set('_videoBgLoadedUrl', appState.get('vizConfig').videoBgUrl); };
             // Listener NỘI BỘ tự gỡ sau 1 lần (mục 2b.6) — KHÔNG thuộc /event/.
             bgVideoElement.addEventListener('loadeddata', fadeVideoIn, { once: true });
             bgVideoElement.addEventListener('playing', fadeVideoIn, { once: true });
@@ -88,7 +90,8 @@
          * gây ra cú "nền đen rồi fade video" lần nữa.
          */
         function syncVideoBgToAudio() {
-            if (!(vizConfig.videoBgEnabled && vizConfig.videoBgUrl)) return;
+            const cfg = appState.get('vizConfig');
+            if (!(cfg.videoBgEnabled && cfg.videoBgUrl)) return;
             if (!audioPlayer.paused) { bgVideoElement.play().catch(() => {}); } else { bgVideoElement.pause(); }
         }
 
@@ -99,18 +102,19 @@
             //  - NGUỒN + fade chỉ thiết lập MỘT LẦN cho mỗi URL (setupVideoBgSource). Next/Prev chỉ
             //    gọi syncVideoBgToAudio() (xem player-controls.js) nên KHÔNG fade lại nữa.
             //  - Nền đen cưỡng chế phía sau video.
-            if (vizConfig.videoBgEnabled && vizConfig.videoBgUrl) {
+            const cfg = appState.get('vizConfig');
+            if (cfg.videoBgEnabled && cfg.videoBgUrl) {
                 document.body.style.backgroundColor = '#000000'; // nền đen cưỡng chế sau video
                 bgVideoElement.classList.remove('hidden');
                 setupVideoBgSource(); // nạp nguồn + fade nếu là URL mới; no-op nếu đã sẵn sàng
-                if (_videoBgLoadedUrl === vizConfig.videoBgUrl) bgVideoElement.style.opacity = '1'; // đã sẵn sàng -> hiện ngay
+                if (appState.get('_videoBgLoadedUrl') === cfg.videoBgUrl) bgVideoElement.style.opacity = '1'; // đã sẵn sàng -> hiện ngay
                 syncVideoBgToAudio();
             } else {
                 bgVideoElement.style.opacity = '0';
                 bgVideoElement.pause();
-                _videoBgLoadedUrl = null;
+                appState.set('_videoBgLoadedUrl', null);
                 taskManager.once(() => {
-                    if (!vizConfig.videoBgEnabled) { bgVideoElement.classList.add('hidden'); bgVideoElement.removeAttribute('src'); bgVideoElement.src = ''; }
+                    if (!appState.get('vizConfig').videoBgEnabled) { bgVideoElement.classList.add('hidden'); bgVideoElement.removeAttribute('src'); bgVideoElement.src = ''; }
                 }, 500, 'hideVideoBgAfterFade');
                 updateDOMBackground();
             }
@@ -118,22 +122,24 @@
 
         /** Core thuần: thực thi BẬT video nền (đã biết chắc videoBgUrl đã có sẵn từ trước). */
         function enableVideoBackground() {
-            vizConfig.videoBgEnabled = true;
+            appState.mutate('vizConfig', cfg => { cfg.videoBgEnabled = true; });
             handleVideoBackground(); saveConfig();
         }
 
         /** Core thuần: thực thi TẮT video nền + xoá blob/meta đã lưu (phần KHÔNG cần shield —
          *  shield bọc quanh phần xoá IndexedDB ở workflow, core chỉ làm phần đồng bộ state/UI). */
         function disableVideoBackgroundState() {
-            vizConfig.videoBgEnabled = false;
-            if (vizConfig.videoBgUrl && vizConfig.videoBgUrl.startsWith('blob:')) URL.revokeObjectURL(vizConfig.videoBgUrl);
-            vizConfig.videoBgUrl = '';
+            appState.mutate('vizConfig', cfg => {
+                cfg.videoBgEnabled = false;
+                if (cfg.videoBgUrl && cfg.videoBgUrl.startsWith('blob:')) URL.revokeObjectURL(cfg.videoBgUrl);
+                cfg.videoBgUrl = '';
+            });
             handleVideoBackground(); saveConfig();
         }
 
         /** Core thuần: ứng với toggle "Tắt Visual" — độc lập hoàn toàn khỏi video nền. */
         function setVisualEnabled(checked) {
-            vizConfig.visualEnabled = checked;
+            appState.mutate('vizConfig', cfg => { cfg.visualEnabled = checked; });
             saveConfig();
         }
 
@@ -143,9 +149,12 @@
         function applyUploadedVideoBg(file) {
             const check = validateVideoFile(file);
             if (!check.valid) return { status: 'invalid', reason: check.reason };
-            if (vizConfig.videoBgUrl && vizConfig.videoBgUrl.startsWith('blob:')) URL.revokeObjectURL(vizConfig.videoBgUrl);
-            vizConfig.videoBgUrl = URL.createObjectURL(file);
-            vizConfig.videoBgEnabled = true; videoEnableToggle.checked = true;
+            appState.mutate('vizConfig', cfg => {
+                if (cfg.videoBgUrl && cfg.videoBgUrl.startsWith('blob:')) URL.revokeObjectURL(cfg.videoBgUrl);
+                cfg.videoBgUrl = URL.createObjectURL(file);
+                cfg.videoBgEnabled = true;
+            });
+            videoEnableToggle.checked = true;
             handleVideoBackground(); saveConfig();
             return { status: 'ok' };
         }
