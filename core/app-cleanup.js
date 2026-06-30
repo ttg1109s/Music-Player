@@ -1,0 +1,42 @@
+/**
+ * app-cleanup.js — Dọn dẹp tài nguyên toàn app khi tab thật sự bị đóng/unload
+ * (F5, đóng tab, điều hướng sang trang khác).
+ *
+ * Được gọi từ event/tab.js trong handler 'beforeunload', SAU KHI cờ
+ * _isRealUnloadHappening đã được set bởi tab-hide-reload.js.
+ *
+ * Mỗi nhóm cleanup thuộc đúng module sở hữu — thêm cleanup mới vào đây,
+ * không rải vào từng file core riêng lẻ.
+ *
+ * PHẢI nạp SAU: core/dom-refs.js (animationId, audioContext, currentObjectURL,
+ *   currentCoverObjectURL), core/listen-stats.js (flushSongStats),
+ *   core/player-controls.js (pendingListenSeconds), core/db.js (getMeta/setMeta),
+ *   core/wakelock.js (releaseWakeLock), core/state-and-video-bg.js
+ *   (window.currentMediaSessionCover).
+ */
+        function executeAppCleanup() {
+            // ── Animation loop ────────────────────────────────────────────────
+            if (animationId) cancelAnimationFrame(animationId);
+
+            // ── Audio context ─────────────────────────────────────────────────
+            if (audioContext && audioContext.state !== 'closed') audioContext.close();
+
+            // ── Object URL (audio blob + cover) ──────────────────────────────
+            if (currentObjectURL) URL.revokeObjectURL(currentObjectURL);
+            if (currentCoverObjectURL) URL.revokeObjectURL(currentCoverObjectURL);
+            if (window.currentMediaSessionCover) URL.revokeObjectURL(window.currentMediaSessionCover);
+
+            // ── Listen stats: flush tổng giây nghe chưa ghi ──────────────────
+            // Best-effort — IndexedDB có thể đã đóng lúc unload, bỏ qua lỗi.
+            if (typeof pendingListenSeconds !== 'undefined' && pendingListenSeconds > 0) {
+                getMeta('totalListenSeconds')
+                    .then(v => setMeta('totalListenSeconds', (v || 0) + pendingListenSeconds))
+                    .catch(err => console.warn('[app-cleanup] Không ghi được totalListenSeconds lúc unload (best-effort):', err));
+            }
+
+            // ── Listen stats: flush per-song stats còn debounce ──────────────
+            if (typeof flushSongStats === 'function') flushSongStats();
+
+            // ── Wake lock ─────────────────────────────────────────────────────
+            releaseWakeLock();
+        }
