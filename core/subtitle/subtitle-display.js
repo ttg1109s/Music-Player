@@ -115,5 +115,5 @@
             appState.set('activeSubIds', new Set());
         }
 
-        const noSleep = new NoSleep(); let nativeWakeLock = null;
+        const noSleep = new NoSleep(); // nativeWakeLock — STATE, xem service/state.js
 
