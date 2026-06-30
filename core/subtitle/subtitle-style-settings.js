@@ -17,37 +17,37 @@
  */
         /** Core thuần: ứng với toggle "Hiện phụ đề". */
         function setSubtitlesEnabled(checked) {
-            isSubtitlesEnabled = checked;
-            vizConfig.subtitlesEnabled = isSubtitlesEnabled;
+            appState.set('isSubtitlesEnabled', checked);
+            appState.mutate('vizConfig', cfg => { cfg.subtitlesEnabled = appState.get('isSubtitlesEnabled'); });
             saveConfig();
             updateSubToggleUI();
-            if (!isSubtitlesEnabled) clearAllActiveSubBlocks();
+            if (!appState.get('isSubtitlesEnabled')) clearAllActiveSubBlocks();
         }
 
         /** Core thuần: ứng với input màu nền phụ đề. */
         function setSubtitleStyleBgColor(value) {
-            vizConfig.subtitleStyle.bgColor = value;
+            appState.mutate('vizConfig', cfg => { cfg.subtitleStyle.bgColor = value; });
             applySubtitleStyle(); saveConfig();
         }
 
         /** Core thuần: ứng với input độ mờ nền (0-100, lưu dạng 0-1). */
         function setSubtitleStyleBgOpacity(rawValue) {
             const v = parseInt(rawValue);
-            vizConfig.subtitleStyle.bgOpacity = v / 100;
+            appState.mutate('vizConfig', cfg => { cfg.subtitleStyle.bgOpacity = v / 100; });
             valSubBgOpacity.textContent = v + '%';
             applySubtitleStyle(); saveConfig();
         }
 
         /** Core thuần: ứng với input màu viền. */
         function setSubtitleStyleBorderColor(value) {
-            vizConfig.subtitleStyle.borderColor = value;
+            appState.mutate('vizConfig', cfg => { cfg.subtitleStyle.borderColor = value; });
             applySubtitleStyle(); saveConfig();
         }
 
         /** Core thuần: ứng với input độ mờ viền (0-100, lưu dạng 0-1). */
         function setSubtitleStyleBorderOpacity(rawValue) {
             const v = parseInt(rawValue);
-            vizConfig.subtitleStyle.borderOpacity = v / 100;
+            appState.mutate('vizConfig', cfg => { cfg.subtitleStyle.borderOpacity = v / 100; });
             valSubBorderOpacity.textContent = v + '%';
             applySubtitleStyle(); saveConfig();
         }
@@ -55,7 +55,7 @@
         /** Core thuần: ứng với input độ rộng viền (px). */
         function setSubtitleStyleBorderWidth(rawValue) {
             const v = parseInt(rawValue);
-            vizConfig.subtitleStyle.borderWidth = v;
+            appState.mutate('vizConfig', cfg => { cfg.subtitleStyle.borderWidth = v; });
             valSubBorderWidth.textContent = v;
             applySubtitleStyle(); saveConfig();
         }
@@ -63,21 +63,21 @@
         /** Core thuần: ứng với input bo góc viền (px). */
         function setSubtitleStyleBorderRadius(rawValue) {
             const v = parseInt(rawValue);
-            vizConfig.subtitleStyle.borderRadius = v;
+            appState.mutate('vizConfig', cfg => { cfg.subtitleStyle.borderRadius = v; });
             valSubBorderRadius.textContent = v;
             applySubtitleStyle(); saveConfig();
         }
 
         /** Core thuần: ứng với input màu chữ. */
         function setSubtitleStyleTextColor(value) {
-            vizConfig.subtitleStyle.textColor = value;
+            appState.mutate('vizConfig', cfg => { cfg.subtitleStyle.textColor = value; });
             applySubtitleStyle(); saveConfig();
         }
 
         /** Core thuần: ứng với input cỡ chữ (px). */
         function setSubtitleStyleFontSize(rawValue) {
             const v = parseInt(rawValue);
-            vizConfig.subtitleStyle.fontSize = v;
+            appState.mutate('vizConfig', cfg => { cfg.subtitleStyle.fontSize = v; });
             valSubFontSize.textContent = v;
             applySubtitleStyle(); saveConfig();
         }
@@ -85,7 +85,7 @@
         /** Core thuần: ứng với input khoảng cách dòng (line-height). */
         function setSubtitleStyleLineHeight(rawValue) {
             const v = parseFloat(rawValue);
-            vizConfig.subtitleStyle.lineHeight = v;
+            appState.mutate('vizConfig', cfg => { cfg.subtitleStyle.lineHeight = v; });
             valSubLineHeight.textContent = v;
             applySubtitleStyle(); saveConfig();
         }
@@ -93,7 +93,7 @@
         /** Core thuần: ứng với input khoảng cách chữ (letter-spacing). */
         function setSubtitleStyleLetterSpacing(rawValue) {
             const v = parseFloat(rawValue);
-            vizConfig.subtitleStyle.letterSpacing = v;
+            appState.mutate('vizConfig', cfg => { cfg.subtitleStyle.letterSpacing = v; });
             valSubLetterSpacing.textContent = v;
             applySubtitleStyle(); saveConfig();
         }
@@ -104,11 +104,11 @@
          * cũ.
          */
         function initSubtitleStyleSettingsUIFromConfig() {
-            const ss = vizConfig.subtitleStyle;
+            const ss = appState.get('vizConfig').subtitleStyle;
             // Đồng bộ biến runtime + checkbox UI từ config đã lưu (ver 8 refine) — updateSubToggleUI()
             // cập nhật luôn badge xanh #sub-toggle-badge ở overlay theo giá trị vừa nạp.
-            isSubtitlesEnabled = vizConfig.subtitlesEnabled !== false;
-            if (typeof settingSubtitlesEnabled !== 'undefined' && settingSubtitlesEnabled) settingSubtitlesEnabled.checked = isSubtitlesEnabled;
+            appState.set('isSubtitlesEnabled', appState.get('vizConfig').subtitlesEnabled !== false);
+            if (typeof settingSubtitlesEnabled !== 'undefined' && settingSubtitlesEnabled) settingSubtitlesEnabled.checked = appState.get('isSubtitlesEnabled');
             updateSubToggleUI();
             settingSubBgColor.value = ss.bgColor; settingSubBgOpacity.value = Math.round(ss.bgOpacity * 100); valSubBgOpacity.textContent = Math.round(ss.bgOpacity * 100) + '%';
             settingSubBorderColor.value = ss.borderColor; settingSubBorderOpacity.value = Math.round(ss.borderOpacity * 100); valSubBorderOpacity.textContent = Math.round(ss.borderOpacity * 100) + '%';
