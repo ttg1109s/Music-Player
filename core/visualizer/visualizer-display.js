@@ -26,8 +26,9 @@
  * (xem plan.md, đã chốt lùi việc đưa cross-call qua bus tới khi 134 listener gốc tách xong hết).
  */
         function updateProgressBarCSS() {
+            const cfg = appState.get('vizConfig');
             const percentage = (progressBar.value / (progressBar.max || 100)) * 100;
-            const color = vizConfig.mode === 'solid' ? vizConfig.solidColor : (vizConfig.mode === 'dynamic' ? vizConfig.dynB : '#38bdf8');
+            const color = cfg.mode === 'solid' ? cfg.solidColor : (cfg.mode === 'dynamic' ? cfg.dynB : '#38bdf8');
             progressBar.style.background = `linear-gradient(to right, ${color} 0%, ${color} ${percentage}%, rgba(255,255,255,0.2) ${percentage}%, rgba(255,255,255,0.2) 100%)`;
         }
 
@@ -47,28 +48,31 @@
          * Ứng với msg.type 'visualizerDisplay.cycleMode.click'.
          */
         function cycleVisualizerType() {
-            if (vizConfig.autoSwitchVisualEnabled) return;
-            currentModeIndex = (currentModeIndex + 1) % MODES.length; updateTypeUI(); saveConfig();
+            if (appState.get('vizConfig').autoSwitchVisualEnabled) return;
+            appState.set('currentModeIndex', (appState.get('currentModeIndex') + 1) % MODES.length); updateTypeUI(); saveConfig();
         }
 
         function updateTypeUI() {
-            vizConfig.type = MODES[currentModeIndex]; modeBadge.textContent = `${currentModeIndex + 1}/${MODES.length}`;
+            const currentModeIndex = appState.get('currentModeIndex');
+            appState.mutate('vizConfig', cfg => { cfg.type = MODES[currentModeIndex]; });
+            const cfg = appState.get('vizConfig');
+            modeBadge.textContent = `${currentModeIndex + 1}/${MODES.length}`;
             // Đồng bộ select "Kiểu hiệu ứng" trong Settings (ver 8 refine) — updateTypeUI() là
             // điểm DUY NHẤT mọi đường đổi kiểu hiệu ứng đều đi qua (cycle button HOẶC select), nên
             // đặt đồng bộ ở đây đảm bảo 2 UI luôn khớp nhau bất kể đổi từ đâu.
-            if (typeof visualizerTypeSelect !== 'undefined' && visualizerTypeSelect) visualizerTypeSelect.value = vizConfig.type;
+            if (typeof visualizerTypeSelect !== 'undefined' && visualizerTypeSelect) visualizerTypeSelect.value = cfg.type;
             blockMaxHeight.classList.add('hidden'); blockBarWidth.classList.add('hidden');
             blockVortex.classList.add('hidden'); blockRain.classList.add('hidden'); blockBarStyle.classList.add('hidden');
             
-            if (vizConfig.type === 'vortex') {
-                if(!tInitialized) initThreeJS();
+            if (cfg.type === 'vortex') {
+                if(!appState.get('tInitialized')) initThreeJS();
                 updateVortexVisibility();
                 if (!playlistView.classList.contains('-translate-y-full')) {} else { document.getElementById('webgl-canvas').classList.remove('opacity-0'); }
             } else { document.getElementById('webgl-canvas').classList.add('opacity-0'); }
 
-            if (vizConfig.type === 'vortex') { blockVortex.classList.remove('hidden'); blockVortex.classList.add('flex'); }
-            else if (vizConfig.type === 'rain') { blockRain.classList.remove('hidden'); blockRain.classList.add('flex'); }
-            else if (vizConfig.type === 'bar') {
+            if (cfg.type === 'vortex') { blockVortex.classList.remove('hidden'); blockVortex.classList.add('flex'); }
+            else if (cfg.type === 'rain') { blockRain.classList.remove('hidden'); blockRain.classList.add('flex'); }
+            else if (cfg.type === 'bar') {
                 // "Độ cao tối đa" vẫn dùng chung cho Bar (cả mirror/cascade); "Độ dày thanh" KHÔNG
                 // áp dụng cho Bar nữa (chỉ Black Hole) — xem updateBarStyleUI cho 2 setting riêng
                 // của kiểu Phản chiếu (số lượng thanh, độ to vòng tròn).
@@ -76,40 +80,42 @@
                 blockBarStyle.classList.remove('hidden'); blockBarStyle.classList.add('flex');
                 updateBarStyleUI();
             }
-            else if (vizConfig.type === 'black hole') {
+            else if (cfg.type === 'black hole') {
                 // Black Hole là visual DUY NHẤT còn dùng "Độ dày thanh".
                 blockMaxHeight.classList.remove('hidden'); blockMaxHeight.classList.add('flex');
                 blockBarWidth.classList.remove('hidden'); blockBarWidth.classList.add('flex');
             }
-            else if (vizConfig.type !== 'rubik' && vizConfig.type !== 'lightning') { 
+            else if (cfg.type !== 'rubik' && cfg.type !== 'lightning') { 
                 blockMaxHeight.classList.remove('hidden'); blockMaxHeight.classList.add('flex'); 
             }
 
-            if(analyser) { analyser.fftSize = (vizConfig.type === 'vortex' || vizConfig.type === 'lightning') ? APP_CONFIG.fftSizeHighRes : APP_CONFIG.fftSizeStandard; allocateBuffers(); }
+            if(appState.get('analyser')) { appState.get('analyser').fftSize = (cfg.type === 'vortex' || cfg.type === 'lightning') ? APP_CONFIG.fftSizeHighRes : APP_CONFIG.fftSizeStandard; allocateBuffers(); }
         }
 
         function updateBarStyleUI() {
-            const isMirror = vizConfig.barStyle === 'mirror';
+            const isMirror = appState.get('vizConfig').barStyle === 'mirror';
             barMirrorOptions.classList.toggle('hidden', !isMirror);
             barMirrorOptions.classList.toggle('flex', isMirror);
         }
 
         function updateColorMenuUI() {
-            if (vizConfig.mode === 'solid') { solidColorContainer.classList.remove('hidden'); dynColorContainer.classList.add('hidden'); dynColorContainer.classList.remove('flex'); } 
-            else if (vizConfig.mode === 'dynamic') { solidColorContainer.classList.add('hidden'); dynColorContainer.classList.remove('hidden'); dynColorContainer.classList.add('flex'); } 
+            const mode = appState.get('vizConfig').mode;
+            if (mode === 'solid') { solidColorContainer.classList.remove('hidden'); dynColorContainer.classList.add('hidden'); dynColorContainer.classList.remove('flex'); } 
+            else if (mode === 'dynamic') { solidColorContainer.classList.add('hidden'); dynColorContainer.classList.remove('hidden'); dynColorContainer.classList.add('flex'); } 
             else { solidColorContainer.classList.add('hidden'); dynColorContainer.classList.add('hidden'); dynColorContainer.classList.remove('flex'); }
             updateProgressBarCSS();
         }
 
         function applyEQPreset(mode) {
+            const eqBandNodes = appState.get('eqBandNodes');
             if (!eqBandNodes || eqBandNodes.length === 0) return;
-            const gains = mode === 'manual' ? vizConfig.manualEq : (EQ_PRESETS[mode] || EQ_PRESETS['flat']);
+            const gains = mode === 'manual' ? appState.get('vizConfig').manualEq : (EQ_PRESETS[mode] || EQ_PRESETS['flat']);
             for(let i = 0; i < eqBandNodes.length; i++) { if(eqBandNodes[i]) eqBandNodes[i].gain.value = gains[i] || 0; }
         }
 
         /** Đổi chất lượng canvas (low/medium/high...). msg.type 'visualizerDisplay.quality.change'. */
         function setVisualizerQuality(value) {
-            vizConfig.quality = value; resizeCanvas(); saveConfig();
+            appState.mutate('vizConfig', cfg => { cfg.quality = value; }); resizeCanvas(); saveConfig();
         }
 
         /**
@@ -134,9 +140,12 @@
          */
         async function applyBgImage(file) {
             await setMeta('bgImage', file);
-            if (vizConfig.bgImage && vizConfig.bgImage.startsWith('blob:')) URL.revokeObjectURL(vizConfig.bgImage);
-            vizConfig.bgImage = URL.createObjectURL(file);
-            vizConfig.bgImageEnabled = true; bgImageEnableToggle.checked = true;
+            appState.mutate('vizConfig', cfg => {
+                if (cfg.bgImage && cfg.bgImage.startsWith('blob:')) URL.revokeObjectURL(cfg.bgImage);
+                cfg.bgImage = URL.createObjectURL(file);
+                cfg.bgImageEnabled = true;
+            });
+            bgImageEnableToggle.checked = true;
             updatePlaylistBg(); saveConfig();
         }
 
@@ -146,33 +155,35 @@
          * @param {boolean} enabled
          */
         async function applyBgImageEnabled(enabled) {
-            vizConfig.bgImageEnabled = enabled;
+            appState.mutate('vizConfig', cfg => { cfg.bgImageEnabled = enabled; });
             if (!enabled) {
                 await delMeta('bgImage');
-                if (vizConfig.bgImage && vizConfig.bgImage.startsWith('blob:')) URL.revokeObjectURL(vizConfig.bgImage);
-                vizConfig.bgImage = '';
+                appState.mutate('vizConfig', cfg => {
+                    if (cfg.bgImage && cfg.bgImage.startsWith('blob:')) URL.revokeObjectURL(cfg.bgImage);
+                    cfg.bgImage = '';
+                });
             }
             updatePlaylistBg(); saveConfig();
         }
 
         /** Độ mờ ảnh nền. msg.type 'visualizerDisplay.bgBlur.input'. @param {string} value */
         function setBgBlur(value) {
-            vizConfig.bgBlur = value; valBgBlurDisplay.textContent = value + 'px'; updatePlaylistBg(); saveConfig();
+            appState.mutate('vizConfig', cfg => { cfg.bgBlur = value; }); valBgBlurDisplay.textContent = value + 'px'; updatePlaylistBg(); saveConfig();
         }
 
         /** Màu nền (khi không dùng ảnh). msg.type 'visualizerDisplay.bgColor.input'. @param {string} value */
         function setBgColor(value) {
-            vizConfig.bgColor = value; updateDOMBackground(); saveConfig();
+            appState.mutate('vizConfig', cfg => { cfg.bgColor = value; }); updateDOMBackground(); saveConfig();
         }
 
         /** Chế độ màu visualizer (solid/dynamic/none). msg.type 'visualizerDisplay.colorMode.change'. @param {string} value */
         function setColorMode(value) {
-            vizConfig.mode = value; updateColorMenuUI(); saveConfig();
+            appState.mutate('vizConfig', cfg => { cfg.mode = value; }); updateColorMenuUI(); saveConfig();
         }
 
         /** Màu solid từ color picker. msg.type 'visualizerDisplay.solidColor.pickerInput'. @param {string} value */
         function setSolidColorFromPicker(value) {
-            vizConfig.solidColor = value; solidColorText.value = value; updateProgressBarCSS(); saveConfig();
+            appState.mutate('vizConfig', cfg => { cfg.solidColor = value; }); solidColorText.value = value; updateProgressBarCSS(); saveConfig();
         }
 
         /**
@@ -182,62 +193,64 @@
          */
         function setSolidColorFromText(value) {
             if (!/^#[0-9A-F]{6}$/i.test(value)) return;
-            vizConfig.solidColor = value; solidColorPicker.value = value; updateProgressBarCSS(); saveConfig();
+            appState.mutate('vizConfig', cfg => { cfg.solidColor = value; }); solidColorPicker.value = value; updateProgressBarCSS(); saveConfig();
         }
 
         /** Màu A của gradient động. msg.type 'visualizerDisplay.dynColorA.input'. @param {string} value */
         function setDynColorA(value) {
-            vizConfig.dynA = value; saveConfig();
+            appState.mutate('vizConfig', cfg => { cfg.dynA = value; }); saveConfig();
         }
 
         /** Màu B của gradient động (cũng là màu thanh tiến trình lúc mode='dynamic'). msg.type
          * 'visualizerDisplay.dynColorB.input'. @param {string} value */
         function setDynColorB(value) {
-            vizConfig.dynB = value; updateProgressBarCSS(); saveConfig();
+            appState.mutate('vizConfig', cfg => { cfg.dynB = value; }); updateProgressBarCSS(); saveConfig();
         }
 
         /** Kiểu hiệu ứng Vortex con. msg.type 'visualizerDisplay.vortexStyle.change'. @param {string} value */
         function setVortexStyle(value) {
-            vizConfig.vortexStyle = value; updateVortexVisibility(); saveConfig();
+            appState.mutate('vizConfig', cfg => { cfg.vortexStyle = value; }); updateVortexVisibility(); saveConfig();
         }
 
         /** Kiểu hiệu ứng Bar con (mirror/cascade). msg.type 'visualizerDisplay.barStyle.change'. @param {string} value */
         function setBarStyle(value) {
-            vizConfig.barStyle = value; updateBarStyleUI(); saveConfig();
+            appState.mutate('vizConfig', cfg => { cfg.barStyle = value; }); updateBarStyleUI(); saveConfig();
         }
 
         /** Kiểu hiệu ứng Rain con. msg.type 'visualizerDisplay.rainStyle.change'. @param {string} value */
         function setRainStyle(value) {
-            vizConfig.rainStyle = value; resizeCanvas(); saveConfig();
+            appState.mutate('vizConfig', cfg => { cfg.rainStyle = value; }); resizeCanvas(); saveConfig();
         }
 
         /** Bật/tắt hiệu ứng chớp kính (Rain). msg.type 'visualizerDisplay.glassFlash.change'. @param {boolean} checked */
         function setGlassFlash(checked) {
-            vizConfig.glassFlash = checked; saveConfig();
+            appState.mutate('vizConfig', cfg => { cfg.glassFlash = checked; }); saveConfig();
         }
 
         /** Độ cao tối đa của bar. msg.type 'visualizerDisplay.maxHeight.input'. @param {string} value */
         function setMaxHeight(value) {
-            vizConfig.maxH = parseInt(value); valMaxDisplay.textContent = vizConfig.maxH; saveConfig();
+            appState.mutate('vizConfig', cfg => { cfg.maxH = parseInt(value); }); valMaxDisplay.textContent = appState.get('vizConfig').maxH; saveConfig();
         }
 
         /** Độ dày thanh (Black Hole). msg.type 'visualizerDisplay.barWidth.input'. @param {string} value */
         function setBarWidth(value) {
-            vizConfig.barWidth = parseInt(value); valWidthDisplay.textContent = vizConfig.barWidth; saveConfig();
+            appState.mutate('vizConfig', cfg => { cfg.barWidth = parseInt(value); }); valWidthDisplay.textContent = appState.get('vizConfig').barWidth; saveConfig();
         }
 
         /** Số lượng thanh mirror. msg.type 'visualizerDisplay.mirrorCount.input'. @param {string} value */
         function setMirrorCount(value) {
-            vizConfig.mirrorBarCount = parseInt(value); valMirrorCountDisplay.textContent = vizConfig.mirrorBarCount; saveConfig();
+            appState.mutate('vizConfig', cfg => { cfg.mirrorBarCount = parseInt(value); }); valMirrorCountDisplay.textContent = appState.get('vizConfig').mirrorBarCount; saveConfig();
         }
 
         /** Âm lượng tổng (masterGainNode). msg.type 'visualizerDisplay.volume.input'. @param {string} value */
         function setVolume(value) {
-            vizConfig.volume = parseInt(value); valVolumeDisplay.textContent = vizConfig.volume + '%'; 
-            if(masterGainNode) masterGainNode.gain.value = vizConfig.volume / 100; saveConfig();
+            appState.mutate('vizConfig', cfg => { cfg.volume = parseInt(value); });
+            const volume = appState.get('vizConfig').volume;
+            valVolumeDisplay.textContent = volume + '%'; 
+            if(appState.get('masterGainNode')) appState.get('masterGainNode').gain.value = volume / 100; saveConfig();
         }
 
         /** Đổi preset EQ (hoặc 'manual'). msg.type 'visualizerDisplay.eqMode.change'. @param {string} value */
         function setEQMode(value) {
-            vizConfig.eqMode = value; updateEQSlidersUI(value); applyEQPreset(value); saveConfig();
+            appState.mutate('vizConfig', cfg => { cfg.eqMode = value; }); updateEQSlidersUI(value); applyEQPreset(value); saveConfig();
         }
