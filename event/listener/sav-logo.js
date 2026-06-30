@@ -22,7 +22,7 @@ if (savLogo) {
             eventBus.send({ router: 'savLogo', type: 'savLogo.expand.toggle', payload: {} });
         });
         document.addEventListener('click', () => {
-            if (savLogoExpanded) eventBus.send({ router: 'savLogo', type: 'savLogo.expand.set', payload: { expand: false } });
+            if (appState.get('savLogoExpanded')) eventBus.send({ router: 'savLogo', type: 'savLogo.expand.set', payload: { expand: false } });
         });
     }
 }
