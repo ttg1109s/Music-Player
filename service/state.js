@@ -15,23 +15,39 @@
  * runtime của visualizer...) — 2 phạm vi KHÔNG chồng lấn, KHÔNG gộp chung.
  *
  * THIẾT KẾ:
- *   - STATE: plain object, truy cập trực tiếp `STATE.beatTimes` — zero-cost, an toàn cho hot
- *     path 60fps (vòng lặp vẽ visualizer). KHÔNG đi qua getter/setter ở đường đọc.
+ *   - STATE: plain object thật, NHƯNG KHÔNG được truy cập trực tiếp (`STATE.xxx`) ở bất kỳ file
+ *     nào ngoài service/state.js — kể cả đường ĐỌC. MỌI đọc/ghi (kể cả hot path 60fps vòng lặp
+ *     vẽ visualizer) ĐỀU BẮT BUỘC đi qua class AppState, không có ngoại lệ.
  *   - CONST: Object.freeze thật — ghi vào sẽ silently fail (strict mode: throw) theo đúng ngữ
- *     nghĩa "không bao giờ đổi sau khởi tạo".
- *   - class AppState: lớp quản lý có schema kiểu dữ liệu cho TỪNG key của STATE. Dùng qua
- *     `appState.set(key, value, options)` để có validate kiểu — set() SAI KIỂU sẽ:
- *       1. console.warn chi tiết (key, kiểu mong đợi, kiểu thực nhận, giá trị thực nhận)
- *       2. KHÔNG ghi giá trị sai vào STATE (silent — giữ nguyên giá trị cũ)
- *       3. Nếu options.notifyUI === true: hiện thêm alertModal (core/modal-choice.js) với
- *          options.message (mặc định 1 câu chung chung nếu không truyền) — alertModal CHỈ
- *          được gọi khi notifyUI === true, mặc định false (sửa đổi state là việc của
- *          lập trình viên, không nên làm phiền người dùng cuối trừ khi chủ động bật).
- *   - Ghi trực tiếp `STATE.xxx = ...` (không qua appState.set()) VẪN hoạt động bình thường —
- *     KHÔNG bị chặn, vì STATE là plain object thật để giữ zero-cost cho hot path. appState.set()
- *     là API KHUYẾN NGHỊ dùng ở các đường ghi KHÔNG phải hot path (đổi setting, xử lý sự kiện
- *     người dùng...), nơi có giá trị nhận lỗi-kiểu nhiều khả năng xảy ra hơn (vd đọc từ
- *     localStorage hỏng, JSON parse sai, input người dùng).
+ *     nghĩa "không bao giờ đổi sau khởi tạo". CONST vẫn truy cập trực tiếp `CONST.xxx` bình
+ *     thường (không thuộc phạm vi AppState — đây là hằng số readonly, không phải state).
+ *   - class AppState: lớp quản lý có schema kiểu dữ liệu cho TỪNG key của STATE. 3 phương thức:
+ *       • `appState.get(key)` — đọc giá trị hiện tại của 1 key. BẮT BUỘC dùng thay cho
+ *         `STATE.xxx` ở MỌI nơi, kể cả bên trong vòng lặp 60fps — không có ngoại lệ skipCheck ở
+ *         đường đọc (get() vốn đã không validate gì, chỉ trả thẳng `this._state[key]`, nên
+ *         không có chi phí kiểu-dữ-liệu nào để bỏ qua; mục tiêu BẮT BUỘC qua get() là để KHÔNG
+ *         CÒN tồn tại bất kỳ truy cập `STATE.xxx` trần nào ngoài file này, không phải vì lý do
+ *         hiệu năng).
+ *       • `appState.set(key, value, options)` — gán TOÀN BỘ giá trị mới cho 1 key (thay cả
+ *         reference). SAI KIỂU sẽ:
+ *           1. console.warn chi tiết (key, kiểu mong đợi, kiểu thực nhận, giá trị thực nhận)
+ *           2. KHÔNG ghi giá trị sai vào STATE (silent — giữ nguyên giá trị cũ)
+ *           3. Nếu options.notifyUI === true: hiện thêm alertModal (core/modal-choice.js) với
+ *              options.message (mặc định 1 câu chung chung nếu không truyền) — alertModal CHỈ
+ *              được gọi khi notifyUI === true, mặc định false (sửa đổi state là việc của lập
+ *              trình viên, không nên làm phiền người dùng cuối trừ khi chủ động bật).
+ *       • `appState.mutate(key, mutatorFn, options)` — thao tác IN-PLACE lên collection đã có
+ *         sẵn (vd `domNodesByKey.set(k, v)`, `pendingResortKeys.clear()`, `displayOrder.push(x)`,
+ *         hoán vị phần tử mảng...), KHÔNG gán lại reference. Validate lại kiểu của collection
+ *         SAU khi mutatorFn chạy xong (trừ khi skipCheck).
+ *       • set() và mutate() (KHÔNG áp dụng cho get()) nhận `options.skipCheck = true` để BỎ
+ *         QUA validate — CHỈ dùng cho hot path 60fps/vòng lặp taskManager tần suất cao (vòng lặp
+ *         vẽ visualizer: beatTimes, smoothedEnergy, frameCounter, dpr, stars, raindrops,
+ *         tCurrentWarpZ...; hoặc tick lặp lại qua taskManager như _listenTick), nơi chi phí gọi
+ *         matchesType() mỗi lần không đáng và giá trị ghi vào đã được tính nội bộ (rủi ro sai
+ *         kiểu thấp). Mặc định skipCheck = false cho MỌI key khác — kể cả các key rủi ro cao
+ *         (snapshot trong resume-state-storage.js, các field liên quan PERFORMANCE_PROFILES)
+ *         VẪN PHẢI validate bình thường, không được tự ý thêm skipCheck cho các key đó.
  *
  * PHẢI nạp TRƯỚC: core/config.js (vizConfig khởi tạo bằng { ...CONST.DEFAULT_VIZ_CONFIG }),
  *   và TRƯỚC toàn bộ core/ — vì rất nhiều file core sẽ migrate đọc CONST.MODES/CONST.EQ_PRESETS/...
@@ -373,7 +389,12 @@
                 this._schema = schema;
             }
 
-            /** Đọc giá trị hiện tại của 1 key. */
+            /**
+             * Đọc giá trị hiện tại của 1 key. ĐÂY LÀ CÁCH DUY NHẤT được phép đọc STATE từ file
+             * ngoài service/state.js — không có ngoại lệ cho hot path 60fps hay vòng lặp
+             * taskManager tần suất cao. Không validate gì (trả thẳng `this._state[key]`), nên
+             * không có overhead kiểu-dữ-liệu để cân nhắc bỏ qua như set()/mutate().
+             */
             get(key) {
                 return this._state[key];
             }
@@ -384,7 +405,7 @@
             }
 
             /**
-             * Ghi giá trị mới cho 1 key, CÓ validate kiểu theo schema.
+             * Ghi giá trị mới cho 1 key, CÓ validate kiểu theo schema (trừ khi skipCheck=true).
              *
              * @param {string} key
              * @param {*} value
@@ -395,11 +416,27 @@
              *   thao tác trực tiếp của người dùng).
              * @param {string} [options.message] - nội dung tuỳ chỉnh hiển thị trong modal khi
              *   notifyUI=true. Không truyền thì dùng câu mặc định chung chung kèm tên key.
-             * @returns {boolean} true nếu ghi thành công, false nếu bị từ chối do sai kiểu.
+             * @param {boolean} [options.skipCheck=false] - true thì BỎ QUA validate kiểu, ghi
+             *   thẳng `this._state[key] = value` không điều kiện. Dùng cho hot path 60fps (vòng
+             *   lặp vẽ visualizer: beatTimes, smoothedEnergy, frameCounter, dpr, stars,
+             *   raindrops, tCurrentWarpZ...) — nơi chi phí gọi matchesType() mỗi frame không
+             *   đáng, và giá trị ghi vào đã được tính toán nội bộ (không phải dữ liệu ngoài như
+             *   localStorage/JSON.parse nên rủi ro sai kiểu thấp). Mặc định false cho MỌI key
+             *   khác — kể cả các key rủi ro cao (vd snapshot trong resume-state-storage.js,
+             *   PERFORMANCE_PROFILES-liên-quan) vẫn PHẢI validate bình thường.
+             * @returns {boolean} true nếu ghi thành công, false nếu bị từ chối do sai kiểu
+             *   (skipCheck=true luôn trả về true, không bao giờ từ chối).
              */
             set(key, value, options) {
                 options = options || {};
                 const notifyUI = options.notifyUI === true; // mặc định false theo yêu cầu
+                const skipCheck = options.skipCheck === true; // mặc định false — chỉ hot path mới bật
+
+                if (skipCheck) {
+                    this._state[key] = value;
+                    return true;
+                }
+
                 const expectedType = this._schema[key];
 
                 if (expectedType === undefined) {
@@ -428,13 +465,58 @@
                 this._state[key] = value;
                 return true;
             }
+
+            /**
+             * Thao tác IN-PLACE lên 1 collection (Map/Set/Array/Object) đã có sẵn trong STATE,
+             * KHÔNG gán lại reference mới. Lý do cần API riêng (khác với set()): nhiều thao tác
+             * đọc/ghi thật ra là mutate-in-place trên CÙNG 1 object đã tồn tại — ví dụ
+             * `domNodesByKey.set(key, node)`, `pendingResortKeys.clear()`,
+             * `confirmedBrokenKeys.delete(key)`, `displayOrder.push(k)`,
+             * `shuffleIndices[i] = x` (hoán vị in-place) — set() (gán toàn bộ giá trị mới) không
+             * khớp ngữ nghĩa và bắt buộc lúc nào cũng phải đi qua class AppState, không được gọi
+             * thẳng `STATE.xxx.set(...)`/`STATE.xxx.push(...)` ở file ngoài.
+             *
+             * @param {string} key - key trong STATE, PHẢI đã tồn tại (không tạo mới).
+             * @param {function(collection): void} mutatorFn - nhận chính object/array/map/set
+             *   hiện có tại STATE[key], thực hiện thao tác in-place bên trong (không return gì,
+             *   không gán lại biến mới).
+             * @param {Object} [options]
+             * @param {boolean} [options.skipCheck=false] - bỏ qua validate kiểu sau khi mutate
+             *   (dùng cho hot path, giống set()). Mặc định false.
+             * @returns {boolean} true nếu mutate xong (collection tồn tại + đúng kiểu sau khi
+             *   mutate), false nếu key không tồn tại hoặc sai kiểu sau mutate (giữ nguyên warn).
+             */
+            mutate(key, mutatorFn, options) {
+                options = options || {};
+                const skipCheck = options.skipCheck === true;
+                const collection = this._state[key];
+
+                if (collection === undefined && !(key in this._state)) {
+                    console.warn(`[AppState.mutate] Key "${key}" không tồn tại trong STATE — không thể mutate.`);
+                    return false;
+                }
+
+                mutatorFn(collection);
+
+                if (skipCheck) return true;
+
+                const expectedType = this._schema[key];
+                if (expectedType !== undefined && !matchesType(collection, expectedType)) {
+                    console.warn(
+                        `[AppState.mutate] Sau khi mutate, key "${key}" không còn đúng kiểu "${expectedType}" — kiểm tra lại mutatorFn.`,
+                        'Giá trị hiện tại:', collection
+                    );
+                    return false;
+                }
+                return true;
+            }
         }
 
         /** Object STATE thật — plain object, export trực tiếp để truy cập zero-cost. */
         const STATE = buildDefaultState();
 
-        /** vizConfig khởi tạo thật SAU khi CONST sẵn sàng — { ...DEFAULT_VIZ_CONFIG } đúng hành vi gốc. */
-        STATE.vizConfig = { ...CONST.DEFAULT_VIZ_CONFIG };
-
-        /** Instance quản lý — dùng appState.set(key, value, options) ở các đường ghi cần validate. */
+        /** Instance quản lý — MỌI đường ghi vào STATE từ file khác PHẢI đi qua appState.set()/mutate(), không gán thẳng STATE.xxx = ... */
         const appState = new AppState(STATE, STATE_SCHEMA);
+
+        /** vizConfig khởi tạo thật SAU khi CONST sẵn sàng — { ...DEFAULT_VIZ_CONFIG } đúng hành vi gốc. */
+        appState.set('vizConfig', { ...CONST.DEFAULT_VIZ_CONFIG });
