@@ -26,21 +26,9 @@
  * file để không phải sửa lan ra ngoài module.
  */
 
-        // ----- Nguồn chân lý (RAM) -----
-        let playlistOrder = [];   // mọi key hợp lệ quét được từ store `songs` (thứ tự thêm vào)
-        let displayOrder = [];    // (B) HÀNG ĐỢI PHÁT — Next/Prev khi không shuffle
-        let renderOrder = [];     // (A) DANH SÁCH HIỂN THỊ — đã sort + lọc tìm kiếm, chỉ để vẽ DOM
-
-        let playlistCache = new Map();   // key -> {filename, tag, cover, duration}
-        let songNameIndex = new Map();   // key -> tên đã chuẩn hoá (bỏ dấu, hạ thường) để sort
-        let confirmedBrokenKeys = new Set(); // key lỗi phát thật, người dùng chọn "Giữ lại"
-        let currentKey = null;
-
-        let displaySortMode = 'az';  // 'default' | 'az' | 'za' (KHÔNG còn 'random' — bỏ ở v6)
-        let pendingResortKeys = new Set(); // key mới thêm lúc đang phát, đợi chạm biên mới sort lại hàng đợi
-        let searchQuery = '';        // chuỗi tìm kiếm hiện tại (lọc renderOrder, KHÔNG đụng hàng đợi phát)
-
-        const domNodesByKey = new Map(); // key -> phần tử DOM đã render (diff-render)
+        // playlistOrder, displayOrder, renderOrder, playlistCache, songNameIndex,
+        // confirmedBrokenKeys, currentKey, displaySortMode, pendingResortKeys, searchQuery,
+        // domNodesByKey — STATE, xem service/state.js.
 
         function formatTime(seconds) {
             if (isNaN(seconds)) return "0:00";
