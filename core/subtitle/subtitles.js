@@ -31,15 +31,18 @@
         }
 
         function buildSRTString() {
-            let out = ""; subtitles.forEach((s, i) => { out += `${i+1}\n${s.startStr} --> ${s.endStr}\n${s.text}\n\n`; }); return out.trim();
+            let out = ""; appState.get('subtitles').forEach((s, i) => { out += `${i+1}\n${s.startStr} --> ${s.endStr}\n${s.text}\n\n`; }); return out.trim();
         }
 
         function renderSubList() {
             subListContainer.innerHTML = '';
+            const subtitles = appState.get('subtitles');
             if (subtitles.length === 0) { subListContainer.appendChild(subEmptyState); subEmptyState.classList.remove('hidden'); return; }
             subEmptyState.classList.add('hidden');
-            subtitles.sort((a,b) => a.start - b.start); 
+            appState.mutate('subtitles', arr => arr.sort((a,b) => a.start - b.start));
             
+            const editingSubId = appState.get('editingSubId');
+            const activeSubIds = appState.get('activeSubIds');
             subtitles.forEach((sub, index) => {
                 const isEditing = editingSubId === sub.id; const isActive = activeSubIds.has(sub.id);
                 const card = document.createElement('div');
@@ -84,82 +87,90 @@
         }
 
         /** Core thuần: bắt đầu sửa 1 dòng sub (chuyển sang sub-edit-mode). */
-        function editSubItem(id) { editingSubId = id; renderSubList(); }
+        function editSubItem(id) { appState.set('editingSubId', id); renderSubList(); }
 
         /** Core thuần: lưu nội dung đang sửa của 1 dòng sub (đọc 3 input động theo đúng id đó). */
         function saveSubItem(id) {
-            let sub = subtitles.find(s => s.id === id); if(!sub) return;
-            sub.startStr = document.getElementById(`edit-start-${id}`).value; sub.endStr = document.getElementById(`edit-end-${id}`).value; sub.text = document.getElementById(`edit-text-${id}`).value;
-            sub.start = strToSec(sub.startStr); sub.end = strToSec(sub.endStr);
-            editingSubId = null; renderSubList();
+            let found = true;
+            appState.mutate('subtitles', arr => {
+                let sub = arr.find(s => s.id === id); if(!sub) { found = false; return; }
+                sub.startStr = document.getElementById(`edit-start-${id}`).value; sub.endStr = document.getElementById(`edit-end-${id}`).value; sub.text = document.getElementById(`edit-text-${id}`).value;
+                sub.start = strToSec(sub.startStr); sub.end = strToSec(sub.endStr);
+            });
+            if (!found) return;
+            appState.set('editingSubId', null); renderSubList();
         }
 
         /** Core thuần: xóa 1 dòng sub theo id. */
-        function deleteSubItem(id) { subtitles = subtitles.filter(s => s.id !== id); editingSubId = null; renderSubList(); }
+        function deleteSubItem(id) { appState.set('subtitles', appState.get('subtitles').filter(s => s.id !== id)); appState.set('editingSubId', null); renderSubList(); }
 
         function resetAutoSub() {
-            autoSubStartTime = null;
+            appState.set('autoSubStartTime', null);
             btnAutoTiming.classList.remove('bg-red-500', 'animate-pulse'); btnAutoTiming.classList.add('bg-rose-600');
             iconAutoTimingRecording.classList.add('hidden'); iconAutoTimingIdle.classList.remove('hidden');
         }
 
         /** Core thuần: nhịp bấm 1 (bắt đầu auto-timing) hoặc nhịp 2 (kết thúc, tạo dòng sub mới). */
         function handleAutoTimingClick() {
-            if (autoSubStartTime === null) {
-                autoSubStartTime = audioPlayer.currentTime; btnAutoTiming.classList.remove('bg-rose-600'); btnAutoTiming.classList.add('bg-red-500', 'animate-pulse');
+            if (appState.get('autoSubStartTime') === null) {
+                appState.set('autoSubStartTime', audioPlayer.currentTime); btnAutoTiming.classList.remove('bg-rose-600'); btnAutoTiming.classList.add('bg-red-500', 'animate-pulse');
                 iconAutoTimingIdle.classList.add('hidden'); iconAutoTimingRecording.classList.remove('hidden');
             } else {
+                let startTime = appState.get('autoSubStartTime');
                 let endTime = audioPlayer.currentTime;
-                if (endTime < autoSubStartTime) { let temp = autoSubStartTime; autoSubStartTime = endTime; endTime = temp; }
-                let newSub = { id: Date.now().toString(), start: autoSubStartTime, end: endTime, startStr: secToStr(autoSubStartTime), endStr: secToStr(endTime), text: t('subtitleModal.autoTiming.defaultText') };
-                subtitles.push(newSub); resetAutoSub(); renderSubList();
+                if (endTime < startTime) { let temp = startTime; startTime = endTime; endTime = temp; }
+                let newSub = { id: Date.now().toString(), start: startTime, end: endTime, startStr: secToStr(startTime), endStr: secToStr(endTime), text: t('subtitleModal.autoTiming.defaultText') };
+                appState.mutate('subtitles', arr => arr.push(newSub)); resetAutoSub(); renderSubList();
                 taskManager.once(() => { document.getElementById('sub-list-container').scrollTop = document.getElementById('sub-list-container').scrollHeight; }, 100);
             }
         }
 
         /** Core thuần: thêm 1 dòng sub trống mới, nối ngay sau dòng cuối hiện có. */
         function addNewSubLine() {
+            const subtitles = appState.get('subtitles');
             let lastSub = subtitles[subtitles.length - 1]; let newStart = lastSub ? lastSub.end + 0.1 : 0; let newEnd = newStart + 2;
             let newSub = { id: Date.now().toString(), start: newStart, end: newEnd, startStr: secToStr(newStart), endStr: secToStr(newEnd), text: t('subtitleModal.newLine.defaultText') };
-            subtitles.push(newSub); editingSubId = newSub.id; renderSubList();
+            appState.mutate('subtitles', arr => arr.push(newSub)); appState.set('editingSubId', newSub.id); renderSubList();
             taskManager.once(() => { document.getElementById('sub-list-container').scrollTop = document.getElementById('sub-list-container').scrollHeight; }, 100);
         }
 
         /** Core thuần: trả {status} — 'empty' nếu chưa có sub nào, ngược lại tự build + tải file
          *  .srt ngay (download không cần modal/shield gì cả). */
         function exportSubtitlesAsSrt() {
-            if (subtitles.length === 0) return { status: 'empty' };
+            if (appState.get('subtitles').length === 0) return { status: 'empty' };
             const blob = new Blob([buildSRTString()], { type: "text/plain;charset=utf-8" });
             const url = URL.createObjectURL(blob); const a = document.createElement('a');
-            const cached = currentKey ? playlistCache.get(currentKey) : null;
+            const currentKey = appState.get('currentKey');
+            const cached = currentKey ? appState.get('playlistCache').get(currentKey) : null;
             a.href = url; a.download = `${cached?.tag?.title || 'VisualMaster_Sub'}.srt`; a.click(); URL.revokeObjectURL(url);
             return { status: 'ok' };
         }
 
         /** Core thuần: đọc 1 file .srt vừa upload, parse + render lại danh sách. */
         function importSrtFile(file) {
-            const reader = new FileReader(); reader.onload = (evt) => { subtitles = parseSRT(evt.target.result); renderSubList(); }; reader.readAsText(file);
+            const reader = new FileReader(); reader.onload = (evt) => { appState.set('subtitles', parseSRT(evt.target.result)); renderSubList(); }; reader.readAsText(file);
         }
 
         /** Core thuần: áp dụng toàn bộ phụ đề đang soạn — đóng modal, bật lại "Hiện phụ đề" nếu
          *  cần, persist vào IndexedDB, rồi tua nhạc về đầu + phát lại. */
         async function applySubtitlesAndClose() {
-            editingSubId = null; resetAutoSub(); renderSubList();
+            appState.set('editingSubId', null); resetAutoSub(); renderSubList();
             // Tự bật lại "Hiện phụ đề" nếu đang tắt — người dùng vừa soạn xong, hợp lý là muốn xem
             // ngay. Đồng bộ LUÔN vào vizConfig + lưu (ver 8 refine) để checkbox trong Cài đặt khớp
             // với trạng thái thật, không chỉ đổi biến runtime như trước.
-            if (!isSubtitlesEnabled) {
-                isSubtitlesEnabled = true;
-                vizConfig.subtitlesEnabled = true;
+            if (!appState.get('isSubtitlesEnabled')) {
+                appState.set('isSubtitlesEnabled', true);
+                appState.mutate('vizConfig', cfg => { cfg.subtitlesEnabled = true; });
                 saveConfig();
                 updateSubToggleUI();
             }
             subtitleModal.classList.add('translate-y-full'); clearAllActiveSubBlocks();
 
             // Ghi đè subtitles của bài hiện tại vào IndexedDB — điểm xác nhận + persist duy nhất.
+            const currentKey = appState.get('currentKey');
             if (currentKey) {
                 const record = await getSongRecord(currentKey);
-                if (record) { record.subtitles = subtitles.slice(); await setSongRecord(currentKey, record); }
+                if (record) { record.subtitles = appState.get('subtitles').slice(); await setSongRecord(currentKey, record); }
             }
 
             if (!audioPlayer.paused || audioPlayer.currentTime > 0) { audioPlayer.currentTime = 0; audioPlayer.play(); }

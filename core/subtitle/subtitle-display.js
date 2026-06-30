@@ -11,8 +11,9 @@
          * khác (ví dụ subtitles.js tự bật lại sub khi người dùng tải file .srt mới — xem mục đó).
          */
         function updateSubToggleUI() {
-            subToggleBadge.classList.toggle('hidden', !isSubtitlesEnabled);
-            if (typeof settingSubtitlesEnabled !== 'undefined' && settingSubtitlesEnabled) settingSubtitlesEnabled.checked = isSubtitlesEnabled;
+            const enabled = appState.get('isSubtitlesEnabled');
+            subToggleBadge.classList.toggle('hidden', !enabled);
+            if (typeof settingSubtitlesEnabled !== 'undefined' && settingSubtitlesEnabled) settingSubtitlesEnabled.checked = enabled;
         }
 
         // Khung phụ đề chỉ thực sự hiện (chiếm chỗ trên màn hình) khi có ít nhất 1 dòng
@@ -26,7 +27,7 @@
         // Áp style khung (nền/viền/bo góc) + style chữ phụ đề từ vizConfig.subtitleStyle
         // lên DOM thật. Được gọi lúc loadConfig() và mỗi khi người dùng đổi 1 setting.
         function applySubtitleStyle() {
-            const s = vizConfig.subtitleStyle;
+            const s = appState.get('vizConfig').subtitleStyle;
             const bgRgb = hexToRgb(s.bgColor);
             subtitleFrame.style.backgroundColor = `rgba(${bgRgb.r}, ${bgRgb.g}, ${bgRgb.b}, ${s.bgOpacity})`;
             const borderRgb = hexToRgb(s.borderColor);
@@ -41,19 +42,21 @@
         }
 
         function processSubtitles(currentTime) {
-            if (!isSubtitlesEnabled) { clearAllActiveSubBlocks(); return; }
+            if (!appState.get('isSubtitlesEnabled')) { clearAllActiveSubBlocks(); return; }
 
             // Tập các phụ đề đang trong khoảng hiệu lực [start, end] tại thời điểm hiện tại.
             // Khác với trước (chỉ giữ 1 dòng active), giờ TẤT CẢ phụ đề chồng lấn nhau đều
             // được tính là active cùng lúc — mỗi dòng có 1 khối DOM riêng (append khi bắt đầu,
             // remove khi kết thúc), nên N dòng overlap có thể hiển thị đồng thời.
             const nowActive = new Map(); // id -> sub object
+            const subtitles = appState.get('subtitles');
             for (let i = 0; i < subtitles.length; i++) {
                 const s = subtitles[i];
                 if (currentTime >= s.start && currentTime <= s.end) nowActive.set(s.id, s);
             }
 
             let changed = false;
+            const activeSubIds = appState.get('activeSubIds');
 
             // Dòng vừa hết hiệu lực: fade-out rồi xoá khối DOM tương ứng.
             activeSubIds.forEach(id => {
@@ -72,11 +75,11 @@
                 }
             });
 
-            activeSubIds = new Set(nowActive.keys());
+            appState.set('activeSubIds', new Set(nowActive.keys()), { skipCheck: true });
 
             if (changed) {
                 updateSubtitleFrameVisibility();
-                if (!subtitleModal.classList.contains('translate-y-full') && editingSubId === null) renderSubList();
+                if (!subtitleModal.classList.contains('translate-y-full') && appState.get('editingSubId') === null) renderSubList();
             }
         }
 
@@ -106,9 +109,10 @@
         }
 
         function clearAllActiveSubBlocks() {
+            const activeSubIds = appState.get('activeSubIds');
             if (activeSubIds.size === 0) return;
             activeSubIds.forEach(id => removeActiveSubBlock(id));
-            activeSubIds = new Set();
+            appState.set('activeSubIds', new Set());
         }
 
         const noSleep = new NoSleep(); let nativeWakeLock = null;
