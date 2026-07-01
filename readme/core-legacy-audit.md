@@ -1,11 +1,17 @@
-# Audit: function Core vi phạm quy tắc ver 12 (`readme/core-function-conventions.md`)
+# Nợ kỹ thuật: function Core di sản vi phạm quy tắc ver 12 (`readme/core-function-conventions.md`)
 
+> **[Chính thức]** Toàn bộ function trong danh sách dưới đây được ghi nhận là **NỢ KỸ THUẬT** kể
+> từ ver 12 — KHÔNG bắt buộc sửa ngay, nhưng khi 1 function trong danh sách bị đụng tới (sửa thật,
+> không phải đọc lướt), phần bị sửa PHẢI tuân theo `core-function-conventions.md` (4 rule: đơn
+> tuyến nghiệp vụ, không tự đọc `appState`, core-gọi-core chỉ hợp lệ khi dùng return value, log
+> `writer/page/content` khi set/mutate state). Mọi function/code **MỚI viết** từ ver 12 trở đi —
+> dù trong `core/` hay bất kỳ thư mục nào khác — **bắt buộc tuân theo 4 rule ngay từ đầu**, không
+> được thêm vào danh sách nợ này.
+>
 > Sinh bằng script quét cú pháp thật trên toàn bộ 48 file `core/**/*.js` (294 function
 > top-level), KHÔNG phải liệt kê bằng mắt/suy đoán — nhưng Rule 1/3 vẫn cần xác nhận thủ
 > công ở mức độ ghi rõ dưới đây (script không thể phán đoán ngữ nghĩa "có phải 2 tiến trình
-> nghiệp vụ khác nhau" 100% chắc chắn). Đây là **audit tham khảo**, không phải worklist bắt
-> buộc sửa ngay — theo đúng phạm vi đã chốt ở `core-function-conventions.md`, core di sản
-> **giữ nguyên**, danh sách này chỉ để biết hiện trạng khi cần đụng vào file nào đó.
+> nghiệp vụ khác nhau" 100% chắc chắn).
 
 ## Loại trừ hot-path (không đưa vào audit)
 

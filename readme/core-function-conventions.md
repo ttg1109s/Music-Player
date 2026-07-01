@@ -7,9 +7,9 @@
 
 Đọc cùng [event-bus-flow.md](./event-bus-flow.md) — tài liệu đó quy định luồng
 `listener → router → core/workflow/VirtualMachineState`; tài liệu NÀY quy định riêng bên TRONG 1
-function Core/nghiệp vụ được viết ra sao. Xem [core-legacy-audit.md](./core-legacy-audit.md) cho
-danh sách function core di sản hiện đang vi phạm 3 rule dưới đây (audit tham khảo, KHÔNG bắt buộc
-sửa ngay — core di sản giữ nguyên theo phạm vi áp dụng ở trên).
+function Core/nghiệp vụ được viết ra sao. Xem [core-legacy-audit.md](./core-legacy-audit.md) —
+danh sách **nợ kỹ thuật chính thức**: function core di sản đang vi phạm 4 rule dưới đây (không bắt
+buộc sửa ngay, chỉ bắt buộc khi function đó bị đụng tới thật — xem đầu file đó).
 
 ---
 
@@ -88,6 +88,7 @@ function core khác) chịu trách nhiệm `appState.get()` trước, rồi truy
 **ĐƯỢC PHÉP:**
 - `appState.set(...)` / `appState.mutate(...)` — chỉ chặn chiều ĐỌC, không chặn chiều GHI (hàm
   vẫn tạo side-effect ra ngoài bình thường, chỉ không được tự ý ĐỌC state để quyết định hành vi).
+  **Phải kèm `console.log` ngay dưới — xem Rule 4 dưới đây.**
 - Biến nội bộ (`let`/`const` khai báo trong scope hàm) tự do, không giới hạn.
 
 ```js
@@ -181,6 +182,38 @@ thường trong các vòng lặp này (nếu thoả tiêu chí return-value), ch
 
 ---
 
+## Rule 4 — `appState.set()`/`mutate()` PHẢI có `console.log` ngay dưới
+
+Mọi lời gọi `appState.set(...)` hoặc `appState.mutate(...)` trong 1 function core phải có
+`console.log` NGAY DƯỚI dòng gọi, đúng format:
+```js
+console.log(`writer: "<tên function>", page: "<state key>", content: "<value hoặc mô tả ngắn>"`);
+```
+- `writer` — tên function đang ghi state (giống `sender` ở Rule 3, đặt tên khác để phân biệt 2
+  loại log: Rule 3 log LỜI GỌI, Rule 4 log GHI STATE).
+- `page` — đúng tên key `appState` bị ghi (vd `'currentModeIndex'`, `'vizConfig'`).
+- `content` — với `set()`: giá trị mới được ghi; với `mutate()` (không có 1 "giá trị" đơn lẻ vì
+  thao tác in-place lên collection): mô tả ngắn thao tác vừa làm (vd `"push filter mới vào
+  eqBandNodes"`).
+
+```js
+function applyModeChange(idx) {
+    appState.set('currentModeIndex', idx);
+    console.log(`writer: "applyModeChange", page: "currentModeIndex", content: "${idx}"`);
+}
+```
+```js
+function addEqFilter(filter) {
+    appState.mutate('eqBandNodes', arr => arr.push(filter));
+    console.log(`writer: "addEqFilter", page: "eqBandNodes", content: "push filter mới vào mảng"`);
+}
+```
+
+**Ngoại lệ bắt buộc — KHÔNG log trong hot path 60fps** (giống hệt lý do ở Rule 3): vòng vẽ
+visualizer (`core/visualizer/draw-visualizer.js`) gọi `appState.set(..., { skipCheck: true })`
+rất nhiều lần MỖI FRAME (`frameCounter`, `beatScale`, `smoothedEnergy`, `globalHueOffset`...) —
+log từng lần sẽ spam console/tốn hiệu năng thật, KHÔNG áp dụng Rule 4 cho các lời gọi này.
+
 ## Bảng tổng hợp
 
 | Câu hỏi | Đúng luật ver 12 |
@@ -192,5 +225,6 @@ thường trong các vòng lặp này (nếu thoả tiêu chí return-value), ch
 | Function gọi function core khác CÓ return value VÀ dùng giá trị đó? | **ĐƯỢC** — phải `console.log` `sender/callTo/request` ngay dưới, TRỪ hot path 60fps |
 | Function gọi function core khác VOID (không return, chỉ side-effect), gọi ĐỒNG BỘ? | **KHÔNG được** — đây LÀ Workflow, chuyển ra `/event/workflow/`, bất kể đơn giản hay cần shield/modal |
 | Function gọi function khác BẤT ĐỒNG BỘ và KHÔNG `await`/không chờ? | **ĐƯỢC** — ngoại lệ, không tạo phụ thuộc thứ tự nên không phải Workflow |
+| Function có `appState.set()`/`mutate()`? | Bắt buộc `console.log` `writer/page/content` ngay dưới, TRỪ hot path 60fps |
 
 ← [Quay lại README](../README.md)
