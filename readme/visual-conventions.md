@@ -22,9 +22,10 @@ trần nào để đọc trực tiếp** (đã migrate 100% qua `service/state.j
 [changelog/v11.md](./changelog/v11.md) mục 3). Trong 1 hàm vẽ gọi nhiều lần/khung hình, đọc 1 lần
 ra biến cục bộ đầu hàm (`const cfg = appState.get('vizConfig');`) rồi dùng `cfg.xxx` trong toàn hàm
 — KHÔNG gọi `appState.get('vizConfig')` lặp lại nhiều lần trong cùng 1 vòng lặp vẽ (đúng khuyến
-nghị hiệu năng hot path 60fps của `service/state.js`). `PERFORMANCE_PROFILES`/`MODES` vẫn là hằng
-số **local** trong `core/config.js` (CHƯA migrate sang `CONST` — xem changelog/v11.md mục 3), đọc
-trực tiếp như cũ, không qua `appState`.
+nghị hiệu năng hot path 60fps của `service/state.js`). `PERFORMANCE_PROFILES`/`MODES` [v11] đã
+migrate sang `CONST` (`service/state.js`) — đọc qua `CONST.PERFORMANCE_PROFILES`/`CONST.MODES`,
+không còn bản local trong `core/config.js` nữa. Property LỒNG BÊN TRONG (`CONST.PERFORMANCE_PROFILES[quality].stars`/`.streetRain`/`.tunnelRings`...)
+giữ nguyên như cũ, chỉ tên hằng số ngoài cùng đổi.
 
 Khi thêm visual mới: đăng ký hàm vẽ vào `VISUALIZER_DRAWERS` trong
 `core/visualizer/draw-visualizer.js`, thêm tên `type` vào `MODES` (`core/config.js`), và tự kiểm 4

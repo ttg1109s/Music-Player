@@ -14,7 +14,7 @@
 | Thêm 1 cụm nghiệp vụ hoàn toàn mới | Tạo cả 3 file `event/router/<cụm>.js` (bắt buộc, tự `eventBus.register()`), `event/listener/<cụm>.js` (bắt buộc), `event/workflow/<cụm>.js` (chỉ nếu >1 hàm core hoặc cần shield/modal) — thêm đúng thứ tự 3 dòng `<script>` vào cuối `index.html` (workflow → router → listener), xem [script-load-order.md](./script-load-order.md) mục 5 |
 | Đọc/ghi 1 biến state nghiệp vụ toàn app (không phải context riêng của 1 router) | `service/state.js` — thêm key vào `STATE_SCHEMA` (kèm kiểu dữ liệu) + giá trị khởi tạo trong `STATE`, đọc/ghi qua `appState.get('key')`/`appState.set('key', value)`/`appState.mutate('key', fn)` ở MỌI nơi, không khai `let` cục bộ mới |
 | Đọc/ghi state chỉ dùng RIÊNG trong 1 router (context giữa 2 message liên tiếp) | `new EventStore('tênRouter')` ngay trong file router đó — xem comment đầu `event/store.js` |
-| Thêm 1 hằng số cấu hình mới (không đổi trong lúc chạy) | `core/config.js` — **CHƯA thêm vào `CONST` (`service/state.js`)** vì `CONST` hiện chưa được migrate thật (xem changelog/v11.md mục 3), thêm ở `config.js` theo đúng cách cũ cho tới khi cụm migrate CONST được làm |
+| Thêm 1 hằng số cấu hình mới (không đổi trong lúc chạy) | `service/state.js` — thêm vào `CONST` (`Object.freeze`) theo đúng kiểu, đọc qua `CONST.xxx` ở nơi dùng. `core/config.js` chỉ còn giữ local `EQ_FREQS`/`EQ_LABELS` (2 hằng KHÔNG thuộc `CONST`) |
 
 ## Theo tính năng cụ thể
 
@@ -67,7 +67,7 @@
 | Hiệu ứng Vortex (Three.js) | `core/three-vortex.js` (khởi tạo) + `core/visualizer/types/vortex.js` (mỗi khung hình) |
 | Khởi tạo đèn đường/hàng rào/mưa phố | `core/canvas-scene-setup.js` (`generateStreetScene`, `getPlayerBarSafeHeight`) |
 | Phát hiện pitch (YIN), nốt MIDI cho Rubik | `core/audio-analysis.js` (`updateStatsDashboard`), `core/audio-engine.js` + `core/pitch-worker.js` (Worker riêng) |
-| Thêm trường cấu hình mới (lưu vào `vizConfig`) | `core/config.js` (giá trị mặc định trong `DEFAULT_VIZ_CONFIG`) + đọc/ghi qua `appState.get/set('vizConfig')` ở nơi dùng |
+| Thêm trường cấu hình mới (lưu vào `vizConfig`) | `service/state.js` (giá trị mặc định trong `CONST.DEFAULT_VIZ_CONFIG`) + đọc/ghi qua `appState.get/set('vizConfig')` ở nơi dùng |
 | Màu sắc, nền | `core/color-utils.js` |
 | Toàn bộ CSS, theme kính mờ | `assets/css/style.css` |
 

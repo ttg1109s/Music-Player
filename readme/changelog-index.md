@@ -1,8 +1,8 @@
 # Mục lục Changelog
 
 Bản hiện tại: **ver 11** — chốt chính thức kiến trúc `/event/` (14 cụm, 119 listener) + State quản
-lý tập trung (`service/state.js`, 96 key đã migrate 100%, CONST 16 hằng CHƯA migrate) + 3 lỗi nhỏ.
-Xem đầy đủ ở [v11.md](./changelog/v11.md).
+lý tập trung (`service/state.js`, cả 96 key STATE lẫn 16 hằng CONST đều đã migrate 100%) + 3 lỗi
+nhỏ. Xem đầy đủ ở [v11.md](./changelog/v11.md).
 
 - [v11.md](./changelog/v11.md) — event bus hoàn tất, State tập trung (đã audit từng key), 3 lỗi nhỏ
 - [v10-lang-test.md](./changelog/v10-lang-test.md) — khung đa ngôn ngữ (i18n), English gốc cứng
@@ -27,11 +27,11 @@ Xem đầy đủ ở [v11.md](./changelog/v11.md).
 ## Tóm tắt từng bản (cũ → mới)
 
 Ver 11 KHÔNG có tính năng mới cho người dùng cuối — thuần tái cấu trúc nội bộ. Kiến trúc `/event/`
-(`listener → router → workflow → core`) hoàn tất cho 14 cụm (119 listener nghiệp vụ), State
-(96 biến mutable) migrate 100% qua `service/state.js`, CONST (16 hằng số) vẫn CHƯA migrate (để dành
-cụm sau). 3 lỗi nhỏ phát hiện qua audit: 1 file mồ côi, 1 biến khai báo lạc chỗ, 1 comment sai
-đường dẫn. Chốt chính thức 2 batch trước từng để "chưa final" (mini-fix + i18n) — chi tiết đầy đủ,
-kèm số liệu đối chiếu qua script, ở [v11.md](./changelog/v11.md).
+(`listener → router → workflow → core`) hoàn tất cho 14 cụm (119 listener nghiệp vụ), cả State
+(96 biến mutable) lẫn CONST (16 hằng số) đều migrate 100% qua `service/state.js` (93 chỗ dùng
+`CONST.xxx` thật trên 18 file). 3 lỗi nhỏ phát hiện qua audit: 1 file mồ côi, 1 biến khai báo lạc
+chỗ, 1 comment sai đường dẫn. Chốt chính thức 2 batch trước từng để "chưa final" (mini-fix + i18n)
+— chi tiết đầy đủ, kèm số liệu đối chiếu qua script, ở [v11.md](./changelog/v11.md).
 
 Ver 10 tập trung sửa lỗi thực tế phát hiện khi dùng trên iOS (đặc biệt khi
 chuyển tab/ẩn trình duyệt): dồn toàn bộ `setInterval`/`setTimeout` qua 1

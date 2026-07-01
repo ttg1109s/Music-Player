@@ -72,11 +72,11 @@ visual-master/
 │   └── visualizer-settings-drawer.js  (Chất lượng/Hình học-Màu sắc/Tự động đổi hiệu ứng)
 │
 ├── core/                        (hàm thuần + STATE — gọi document.getElementById ngay khi nạp)
-│   ├── config.js                — APP_CONFIG, PERFORMANCE_PROFILES, EQ_*, MODES, DEFAULT_VIZ_CONFIG,
-│   │                              global error handler (window 'error'/'unhandledrejection'),
-│   │                              saveConfig()/loadConfig() [v11: bản local các hằng số này CHƯA
-│   │                              migrate sang CONST (service/state.js) dù đã có bản đóng băng ở
-│   │                              đó — xem changelog/v11.md mục 3, nợ kỹ thuật còn lại]
+│   ├── config.js                — EQ_FREQS/EQ_LABELS (2 hằng KHÔNG thuộc CONST, giữ local), global
+│   │                              error handler (window 'error'/'unhandledrejection'),
+│   │                              saveConfig()/loadConfig() [v11: APP_CONFIG/PERFORMANCE_PROFILES/
+│   │                              EQ_PRESETS/MODES/DEFAULT_VIZ_CONFIG/AUTO_SWITCH_VISUAL_MIN_SECONDS/
+│   │                              DEFAULT_VINYL đã XOÁ khỏi đây, đọc qua CONST.xxx (service/state.js)]
 │   ├── dom-refs.js               — mọi document.getElementById(...), RUBIK_NOTE_TO_TURN
 │   ├── sav-logo.js               — setSavLogoExpanded(), gọi bởi event/router/sav-logo.js
 │   ├── task-manager.js           — class Loop/TaskManager, instance global taskManager
@@ -152,8 +152,8 @@ visual-master/
 │
 ├── service/
 │   ├── state.js                  — [v11] STATE_SCHEMA (96 key) + class AppState (get/set/mutate,
-│   │                              validate kiểu, skipCheck cho hot path) + CONST (16 hằng, ĐÃ có
-│   │                              hạ tầng nhưng CHƯA migrate thật — xem changelog/v11.md mục 3)
+│   │                              validate kiểu, skipCheck cho hot path) + CONST (16 hằng, ĐÃ
+│   │                              migrate 100% — 93 chỗ dùng CONST.xxx thật trên 18 file khác nhau)
 │   ├── adapter/                  — scaffolding TƯƠNG LAI cho native adapter bridge, CHƯA có code
 │   │   ├── android/                 thật, chỉ giữ chỗ thư mục
 │   │   ├── ios/
