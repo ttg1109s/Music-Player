@@ -106,7 +106,12 @@
          *
          * FIX (ver 10 refine #3, bổ sung): KHÔNG còn được gọi lúc tab/app bị ẩn nữa (xem wakelock.js
          * — giờ ẩn tab chỉ lưu state + reload thật NGAY, không tự làm gì khác vì reload sẽ tự dọn
-         * sạch UI/RAM) — chỉ còn 1 nơi gọi DUY NHẤT là clearAllStoredData().
+         * sạch UI/RAM).
+         *
+         * 2 nơi gọi hiện tại: clearAllStoredData() (Xoá tất cả) VÀ window.removeSong() (playlist/
+         * actions.js) khi bài bị xoá đúng là currentKey (chỉ xảy ra lúc đang pause — xem comment
+         * window.removeSong) — cùng 1 lý do: currentKey vừa bị xoá khỏi RAM, UI Visualizer phải bị
+         * ép về màn Playlist NGAY, tránh đứng yên hiện current/next/prev của 1 bài đã không còn tồn tại.
          */
         function forceBackToPlaylistUI() {
             visualizerUI.classList.remove('fade-enter-active');

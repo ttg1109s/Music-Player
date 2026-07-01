@@ -177,6 +177,41 @@
         function deleteSongRecord(key) { return idbKeyval.del(key, songsStore); }
         function getAllSongKeys() { return idbKeyval.keys(songsStore); }
 
+        /**
+         * FIX (lỗi decode khi nghe lại 1 bài NGAY SAU KHI sửa info/lưu phụ đề, không cần reload mới
+         * hết — phát hiện tại applySongEditAndSave() ở playlist/actions.js, cùng gốc với
+         * applySubtitlesAndClose() ở subtitle/subtitles.js):
+         *
+         * Cả 2 chỗ trên đều theo đúng pattern "đọc nguyên record (gồm cả `blob` audio) qua
+         * getSongRecord() -> chỉ sửa field KHÁC (tag/subtitles) -> setSongRecord() ghi LẠI NGUYÊN
+         * record đó, gồm cả field `blob`" — dù KHÔNG đổi 1 byte nội dung file nhạc, `blob` ghi xuống
+         * vẫn ĐÚNG CHÍNH Blob handle vừa đọc lên (nguồn gốc từ IndexedDB, không phải File gốc từ máy
+         * người dùng). Chromium xử lý kiểu "ghi đè lại đúng Blob đã đọc từ chính nó" này không ổn
+         * định trong CÙNG 1 phiên/connection: khi Next/Prev hay bấm phát lại bài đó (luồng đầy đủ
+         * trong playSong() — getSongRecord() + URL.createObjectURL(record.blob) MỚI), backing file
+         * cũ có thể đã bị coi là "đã thay thế" trong khi audioPlayer cần đọc lại đúng backing file
+         * đó NGAY trong phiên hiện tại -> lỗi decode. Dữ liệu ĐÃ commit đúng xuống đĩa (mở connection
+         * IndexedDB MỚI sau khi reload trang đọc lại hoàn toàn bình thường — đúng triệu chứng quan
+         * sát được thực tế: "sửa xong nghe lỗi, reload vào nghe lại bình thường").
+         *
+         * Né bằng cách "vật chất hoá" lại record.blob thành 1 Blob HOÀN TOÀN MỚI (đọc hẳn bytes vào
+         * RAM rồi bọc lại bằng `new Blob(...)`) NGAY TRƯỚC khi setSongRecord() — Blob mới này không
+         * còn dính dáng gì tới backing file cũ của IndexedDB, ghi xuống xong đọc lại trong CÙNG phiên
+         * vẫn ổn định bình thường.
+         *
+         * CHỈ gọi hàm này khi `record.blob` THỰC SỰ tới từ 1 lượt getSongRecord() trước đó (round-
+         * trip qua IndexedDB) — KHÔNG gọi cho bản ghi MỚI nạp lần đầu (loader.js, record.blob =
+         * File gốc từ input chọn file của người dùng, CHƯA từng qua IndexedDB lần nào): không cần
+         * thiết, chỉ tốn thời gian đọc nguyên file nhạc vào RAM thêm 1 lần vô ích lúc upload hàng
+         * loạt nhiều bài.
+         *
+         * @param {Blob} blob
+         * @returns {Promise<Blob>} Blob mới, cùng nội dung + type, tách hẳn khỏi backing file cũ.
+         */
+        async function rematerializeBlob(blob) {
+            return new Blob([await blob.arrayBuffer()], { type: blob.type });
+        }
+
         function getMeta(key) { return idbKeyval.get(key, metaStore); }
         function setMeta(key, value) { return idbKeyval.set(key, value, metaStore); }
         function delMeta(key) { return idbKeyval.del(key, metaStore); }
