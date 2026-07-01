@@ -8,8 +8,9 @@
  * executeRestartApp(): xoá hết state RAM TẠM (resume snapshot + cờ trong localStorage — xem
  * resume-state-storage.js) rồi reload — KHÔNG đụng tới nhạc/playlist (IndexedDB) hay vizConfig.
  *
- * executeRestoreDefaults(): CHỈ reset vizConfig về DEFAULT_VIZ_CONFIG (config.js) — GIỮ NGUYÊN
- * nhạc/playlist đã upload. Sau khi reset, vẫn cần reload để UI tự đồng bộ lại qua loadConfig().
+ * executeRestoreDefaults(): CHỈ reset vizConfig về CONST.DEFAULT_VIZ_CONFIG (service/state.js) —
+ * GIỮ NGUYÊN nhạc/playlist đã upload. Sau khi reset, vẫn cần reload để UI tự đồng bộ lại qua
+ * loadConfig().
  *
  * ÁP DỤNG /event/ (cụm "settingsNav"): `addEventListener`+`modalChoice()` cũ đã CHUYỂN sang
  * event/workflow/settings-nav.js (modal xác nhận đặt ở workflow, đúng quy tắc — core không biết
@@ -17,7 +18,8 @@
  * đúng hành động (dọn state / reset config) + reload, không tự hỏi xác nhận gì cả.
  *
  * PHẢI nạp SAU: resume-state-storage.js (cần clearResumeFlag/clearResumeStateFromLocalStorage),
- * config.js (cần DEFAULT_VIZ_CONFIG/vizConfig), equalizer-settings.js (cần saveConfig()).
+ * service/state.js (cần CONST.DEFAULT_VIZ_CONFIG), config.js (cần vizConfig),
+ * equalizer-settings.js (cần saveConfig()).
  */
         /** Core thuần: dọn state RAM tạm (resume) rồi reload. Không hỏi xác nhận gì ở đây. */
         function executeRestartApp() {
@@ -28,7 +30,7 @@
 
         /** Core thuần: reset vizConfig về default rồi reload. Không hỏi xác nhận gì ở đây. */
         function executeRestoreDefaults() {
-            appState.set('vizConfig', { ...DEFAULT_VIZ_CONFIG });
+            appState.set('vizConfig', { ...CONST.DEFAULT_VIZ_CONFIG });
             saveConfig();
             location.reload();
         }
