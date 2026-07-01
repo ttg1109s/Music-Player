@@ -30,6 +30,19 @@ dùng cuối — thuần kiến trúc nội bộ):
 Ver 11 cũng chốt luôn 2 batch trước từng đánh dấu "chưa final" (mini-fix + i18n) — xem đầy đủ, kèm
 số liệu đối chiếu qua script, ở **[readme/changelog/v11.md](./readme/changelog/v11.md)**.
 
+## Nợ kỹ thuật (ver 12 trở đi)
+
+Từ ver 12, mọi function Core/nghiệp vụ **mới viết hoặc bị sửa thật** — dù trong `core/` hay bất kỳ
+thư mục nào khác — bắt buộc tuân theo 4 rule ở
+**[readme/core-function-conventions.md](./readme/core-function-conventions.md)** (đơn tuyến
+nghiệp vụ, không tự đọc `appState`, core-gọi-core chỉ hợp lệ khi dùng return value, log
+`writer/page/content` khi set/mutate state).
+
+**150/266 function core hiện có** (đã loại trừ hot-path) vi phạm ít nhất 1 trong các rule trên —
+được ghi nhận CHÍNH THỨC là nợ kỹ thuật, danh sách đầy đủ theo từng file/dòng ở
+**[readme/core-legacy-audit.md](./readme/core-legacy-audit.md)**. KHÔNG bắt buộc sửa ngay — chỉ
+bắt buộc khi 1 function trong danh sách đó bị đụng tới thật trong tương lai.
+
 ## Đọc tiếp ở đâu
 
 | Muốn biết... | Đọc... |
@@ -38,7 +51,7 @@ số liệu đối chiếu qua script, ở **[readme/changelog/v11.md](./readme/
 | Cấu trúc thư mục, file nào làm gì | [readme/folder-structure.md](./readme/folder-structure.md) |
 | Sơ đồ đầy đủ luồng `/event/` (listener→router→core/workflow/virtual-machine-state) | [readme/event-bus-flow.md](./readme/event-bus-flow.md) |
 | Quy tắc viết function Core/nghiệp vụ (đơn tuyến, không tự đọc appState, log khi gọi core khác) | [readme/core-function-conventions.md](./readme/core-function-conventions.md) |
-| Audit function core di sản vi phạm quy tắc trên (tham khảo, chưa bắt buộc sửa) | [readme/core-legacy-audit.md](./readme/core-legacy-audit.md) |
+| Nợ kỹ thuật: function core di sản vi phạm quy tắc trên (chính thức, sửa khi đụng tới) | [readme/core-legacy-audit.md](./readme/core-legacy-audit.md) |
 | Thứ tự nạp script trong `index.html` (quan trọng, đừng đảo) | [readme/script-load-order.md](./readme/script-load-order.md) |
 | Cách chạy / deploy ứng dụng + các lưu ý theo từng bản | [readme/usage.md](./readme/usage.md) |
 | Muốn sửa 1 tính năng cụ thể thì vào file nào (kể cả sửa qua kiến trúc `/event/`) | [readme/where-to-edit.md](./readme/where-to-edit.md) |
