@@ -5,7 +5,10 @@
  * `eventBus` đã tồn tại để gọi `register()` (router) hoặc `send()` (listener).
  *
  * CƠ CHẾ (đã thống nhất):
- *   - Bus CHỈ giữ 1 danh sách "router nào đã đăng ký tên gì" — KHÔNG biết gì về nghiệp vụ.
+ *   - Bus giữ 2 danh sách: "router nào đã đăng ký tên gì" (routers) và "msg.type nào bị CHẶN
+ *     khi nào" (blocks, xem mục BLOCK GATE dưới) — KHÔNG biết gì khác về nghiệp vụ (không chọn
+ *     workflow nào chạy — việc đó thuộc router/virtual-machine-state, xem event/virtual-machine-
+ *     state.js).
  *   - Router PHẢI tự khai báo với bus lúc nạp: `eventBus.register('storage', routerStorage)`.
  *   - Listener gửi message qua `eventBus.send(msg)`, msg có shape cố định (xem CONTRACT dưới).
  *   - Bus tra `msg.router` trong danh sách đã đăng ký:
@@ -23,9 +26,31 @@
  * Router object PHẢI có dạng:
  *   @typedef {Object} EventRouter
  *   @property {(msg: EventMessage) => void} handle
+ *
+ * ===================== BLOCK GATE (thêm) =====================
+ * Cơ chế CHẶN NHỊ PHÂN 1 msg.type TRƯỚC KHI router.handle() được gọi — dùng khi 1 điều kiện
+ * appState cần chặn CÙNG 1 hành vi tới từ NHIỀU router khác nhau (vd nút "đổi kiểu hiệu ứng" tới
+ * từ cả nút cycle lẫn select trong Settings — cùng 1 điều kiện chặn, viết 1 lần, cả 2 nơi cùng
+ * hưởng, không lệch nhau).
+ *
+ * CHỈ làm được việc CHẶN/KHÔNG CHẶN (trả boolean) — KHÔNG dùng để chọn "workflow nào chạy" (nếu
+ * cần chọn giữa ≥2 đích khác nhau tuỳ state, đó là việc của switch/if NGAY TRONG case router,
+ * hoặc event/virtual-machine-state.js — bus không được phép "biết" business logic đó).
+ *
+ * Đăng ký qua `registerBlock(msgType, groups)`:
+ *   - `groups` là mảng NHÓM — CHỈ CẦN 1 nhóm đúng là CHẶN (OR giữa các nhóm).
+ *   - Mỗi nhóm là mảng điều kiện `{field, operator, value}` — TẤT CẢ điều kiện trong nhóm phải
+ *     đúng thì nhóm đó mới tính (AND trong 1 nhóm).
+ *   - `field` đọc qua `appState.get(rootKey)` rồi tự đào path lồng bất kỳ độ sâu (vd
+ *     'vizConfig.autoSwitchVisualEnabled').
+ *   - `operator` dùng chung bộ toán tử ở `service/operation.js` (===/!==/>/</>=/<=/in/notIn).
+ *
+ * Đăng ký thực tế xem `event/block.js` (file DATA riêng, load ngay sau file này) — file bus.js
+ * chỉ chứa CƠ CHẾ, không chứa danh sách đăng ký nào.
  */
 const eventBus = (() => {
     const routers = new Map(); // routerName -> routerObject
+    const blocks = new Map();  // msg.type -> mảng NHÓM (OR giữa nhóm) -> mỗi nhóm mảng điều kiện (AND trong nhóm)
 
     /**
      * Router tự gọi hàm này lúc file router của nó được nạp — đăng ký tên + object xử lý.
@@ -43,6 +68,47 @@ const eventBus = (() => {
         routers.set(name, routerObject);
     }
 
+    /** Đọc field theo path lồng bất kỳ độ sâu qua appState (vd 'vizConfig.autoSwitchVisualEnabled'). */
+    function resolveFieldPath(field) {
+        const [rootKey, ...rest] = field.split('.');
+        let cur = appState.get(rootKey);
+        for (const key of rest) {
+            if (cur == null) return undefined;
+            cur = cur[key];
+        }
+        return cur;
+    }
+
+    /**
+     * Đánh giá 1 điều kiện block. Tách riêng + export để event/virtual-machine-state.js hoặc
+     * router có thể tái dùng khi cần AND/OR phức tạp mà không phải viết lại bộ so sánh khác.
+     * @param {{field: string, operator: string, value: *}} condition
+     * @returns {boolean}
+     */
+    function evalCondition({ field, operator, value }) {
+        return operation.evaluate(resolveFieldPath(field), operator, value);
+    }
+
+    /**
+     * Đăng ký điều kiện CHẶN cho 1 msg.type. Gọi 1 LẦN lúc nạp (xem event/block.js).
+     * @param {string} msgType
+     * @param {Array<Array<{field: string, operator: string, value: *}>>} groups - mảng nhóm,
+     *        OR giữa nhóm, AND trong 1 nhóm (xem BLOCK GATE ở JSDoc đầu file).
+     */
+    function registerBlock(msgType, groups) {
+        if (blocks.has(msgType)) {
+            console.warn(`[eventBus] registerBlock("${msgType}") ghi đè block đã đăng ký trước đó — kiểm tra lại có bị nạp trùng file không.`);
+        }
+        blocks.set(msgType, groups);
+    }
+
+    /** @param {string} msgType @returns {boolean} true nếu msgType này đang bị chặn ngay lúc gọi. */
+    function isBlocked(msgType) {
+        const groups = blocks.get(msgType);
+        if (!groups) return false;
+        return groups.some(group => group.every(evalCondition)); // OR giữa nhóm, AND trong nhóm
+    }
+
     /**
      * Listener gọi hàm này để gửi message. Tra msg.router trong danh sách đã đăng ký.
      * @param {EventMessage} msg
@@ -51,6 +117,9 @@ const eventBus = (() => {
         if (!msg || typeof msg.router !== 'string') {
             console.warn('[eventBus] send() bị bỏ qua: message thiếu field "router" hợp lệ.', msg);
             return;
+        }
+        if (isBlocked(msg.type)) {
+            return; // bị chặn ĐÚNG THIẾT KẾ theo event/block.js — im lặng, KHÔNG console.warn (không phải lỗi)
         }
         const router = routers.get(msg.router);
         if (!router) {
@@ -62,5 +131,5 @@ const eventBus = (() => {
         router.handle(msg);
     }
 
-    return { register, send };
+    return { register, registerBlock, evalCondition, send };
 })();
