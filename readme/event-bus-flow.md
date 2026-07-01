@@ -25,9 +25,9 @@ Listener (DOM/tab/window/...)
     ┌───────────────────────────── case cụ thể ─────────────────────────────┐
     │                                                                        │
     │  (A) gọi thẳng 1 hàm CORE          (B) giao WORKFLOW      (C) VirtualMachineState.run([...])
-    │      không cần state gì cả             cần shield/modal        rẽ nhánh theo state, CHẠY
-    │      (Ví dụ 1 — xem mục 3)              HOẶC ≥2 hàm core        NHIỀU callback nếu nhiều rule
-    │                                         độc lập                cùng khớp — mỗi callback là
+    │      không cần state gì cả             ≥2 lời gọi side-       rẽ nhánh theo state, CHẠY
+    │      (Ví dụ 1 — xem mục 3)              effect nối tiếp,       NHIỀU callback nếu nhiều rule
+    │                                         có phụ thuộc thứ tự   cùng khớp — mỗi callback là
     │                                                                 CORE hoặc WORKFLOW tuỳ rule
     └────────────────────────────────────────────────────────────────────────┘
                                                                           │
@@ -90,10 +90,19 @@ case 'cluster.action.click':
     break;
 ```
 
-### (B) Giao Workflow — cần shield/modal, hoặc ≥2 hàm core độc lập
+### (B) Giao Workflow — ≥2 lời gọi side-effect nối tiếp, có thứ tự phụ thuộc nhau
 
-Tiêu chí đã chốt (không đổi): (a) cần `withLoadingShield`/`alertModal`, HOẶC (b) phải gọi ≥2 hàm
-core có thứ tự phụ thuộc nhau (vd ghi IndexedDB xong mới gọi core cập nhật UI):
+**[Cập nhật — xem [core-function-conventions.md Rule 3](./core-function-conventions.md)]** Tiêu
+chí cũ ("cần shield/modal, HOẶC ≥2 hàm core độc lập") đã **bỏ điều kiện shield/modal riêng biệt**
+— giờ chỉ cần đúng hình dạng: gọi ≥2 hàm (core hoặc hàm khác) mà **ít nhất 1 hàm không có return
+được dùng** (chỉ tạo side-effect) và chạy **đồng bộ hoặc bất đồng bộ có chờ** (tạo phụ thuộc thứ
+tự — bước sau chạy sau khi bước trước đã chạy/hoàn thành) → LUÔN là Workflow, bất kể đơn giản hay
+phức tạp, có `shield`/`modal` hay không. `shield`/`modal` vẫn THƯỜNG xuất hiện (nhiều thao tác cần
+chờ — IndexedDB, network...) nhưng chỉ là 1 LÝ DO hay gặp, không còn là điều kiện quyết định.
+
+**Ngoại lệ:** lời gọi bất đồng bộ và KHÔNG chờ (fire-and-forget, không `await`) không tạo phụ
+thuộc thứ tự — KHÔNG tính là Workflow, được gọi thẳng trong Core/Router như bình thường.
+
 ```js
 case 'cluster.action.change':
     workflowX.doThing(msg.payload);
@@ -157,7 +166,7 @@ tiêu chí (A)/(B) ở mục 4, chỉ khác là được BỌC trong 1 rule thay
 | Câu hỏi | Chọn |
 |---|---|
 | Không cần biết state nào cả (kể cả chỉ dùng `msg.payload` của chính message)? | (A) gọi thẳng Core |
-| Cần shield/modal, hoặc ≥2 hàm core phụ thuộc thứ tự? | (B) Workflow |
+| Cần gọi ≥2 hàm nối tiếp, ít nhất 1 hàm void/side-effect, chạy đồng bộ hoặc async có chờ (tạo phụ thuộc thứ tự)? | (B) Workflow — bất kể đơn giản hay cần shield/modal |
 | Cần đọc `appState` KHÁC để quyết định chạy gì — dù chỉ 1 điều kiện/1 đích hay nhiều? | (C) `VirtualMachineState` — LUÔN dùng, không viết switch/if tay đọc `appState` trong case nữa |
 | Điều kiện chặn dùng ở ≥2 router, hoặc bản chất là chặn hẳn không chạy gì? | Block (`event/block.js`) — chặn TRƯỚC router, không phải trong case |
 
