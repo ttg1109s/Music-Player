@@ -36,13 +36,13 @@ Listener (DOM/tab/window/...)
                                                               core function  hoặc  workflow method
 ```
 
-**3 điểm rẽ nhánh khác nhau, đừng nhầm:**
+**2 điểm rẽ nhánh khác nhau, đừng nhầm** (Router switch/if tay đọc `appState` KHÔNG còn là 1
+nhánh riêng — mọi rẽ nhánh theo state trong case đều đi qua `VirtualMachineState`, xem mục 4C):
 
 | Tầng | Chạy khi nào | Biết `appState` không | Trả về / hành vi | Có thể chọn "chạy cái gì" không |
 |---|---|---|---|---|
 | **Block** (`event/block.js` + `bus.js`) | Trước khi vào Router | Có (đọc để quyết định chặn) | boolean — chặn hẳn hoặc không | **KHÔNG** — chỉ chặn/không chặn, không chọn đích |
-| **Router switch/if tay** | Trong 1 case | Có (nếu case đó cần) | gọi 1 đích cố định theo `if` viết tay | Có, nhưng chỉ 1 đích mỗi lần chạy (loại trừ nhau kiểu `if/else`) |
-| **`VirtualMachineState`** | Trong 1 case | KHÔNG (router tự đọc, truyền `state` sẵn vào rule) | gọi 0..N callback | Có, và **KHÔNG loại trừ nhau** — nhiều rule khớp thì nhiều callback cùng chạy |
+| **`VirtualMachineState`** | Trong 1 case | KHÔNG (router tự đọc, truyền `state` sẵn vào rule) | gọi 0..N callback | Có — 1 rule khớp (đơn đích) hay nhiều rule khớp (đa đích) đều cùng 1 API |
 
 ## 1. Listener — nguồn trigger
 
@@ -100,12 +100,16 @@ case 'cluster.action.change':
     break;
 ```
 
-### (C) `VirtualMachineState.run([...])` — rẽ nhánh theo state, có thể chạy NHIỀU đích cùng lúc
+### (C) `VirtualMachineState.run([...])` — MỌI rẽ nhánh theo state, kể cả đơn đích lẫn đa đích
 
 Dùng khi 1 case cần đọc **1 hoặc nhiều field `appState` KHÁC** (không phải `msg.payload` của
-chính nó) để quyết định chạy 0, 1, hay NHIỀU workflow/core — và các điều kiện đó **không loại trừ
-nhau** (khác `switch`/`if-else`, vốn chỉ chọn đúng 1 nhánh):
+chính nó) để quyết định chạy gì — **luôn qua `VirtualMachineState`, không viết switch/if tay đọc
+`appState` trong case nữa**, kể cả khi chỉ có 1 điều kiện/1 đích duy nhất. Lý do đổi từ khuyến
+nghị trước (từng cho phép switch/if tay nếu đơn đích): 1 API duy nhất cho "rẽ nhánh theo state"
+dễ đọc/dễ audit hơn 2 cách viết khác nhau tuỳ case đơn hay đa đích — quét toàn bộ router chỉ cần
+tìm `VirtualMachineState.run(` là ra hết chỗ nào đang rẽ nhánh theo state, không sót chỗ viết tay.
 
+**Đa đích (nhiều rule cùng khớp là đúng, không loại trừ nhau):**
 ```js
 case 'cluster.action.click': {
     const someState = appState.get('someState'); // đọc 1 lần
@@ -118,18 +122,29 @@ case 'cluster.action.click': {
 ```
 `someState = 10` khớp CẢ HAI rule → CẢ HAI callback chạy — không phải chọn 1 trong 2.
 
-**Nếu chỉ cần loại trừ nhau (1 điều kiện, 1 đích duy nhất mỗi lần)** — dùng switch/if tay thường
-trong case, KHÔNG cần `VirtualMachineState` (over-engineer nếu chỉ có 1 nhánh đơn giản):
+> **Lưu ý thứ tự chạy:** khi ≥2 rule CÙNG khớp trong 1 lần `run()`, callback được gọi **tuần tự
+> theo đúng thứ tự khai báo trong mảng, từ trên xuống dưới** (`run()` là vòng `for` thường, không
+> chạy song song, không tự sắp xếp lại) — rule khai báo trước LUÔN chạy xong trước rule khai báo
+> sau. Nếu 2 workflow/core cùng khớp có side-effect đụng nhau (vd cùng ghi 1 field `appState`,
+> cùng động vào 1 vùng DOM), thứ tự viết trong mảng chính là thứ tự ai-ghi-đè-ai — cân nhắc kỹ khi
+> sắp xếp, không coi 2 rule khớp cùng lúc là độc lập tuyệt đối về mặt thời gian chạy.
+
+**Đơn đích (loại trừ nhau, giống switch/if cũ)** — viết y hệt cú pháp trên, chỉ khác các `value`
+so sánh vốn đã loại trừ nhau tự nhiên (1 field không thể vừa `'dong'` vừa `'bac'` cùng lúc), nên
+CHỈ 1 rule khớp — không cần cơ chế "dừng sớm" riêng, tự nhiên chỉ 1 callback chạy:
 ```js
 case 'cluster.action.click': {
-    switch (appState.get('doorMaterial')) {
-        case 'dong': workflow1(msg); break;
-        case 'bac':  workflow2(msg); break;
-        default: console.warn(`[routerX] doorMaterial không xác định`, msg);
-    }
+    const doorMaterial = appState.get('doorMaterial');
+    VirtualMachineState.run([
+        { state: doorMaterial, operation: '===', value: 'dong', callback: () => workflow1(msg) },
+        { state: doorMaterial, operation: '===', value: 'bac',  callback: () => workflow2(msg) },
+    ]);
     break;
 }
 ```
+Không rule nào khớp (vd `doorMaterial` mang giá trị lạ, chưa tính tới) → `run()` tự
+`console.warn('[VirtualMachineState] run() — không rule nào khớp.', rules)` — thay hẳn cho nhánh
+`default: console.warn(...)` từng viết tay trong switch, không cần viết lại.
 
 ## 5. `callback` trong `VirtualMachineState` gọi gì?
 
@@ -141,10 +156,9 @@ tiêu chí (A)/(B) ở mục 4, chỉ khác là được BỌC trong 1 rule thay
 
 | Câu hỏi | Chọn |
 |---|---|
-| Không cần biết state nào cả? | (A) gọi thẳng Core |
+| Không cần biết state nào cả (kể cả chỉ dùng `msg.payload` của chính message)? | (A) gọi thẳng Core |
 | Cần shield/modal, hoặc ≥2 hàm core phụ thuộc thứ tự? | (B) Workflow |
-| Cần đọc state, nhưng chỉ 1 điều kiện, 1 đích duy nhất (loại trừ nhau)? | switch/if tay trong case |
-| Cần đọc state, ≥2 điều kiện có thể CÙNG khớp, mỗi khớp chạy 1 đích riêng? | (C) `VirtualMachineState` |
+| Cần đọc `appState` KHÁC để quyết định chạy gì — dù chỉ 1 điều kiện/1 đích hay nhiều? | (C) `VirtualMachineState` — LUÔN dùng, không viết switch/if tay đọc `appState` trong case nữa |
 | Điều kiện chặn dùng ở ≥2 router, hoặc bản chất là chặn hẳn không chạy gì? | Block (`event/block.js`) — chặn TRƯỚC router, không phải trong case |
 
 ← [Quay lại README](../README.md)
