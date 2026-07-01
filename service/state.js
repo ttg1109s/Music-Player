@@ -140,6 +140,11 @@
             pitchWorker: 'any',            // Worker | null
             pitchWorkerBusy: 'boolean',
             latestPitchFrequency: 'number',
+            // MIGRATE (từ 3 biến window.lastValid* rải rác, cùng hot path 60fps với
+            // currentCalculatedBpm/rubikPitchAvg — xem updateStatsDashboard() ở audio-analysis.js):
+            lastValidNoteStr: 'nullable-string',
+            lastValidNoteTime: 'number',
+            lastValidMidiNote: 'nullable-number',
 
             // ── subtitle ──────────────────────────────────────────────────────
             subtitles: 'array',
@@ -267,6 +272,9 @@
                 pitchWorker: null,
                 pitchWorkerBusy: false,
                 latestPitchFrequency: -1,
+                lastValidNoteStr: null,
+                lastValidNoteTime: 0,
+                lastValidMidiNote: null,
 
                 // ── subtitle ────────────────────────────────────────────────────
                 subtitles: [],
