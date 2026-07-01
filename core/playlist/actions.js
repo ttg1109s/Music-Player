@@ -38,12 +38,50 @@
             updateEmptyState();
         }
 
+        /**
+         * FIX: trước đây chặn xoá TUYỆT ĐỐI hễ key === currentKey, bất kể đang phát hay đang pause
+         * — không nhất quán với clearAllStoredData() (storage-manager.js, "Xoá tất cả" trong Quản
+         * lý dung lượng) vẫn xoá bài hiện tại bình thường (coi đó là trường hợp đặc biệt được phép).
+         * Nay tách rõ 2 khái niệm: "đang là bài hiện tại" (currentKey) khác "đang thực sự phát ra
+         * tiếng" (audioPlayer.paused === false) — CHỈ chặn xoá khi bài đó đang thực sự phát (lý do
+         * gốc: tránh xoá thẳng tay file đang đọc dở dang khỏi IndexedDB ngay dưới audioPlayer, có
+         * thể gây lỗi decode/giật) — pause rồi thì cho xoá như mọi bài khác, đồng thời tự dọn sạch
+         * player/UI giống hệt cách clearAllStoredData() đã làm khi bài hiện tại biến mất.
+         *
+         * Luôn có modal thông báo kết quả (chặn vì đang phát / xoá thành công) — trước đây chặn
+         * xong không có phản hồi gì, người dùng bấm Xoá nhưng bài vẫn còn nguyên trong list không
+         * rõ vì sao.
+         * @param {string} key
+         */
         window.removeSong = function(key) {
-            if (key === appState.get('currentKey')) return;
-            withLoadingShield(t('common.loading.deleting'), async () => {
+            const cached = appState.get('playlistCache').get(key);
+            const title = cached && cached.tag && cached.tag.title ? cached.tag.title : (cached ? cached.filename : key);
+            const isCurrent = key === appState.get('currentKey');
+
+            if (isCurrent && !audioPlayer.paused) {
+                alertModal(tFormat('playlistView.songMenu.deleteBlockedPlaying', { title }));
+                return;
+            }
+
+            return withLoadingShield(t('common.loading.deleting'), async () => {
                 await deleteSongRecord(key);
                 removeSongStats(key); // dọn luôn thống kê nghe của bài đã xoá
                 removeKeyFromDisplay(key);
+
+                if (isCurrent) {
+                    // Bài vừa xoá là currentKey (đang pause) — dọn player/UI giống hệt khối tương ứng
+                    // trong clearAllStoredData() (storage-manager.js) để không còn currentKey "ma".
+                    if (appState.get('currentObjectURL')) { URL.revokeObjectURL(appState.get('currentObjectURL')); appState.set('currentObjectURL', null); }
+                    if (appState.get('currentCoverObjectURL')) { URL.revokeObjectURL(appState.get('currentCoverObjectURL')); appState.set('currentCoverObjectURL', null); }
+                    audioPlayer.pause(); audioPlayer.src = ''; appState.set('currentKey', null);
+                    playerTitle.textContent = t('bottomPlayer.noSongSelected'); playerArtist.textContent = '---';
+                    if (typeof killAllAutoSwitchVisualTasks === 'function') killAllAutoSwitchVisualTasks();
+                    if (typeof forceBackToPlaylistUI === 'function') forceBackToPlaylistUI();
+                }
+            }).then(() => {
+                // Shield đã đóng hẳn tới đây (cùng lý do đã giải thích ở window.playSong) — an toàn
+                // để hiện modal, không bị #loading-shield (z-[200]) đè lên modalChoice (z-[130]).
+                alertModal(tFormat('playlistView.songMenu.deleteSuccess', { title }));
             });
         };
 
@@ -367,6 +405,10 @@
             // DEFAULT_VINYL, đúng hành vi cũ khi 1 bài chưa từng có cover).
             if (pendingCover instanceof File) record.cover = pendingCover;
             else if (pendingCover === 'remove') delete record.cover;
+            // FIX (decode lỗi khi nghe lại bài VỪA sửa info, không reload mới hết) — xem giải thích
+            // đầy đủ tại rematerializeBlob() (db.js). record.blob ở đây là Blob round-trip từ
+            // getSongRecord() phía trên, PHẢI vật chất hoá lại thành Blob mới trước khi ghi đè.
+            if (record.blob) record.blob = await rematerializeBlob(record.blob);
             await setSongRecord(key, record);
 
             const cached = appState.get('playlistCache').get(key);
