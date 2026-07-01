@@ -7,7 +7,9 @@
 
 Đọc cùng [event-bus-flow.md](./event-bus-flow.md) — tài liệu đó quy định luồng
 `listener → router → core/workflow/VirtualMachineState`; tài liệu NÀY quy định riêng bên TRONG 1
-function Core/nghiệp vụ được viết ra sao.
+function Core/nghiệp vụ được viết ra sao. Xem [core-legacy-audit.md](./core-legacy-audit.md) cho
+danh sách function core di sản hiện đang vi phạm 3 rule dưới đây (audit tham khảo, KHÔNG bắt buộc
+sửa ngay — core di sản giữ nguyên theo phạm vi áp dụng ở trên).
 
 ---
 
