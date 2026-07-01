@@ -48,7 +48,7 @@ bắt buộc khi 1 function trong danh sách đó bị đụng tới thật tron
 | Muốn biết... | Đọc... |
 |---|---|
 | Toàn bộ lịch sử thay đổi (ver 1 → ver 12) | [readme/changelog-index.md](./readme/changelog-index.md) |
-| Cấu trúc thư mục, file nào làm gì | [readme/folder-structure.md](./readme/folder-structure.md) |
+| Cấu trúc thư mục hiện tại + bảng lịch sử file thêm/sửa/xoá từng version (v1→v12) | [readme/folder-structure.md](./readme/folder-structure.md) |
 | Sơ đồ đầy đủ luồng `/event/` (listener→router→core/workflow/virtual-machine-state) | [readme/event-bus-flow.md](./readme/event-bus-flow.md) |
 | Quy tắc viết function Core/nghiệp vụ (đơn tuyến, không tự đọc appState, log khi gọi core khác) | [readme/core-function-conventions.md](./readme/core-function-conventions.md) |
 | Nợ kỹ thuật: function core di sản vi phạm quy tắc trên (chính thức, sửa khi đụng tới) | [readme/core-legacy-audit.md](./readme/core-legacy-audit.md) |
