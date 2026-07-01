@@ -34,8 +34,9 @@ số liệu đối chiếu qua script, ở **[readme/changelog/v11.md](./readme/
 
 | Muốn biết... | Đọc... |
 |---|---|
-| Toàn bộ lịch sử thay đổi (ver 1 → ver 11) | [readme/changelog-index.md](./readme/changelog-index.md) |
+| Toàn bộ lịch sử thay đổi (ver 1 → ver 12) | [readme/changelog-index.md](./readme/changelog-index.md) |
 | Cấu trúc thư mục, file nào làm gì | [readme/folder-structure.md](./readme/folder-structure.md) |
+| Sơ đồ đầy đủ luồng `/event/` (listener→router→core/workflow/virtual-machine-state) | [readme/event-bus-flow.md](./readme/event-bus-flow.md) |
 | Thứ tự nạp script trong `index.html` (quan trọng, đừng đảo) | [readme/script-load-order.md](./readme/script-load-order.md) |
 | Cách chạy / deploy ứng dụng + các lưu ý theo từng bản | [readme/usage.md](./readme/usage.md) |
 | Muốn sửa 1 tính năng cụ thể thì vào file nào (kể cả sửa qua kiến trúc `/event/`) | [readme/where-to-edit.md](./readme/where-to-edit.md) |
