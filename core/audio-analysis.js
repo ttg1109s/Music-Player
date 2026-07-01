@@ -64,9 +64,11 @@
                     if (frequency > 0) {
                         let midiNote = Math.round(12 * Math.log2(frequency / 440)) + 69;
                         if (midiNote > 0 && midiNote < 128) {
-                            window.lastValidNoteStr = `${noteNames[midiNote % 12]}${Math.floor(midiNote / 12) - 1}`; window.lastValidNoteTime = now;
-                            if (appState.get('isStatsPanelVisible')) statNote.textContent = window.lastValidNoteStr;
-                            window.lastValidMidiNote = midiNote;
+                            const noteStr = `${noteNames[midiNote % 12]}${Math.floor(midiNote / 12) - 1}`;
+                            appState.set('lastValidNoteStr', noteStr, { skipCheck: true });
+                            appState.set('lastValidNoteTime', now, { skipCheck: true });
+                            if (appState.get('isStatsPanelVisible')) statNote.textContent = noteStr;
+                            appState.set('lastValidMidiNote', midiNote, { skipCheck: true });
                             // Cập nhật pha tham chiếu (nốt trung bình động) cho visual Rubik — xoay tự
                             // thân sẽ so nốt hiện tại với pha này để quyết định nhanh/chậm. KHÔNG bọc
                             // isStatsPanelVisible — phải luôn tính dù dải số liệu có ẩn hay không.
@@ -74,7 +76,7 @@
                             const rubikPitchHistory = appState.get('rubikPitchHistory');
                             appState.set('rubikPitchAvg', rubikPitchHistory.reduce((a, b) => a + b, 0) / rubikPitchHistory.length, { skipCheck: true });
                         }
-                    } else if (window.lastValidNoteStr && (now - window.lastValidNoteTime < 250)) { if (appState.get('isStatsPanelVisible')) statNote.textContent = window.lastValidNoteStr;
+                    } else if (appState.get('lastValidNoteStr') && (now - appState.get('lastValidNoteTime') < 250)) { if (appState.get('isStatsPanelVisible')) statNote.textContent = appState.get('lastValidNoteStr');
                     } else { if (appState.get('isStatsPanelVisible')) statNote.textContent = "---"; }
                 } else { if (appState.get('isStatsPanelVisible')) statNote.textContent = "---"; }
             } else { appState.set('currentCalculatedBpm', "---", { skipCheck: true }); if (appState.get('isStatsPanelVisible')) { statBpm.textContent = "---"; statNote.textContent = "---"; } }

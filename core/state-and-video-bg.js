@@ -12,11 +12,21 @@
  */
 
         // subtitles, isSubtitlesEnabled, activeSubIds, editingSubId, currentCalculatedBpm,
-        // isShuffle, shuffleIndices, repeatMode — STATE, xem service/state.js. isSubtitlesEnabled
-        // giá trị khởi tạo `true` chỉ là tạm — được ĐỒNG BỘ LẠI từ vizConfig.subtitlesEnabled
-        // (đã lưu) ngay trong loadConfig() (ver 8 refine, xem equalizer-settings.js), nên giá trị
-        // thật sau khi trang nạp xong luôn khớp với Cài đặt.
-        window.currentMediaSessionCover = null; window.lastValidNoteStr = null; window.lastValidNoteTime = 0; window.lastValidMidiNote = null;
+        // isShuffle, shuffleIndices, repeatMode, lastValidNoteStr, lastValidNoteTime,
+        // lastValidMidiNote — STATE, xem service/state.js. isSubtitlesEnabled giá trị khởi tạo
+        // `true` chỉ là tạm — được ĐỒNG BỘ LẠI từ vizConfig.subtitlesEnabled (đã lưu) ngay trong
+        // loadConfig() (ver 8 refine, xem equalizer-settings.js), nên giá trị thật sau khi trang
+        // nạp xong luôn khớp với Cài đặt. 3 key lastValid* MỚI MIGRATE (trước đây gán trực tiếp
+        // `window.x = null/0` ngay tại dòng này — dòng đó đã XOÁ vì thừa: STATE đã tự khởi tạo
+        // đúng giá trị mặc định qua buildDefaultState(), service/state.js).
+        //
+        // window.currentMediaSessionCover ĐÃ XOÁ HẲN (không migrate) — kiểm tra lại thấy đây là
+        // biến MỒ CÔI: chỉ bị reset về null + revoke phòng hờ ở app-cleanup.js, KHÔNG có bất kỳ
+        // nơi nào trong project thực sự gán giá trị khác null cho nó. navigator.mediaSession.metadata
+        // (2 chỗ ở playlist/actions.js) dùng thẳng currentCoverObjectURL cho artwork, không đụng
+        // biến này — rõ ràng là sót lại từ 1 đợt refactor cũ (từng tách cover riêng cho MediaSession,
+        // sau gộp lại dùng chung currentCoverObjectURL nhưng quên xoá biến cũ). Xoá hẳn thay vì giữ
+        // 1 state key vĩnh viễn null không ai đọc/ghi thật.
 
         /** Core thuần: quay về màn Visualizer (nếu đang có bài hiện tại). */
         function returnToVisualizer() {

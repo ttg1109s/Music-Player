@@ -11,8 +11,7 @@
  * PHẢI nạp SAU: core/dom-refs.js (animationId, audioContext, currentObjectURL,
  *   currentCoverObjectURL), core/listen-stats.js (flushSongStats),
  *   core/player-controls.js (pendingListenSeconds), core/db.js (getMeta/setMeta),
- *   core/wakelock.js (releaseWakeLock), core/state-and-video-bg.js
- *   (window.currentMediaSessionCover).
+ *   core/wakelock.js (releaseWakeLock).
  */
         function executeAppCleanup() {
             // ── Animation loop ────────────────────────────────────────────────
@@ -28,7 +27,6 @@
             const currentCoverObjectURL = appState.get('currentCoverObjectURL');
             if (currentObjectURL) URL.revokeObjectURL(currentObjectURL);
             if (currentCoverObjectURL) URL.revokeObjectURL(currentCoverObjectURL);
-            if (window.currentMediaSessionCover) URL.revokeObjectURL(window.currentMediaSessionCover);
 
             // ── Listen stats: flush tổng giây nghe chưa ghi ──────────────────
             // Best-effort — IndexedDB có thể đã đóng lúc unload, bỏ qua lỗi.
