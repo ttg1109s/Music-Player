@@ -167,10 +167,18 @@
             subtitleModal.classList.add('translate-y-full'); clearAllActiveSubBlocks();
 
             // Ghi đè subtitles của bài hiện tại vào IndexedDB — điểm xác nhận + persist duy nhất.
+            // FIX: cùng lỗi decode round-trip blob như applySongEditAndSave() (playlist/actions.js)
+            // — xem giải thích đầy đủ tại rematerializeBlob() (db.js). Áp dụng tương tự ở đây vì
+            // record.blob cũng được đọc lên từ getSongRecord() rồi ghi đè LẠI nguyên qua
+            // setSongRecord() bên dưới, dù chỉ field `subtitles` thực sự đổi.
             const currentKey = appState.get('currentKey');
             if (currentKey) {
                 const record = await getSongRecord(currentKey);
-                if (record) { record.subtitles = appState.get('subtitles').slice(); await setSongRecord(currentKey, record); }
+                if (record) {
+                    record.subtitles = appState.get('subtitles').slice();
+                    if (record.blob) record.blob = await rematerializeBlob(record.blob);
+                    await setSongRecord(currentKey, record);
+                }
             }
 
             if (!audioPlayer.paused || audioPlayer.currentTime > 0) { audioPlayer.currentTime = 0; audioPlayer.play(); }
