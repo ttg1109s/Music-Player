@@ -1,11 +1,9 @@
 # Quy tắc viết function Core / nghiệp vụ — từ ver 12 trở đi
 
-> Áp dụng cho function **MỚI viết hoặc được SỬA** kể từ ver 12. KHÔNG bắt buộc rewrite ngay toàn
-> bộ core hiện có (~110 file, phần lớn đang tự `appState.get()` trực tiếp, đúng theo quy ước cũ ở
-> `service/state.js`) — việc migrate core cũ theo luật này (nếu cần) là 1 cụm việc rà soát riêng,
-> CHƯA nằm trong phạm vi tài liệu này. **[Cần Giang xác nhận]** đây có đúng phạm vi áp dụng
-> (opt-in cho code mới) hay ý định là bắt buộc audit lại toàn bộ core cũ ngay — 2 việc khác nhau
-> rất nhiều về khối lượng.
+> **Áp dụng cho function MỚI viết hoặc được SỬA kể từ ver 12** — **[Đã chốt]** core di sản (~110
+> file hiện có, phần lớn đang tự `appState.get()` trực tiếp, đúng theo quy ước cũ ở
+> `service/state.js`) **giữ nguyên, KHÔNG rewrite/audit hồi tố**. Chỉ code mới viết hoặc bị đụng
+> tới (sửa thật, không phải chỉ đọc lướt qua) từ ver 12 trở đi mới bắt buộc theo 3 rule dưới đây.
 
 Đọc cùng [event-bus-flow.md](./event-bus-flow.md) — tài liệu đó quy định luồng
 `listener → router → core/workflow/VirtualMachineState`; tài liệu NÀY quy định riêng bên TRONG 1
@@ -16,14 +14,23 @@ function Core/nghiệp vụ được viết ra sao.
 ## Rule 1 — Đơn tuyến nghiệp vụ: 1 function core = đúng 1 chức năng
 
 **Cấm:** `if/else`, `switch/case`, object-map chọn hàm — khi mục đích là chọn giữa **≥2 tiến
-trình nghiệp vụ khác nhau dựa theo `appState`**. Việc "chọn tiến trình nào chạy theo state" không
-còn là việc của Core — đó là việc của Router/`VirtualMachineState` (xem
-[event-bus-flow.md mục 4C](./event-bus-flow.md)).
+trình/logic nghiệp vụ khác nhau trong cùng 1 function**. Quy tắc này KHÔNG phân biệt điều kiện rẽ
+nhánh lấy từ đâu (`appState`, tham số truyền vào, hay bất kỳ nguồn nào khác) — hễ nhánh đó tạo ra
+1 tiến trình/logic KHÁC, vi phạm bất kể nguồn điều kiện là gì. Việc "chọn tiến trình nào chạy" không
+còn là việc của 1 function core duy nhất — tách thành nhiều function đơn tuyến, để nơi gọi (Router/
+`VirtualMachineState` nếu rẽ theo state — xem [event-bus-flow.md mục 4C](./event-bus-flow.md); hay
+đơn giản là nơi gọi tự chọn đúng hàm nếu rẽ theo tham số) quyết định gọi hàm nào.
 
 **KHÔNG bị cấm:** guard clause thuần (validate tham số đầu vào, early-return khi giá trị không
 hợp lệ) — đó không phải "tiến trình khác nhau", chỉ là điều kiện tiên quyết để chạy ĐÚNG 1 tiến
-trình duy nhất của hàm. Phân biệt bằng câu hỏi: *nhánh `if` đó có dẫn tới 2 KẾT QUẢ NGHIỆP VỤ khác
-nhau, hay chỉ là "chưa đủ điều kiện thì dừng, đủ thì chạy tiếp đúng 1 đường"?*
+trình duy nhất của hàm.
+
+**Phép thử nhanh — xoá điều kiện `if` đó đi, hàm còn lại thế nào?**
+- Vẫn còn nguyên ĐÚNG 1 kịch bản, chỉ mất phần "dừng sớm nếu chưa đủ điều kiện" → **guard clause,
+  được phép.**
+- Code không còn ý nghĩa, vì đang mô tả ≥2 kịch bản nghiệp vụ khác hẳn nhau (không phải 1 kịch
+  bản có lối thoát sớm) → **rẽ nhánh tiến trình, KHÔNG được phép**, dù điều kiện đó lấy từ
+  `appState`, tham số, hay bất cứ đâu.
 
 ```js
 // ĐƯỢC — guard clause thuần, chỉ 1 tiến trình duy nhất khi hợp lệ
@@ -36,7 +43,7 @@ function applyVisualType(type) {
 ```
 
 ```js
-// SAI — if theo appState chọn giữa 2 TIẾN TRÌNH nghiệp vụ khác nhau (khoá / áp dụng)
+// SAI — rẽ nhánh theo appState tạo ra 2 TIẾN TRÌNH khác nhau (khoá / áp dụng)
 function applyVisualType(type) {
     if (appState.get('vizConfig').autoSwitchVisualEnabled) {
         return; // tiến trình 1: bị khoá
@@ -51,6 +58,24 @@ function applyVisualType(type) {
 Sửa đúng: bỏ hẳn nhánh `autoSwitchVisualEnabled` khỏi function (nó vi phạm luôn Rule 2 — đọc
 `appState` trực tiếp) — hàm chỉ còn ĐÚNG 1 tiến trình như ví dụ "ĐƯỢC" ở trên; việc quyết định có
 gọi hàm hay không (khi đang khoá) chuyển ra Router/`VirtualMachineState`.
+
+```js
+// SAI — rẽ nhánh theo THAM SỐ (không đụng appState), vẫn tạo ra 2 TIẾN TRÌNH khác nhau -> vẫn vi phạm
+function handleUpload(file, isVideo) {
+    if (isVideo) {
+        // tiến trình 1: xử lý video
+        validateVideoFile(file);
+        setMeta('videoBg', file);
+    } else {
+        // tiến trình 2: xử lý ảnh — KHÁC HẲN tiến trình 1, không phải cùng 1 kịch bản có lối thoát sớm
+        validateImageFile(file);
+        setMeta('imageBg', file);
+    }
+}
+```
+Sửa đúng: tách `handleVideoUpload(file)` và `handleImageUpload(file)` riêng, để nơi gọi (router/
+workflow) tự chọn gọi hàm nào — bất kể `isVideo` tới từ đâu (tham số, tên field input, hay gì
+khác), việc chọn hàm không thuộc về bên trong 1 function core.
 
 ## Rule 2 — Chỉ nhận tham số, không tự đọc `appState` — chỉ được GHI qua `set()`/`mutate()`
 
@@ -77,41 +102,80 @@ function saveConfig(cfg) {
 }
 ```
 
-## Rule 3 — Được gọi function core khác để hỗ trợ tính toán, PHẢI log lại — phân biệt Workflow
+## Rule 3 — Core gọi Core CHỈ hợp lệ khi dùng return value — mọi chuỗi side-effect nối tiếp là Workflow
 
-1 function nghiệp vụ **được phép** gọi 1 (hoặc nhiều) function core khác, khi bản thân nó cần
-dùng kết quả đó để hoàn thành **đúng 1 kết quả trả về của chính nó** — không phải điều phối nhiều
-bước độc lập nối tiếp nhau (đó là Workflow, thuộc `/event/workflow/`, KHÔNG phải Core).
+**Tiêu chí duy nhất để 1 lời gọi function-khác được PHÉP nằm trong 1 core function:** hàm được
+gọi (B) **CÓ return value VÀ hàm gọi (A) DÙNG giá trị đó** vào phép tính ra kết quả của chính A.
+B có nhận tham số hay không KHÔNG liên quan tới tiêu chí này (B tự tạo return bằng cách nào là
+việc của B) — chỉ cần A THẬT SỰ dùng được cái B trả về.
 
-**Phân biệt Core-gọi-Core vs Workflow:**
+**Nếu B không có return (void) và A gọi B chỉ để B tự tạo side-effect** (set state, cập nhật UI,
+ghi log...) — KHÔNG được giữ trong core, **bất kể đơn giản hay phức tạp, bất kể có cần
+shield/modal hay không.** Bản chất của việc "A bọc lấy B rồi B rồi C... nối tiếp nhau, không cái
+nào trả giá trị cho A dùng" chính là Workflow — chỉ là code đang SAI VỊ TRÍ (nằm trong core thay
+vì `/event/workflow/`), không phải Workflow "cần thêm điều kiện gì" mới tính là Workflow. **Bỏ
+hẳn điều kiện "cần shield/modal" từng dùng để quyết định có cần Workflow hay không** (xem cập nhật
+tương ứng ở [event-bus-flow.md mục (B)](./event-bus-flow.md)) — giờ chỉ cần đúng hình dạng "≥2
+lời gọi side-effect nối tiếp, có thứ tự phụ thuộc nhau" là đủ, có `shield`/`modal` hay không không
+còn là điều kiện riêng, chỉ là 1 LÝ DO thường gặp khiến 1 chuỗi cần async (IndexedDB, network...).
 
-| | Core gọi Core | Workflow (`/event/workflow/`) |
-|---|---|---|
-| Hình dạng | Lời gọi HỖ TRỢ TÍNH TOÁN cho 1 kết quả trả về duy nhất | Chuỗi BƯỚC độc lập, bước sau chỉ chạy khi bước trước ĐÃ HOÀN THÀNH |
-| Ví dụ | `a = x; b = xxx(a); c = a + b; return c;` | `await functionA(); → hoàn thành → functionB(); → hoàn thành → ...` |
-| Thường có gì | Tính toán đồng bộ, thuần | `shield`/`modal`, IndexedDB async, thứ tự phụ thuộc rõ ràng giữa các bước |
-| Trả về | 1 giá trị/kết quả nghiệp vụ | Không nhất thiết trả giá trị — mục đích là hoàn tất chuỗi hành động |
+### Ngoại lệ — gọi BẤT ĐỒNG BỘ và KHÔNG chờ (fire-and-forget, không `await`)
 
-**Mọi lời gọi Core → Core phải có `console.log` NGAY DƯỚI dòng gọi**, đúng format:
+Nếu A gọi 1 hàm khác dưới dạng bất đồng bộ và **KHÔNG `await`/không chờ nó hoàn thành** trước khi
+code sau đó tiếp tục chạy — lời gọi đó **KHÔNG tính là Workflow**, được giữ trong core. Lý do:
+bản chất Workflow là "bước SAU chỉ chạy khi bước TRƯỚC đã hoàn thành" (có phụ thuộc thứ tự thực
+thi). Lời gọi async không chờ không tạo phụ thuộc thứ tự nào — nó chạy song song, độc lập hoàn
+toàn với phần còn lại của A, không giấu 1 "bước kế tiếp" nào cả.
+
+**Ngược lại — gọi ĐỒNG BỘ (dù chỉ set 1 state đơn giản) tạo ra thứ tự phụ thuộc → VẪN LÀ
+Workflow, không có ngoại lệ nào cho việc "đơn giản".** Khác biệt duy nhất giữa 1 chuỗi state-set
+đồng bộ nối tiếp và 1 Workflow "phức tạp" chỉ là quy mô, không phải bản chất.
+
 ```js
-console.log(`[<tên function gọi>] callTo: "<tên function được gọi>", request: "<mục đích ngắn gọn>"`);
-```
-
-```js
+// ĐƯỢC — B có return, A DÙNG vào phép tính
 function computeSomething(x) {
     const a = x;
-    const b = xxx(a);
+    const b = xxx(a); // xxx() CÓ return value
     console.log(`[computeSomething] callTo: "xxx", request: "tính phần b từ a để cộng vào tổng"`);
-    const c = a + b;
+    const c = a + b; // A THẬT SỰ dùng b
     return c;
 }
 ```
 
+```js
+// ĐƯỢC — gọi bất đồng bộ, KHÔNG await, không tạo phụ thuộc thứ tự -> ngoại lệ, không phải Workflow
+function doSomething(a, c) {
+    const A = a + c;
+    logListenEventAsync(A); // KHÔNG await — fire-and-forget, code dưới chạy ngay, không chờ kết quả
+    // ...code khác tiếp tục ngay lập tức, không phụ thuộc thời điểm logListenEventAsync() xong
+    return A;
+}
+```
+
+```js
+// SAI — B không có return (void), A gọi B chỉ để side-effect -> đây LÀ Workflow, phải chuyển ra
+// /event/workflow/, KHÔNG được giữ trong core dù rất đơn giản, dù không cần shield/modal
+function applyModeChange(idx) {
+    appState.set('currentModeIndex', idx); // set state X
+    updateTypeUI();  // void, side-effect thuần — A không dùng gì từ nó
+    saveConfig();     // void, side-effect thuần — A không dùng gì từ nó, PHỤ THUỘC thứ tự (chạy
+                       // sau updateTypeUI(), sau khi state X đã set) -> đúng hình dạng Workflow
+}
+```
+Sửa đúng: tách 3 dòng trên thành `workflowX.applyModeChange(idx)` trong `/event/workflow/<cụm>.js`
+— `applyModeChange` không còn là core function nữa, mà là 1 method của Workflow.
+
+**Mọi lời gọi Core → Core hợp lệ (theo tiêu chí return-value ở trên) phải có `console.log` NGAY
+DƯỚI dòng gọi**, đúng format:
+```js
+console.log(`[<tên function gọi>] callTo: "<tên function được gọi>", request: "<mục đích ngắn gọn>"`);
+```
+
 **Ngoại lệ bắt buộc — KHÔNG log trong hot path 60fps** (vòng vẽ visualizer
 `core/visualizer/draw-visualizer.js`, `taskManager` tần suất cao): vẫn được gọi core khác bình
-thường trong các vòng lặp này, chỉ **miễn** yêu cầu `console.log` — log mỗi frame sẽ spam console
-và tốn hiệu năng thật (khác `appState.get()`, vốn rẻ — xem `service/state.js` — nhưng
-`console.log` có chi phí I/O thật, không miễn phí ở tần suất 60fps).
+thường trong các vòng lặp này (nếu thoả tiêu chí return-value), chỉ **miễn** yêu cầu `console.log`
+— log mỗi frame sẽ spam console và tốn hiệu năng thật (khác `appState.get()`, vốn rẻ — xem
+`service/state.js` — nhưng `console.log` có chi phí I/O thật, không miễn phí ở tần suất 60fps).
 
 ---
 
@@ -119,11 +183,12 @@ và tốn hiệu năng thật (khác `appState.get()`, vốn rẻ — xem `servi
 
 | Câu hỏi | Đúng luật ver 12 |
 |---|---|
-| Function có `if/else`/`switch` chọn giữa ≥2 TIẾN TRÌNH nghiệp vụ khác nhau theo `appState`? | **KHÔNG được** — tách thành nhiều function đơn tuyến, để Router/`VirtualMachineState` chọn |
+| Function có `if/else`/`switch` chọn giữa ≥2 TIẾN TRÌNH/logic nghiệp vụ khác nhau (bất kể điều kiện lấy từ `appState`, tham số, hay đâu khác)? | **KHÔNG được** — tách thành nhiều function đơn tuyến, để nơi gọi chọn |
 | Function có guard clause thuần (validate, early-return, vẫn chỉ 1 tiến trình)? | **ĐƯỢC** — không phải Rule 1 |
 | Function có tự `appState.get()` bên trong? | **KHÔNG được** — nhận qua tham số |
 | Function có tự `appState.set()`/`mutate()`? | **ĐƯỢC** — chỉ chặn đọc, không chặn ghi |
-| Function có gọi function core khác để hỗ trợ tính 1 kết quả duy nhất? | **ĐƯỢC** — phải `console.log` `sender/callTo/request` ngay dưới, TRỪ hot path 60fps |
-| Function có điều phối nhiều bước, bước sau chờ bước trước hoàn thành (thường async/shield/modal)? | **KHÔNG thuộc Core** — đó là Workflow (`/event/workflow/`) |
+| Function gọi function core khác CÓ return value VÀ dùng giá trị đó? | **ĐƯỢC** — phải `console.log` `sender/callTo/request` ngay dưới, TRỪ hot path 60fps |
+| Function gọi function core khác VOID (không return, chỉ side-effect), gọi ĐỒNG BỘ? | **KHÔNG được** — đây LÀ Workflow, chuyển ra `/event/workflow/`, bất kể đơn giản hay cần shield/modal |
+| Function gọi function khác BẤT ĐỒNG BỘ và KHÔNG `await`/không chờ? | **ĐƯỢC** — ngoại lệ, không tạo phụ thuộc thứ tự nên không phải Workflow |
 
 ← [Quay lại README](../README.md)
