@@ -1,9 +1,12 @@
 # Mục lục Changelog
 
-Bản hiện tại: **ver 11** — chốt chính thức kiến trúc `/event/` (14 cụm, 119 listener) + State quản
-lý tập trung (`service/state.js`, cả 96 key STATE lẫn 16 hằng CONST đều đã migrate 100%) + 3 lỗi
-nhỏ. Xem đầy đủ ở [v11.md](./changelog/v11.md).
+Bản hiện tại: **ver 12** — thêm hạ tầng rẽ nhánh theo `appState` cho `/event/`: `service/
+operation.js` (so sánh toán tử dùng chung), `event/block.js` (chặn message trước router, hiện
+rỗng), `event/virtual-machine-state.js` (chạy nhiều workflow độc lập trong 1 case router). CHƯA
+wire vào router/core nào — xem [event-bus-flow.md](./event-bus-flow.md) cho sơ đồ đầy đủ. Xem
+đầy đủ ở [v12.md](./changelog/v12.md).
 
+- [v12.md](./changelog/v12.md) — hạ tầng block/virtual-machine-state cho event bus, chưa wire
 - [v11.md](./changelog/v11.md) — event bus hoàn tất, State tập trung (đã audit từng key), 3 lỗi nhỏ
 - [v10-lang-test.md](./changelog/v10-lang-test.md) — khung đa ngôn ngữ (i18n), English gốc cứng
   RAM, ngôn ngữ khác qua IndexedDB tự upload — ⚠️ vẫn CHƯA test trên browser thật (không đổi ở v11)
@@ -25,6 +28,14 @@ nhỏ. Xem đầy đủ ở [v11.md](./changelog/v11.md).
 - [v1.md](./changelog/v1.md)
 
 ## Tóm tắt từng bản (cũ → mới)
+
+Ver 12 thêm hạ tầng rẽ nhánh theo `appState` cho kiến trúc `/event/`, KHÔNG đổi hành vi app nào —
+`service/operation.js` (so sánh toán tử `=== !== > < >= <= in notIn` dùng chung), `event/block.js`
+(chặn 1 `msg.type` TRƯỚC khi vào router, đăng ký qua `eventBus.registerBlock()`, hiện đang RỖNG),
+`event/virtual-machine-state.js` (`VirtualMachineState.run()`, chạy nhiều workflow độc lập NGAY
+TRONG 1 case của router, không loại trừ nhau). Cả 3 file đã nạp vào `index.html` nhưng chưa wire
+case thật nào — xem [event-bus-flow.md](./event-bus-flow.md) cho sơ đồ đầy đủ luồng
+listener→router→core/workflow/virtual-machine-state.
 
 Ver 11 KHÔNG có tính năng mới cho người dùng cuối — thuần tái cấu trúc nội bộ. Kiến trúc `/event/`
 (`listener → router → workflow → core`) hoàn tất cho 14 cụm (119 listener nghiệp vụ), cả State
