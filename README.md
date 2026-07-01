@@ -17,11 +17,12 @@ dùng cuối — thuần kiến trúc nội bộ):
    (`event/bus.js`, tổng đài) → **router** (quyết định gọi thẳng core hay giao workflow) →
    **workflow** (chuỗi gọi nhiều hàm core, có `withLoadingShield`/`alertModal`, 6/14 cụm cần) →
    **core** (hàm thuần, không biết gì về DOM/event/modal). Không còn cụm nào dở dang.
-2. **State quản lý tập trung qua `service/state.js` — đã audit xác nhận từng key.** `STATE_SCHEMA`
-   (96 key mutable, class `AppState` với `get`/`set`/`mutate` + validate kiểu) đã migrate **100%**
-   — đối chiếu bằng script trên toàn bộ source, không còn biến global rời rạc nào sót lại. `CONST`
-   (16 hằng số readonly) thì NGƯỢC LẠI — hạ tầng đã có nhưng **CHƯA migrate thật** (0/16, chỉ 1
-   dòng bootstrap dùng `CONST.DEFAULT_VIZ_CONFIG`), để dành làm cụm riêng sau.
+2. **State quản lý tập trung qua `service/state.js` — đã audit xác nhận từng key, cả STATE lẫn
+   CONST đều xong 100%.** `STATE_SCHEMA` (96 key mutable, class `AppState` với `get`/`set`/
+   `mutate` + validate kiểu) đã migrate **100%**, và `CONST` (16 hằng số readonly) **cũng đã
+   migrate 100%** — cả 16 hằng số đều đã xoá khai báo local ở 6 file gốc, chuyển hẳn sang đọc
+   `CONST.xxx` (93 chỗ dùng thật, rải trên 18 file) — đối chiếu bằng script trên toàn bộ source,
+   không còn biến global rời rạc nào sót lại cho cả 2 nhóm.
 3. **3 lỗi nhỏ** phát hiện trong lúc audit: 1 file mồ côi (`core/visualizer-overlay.js`, bản HTML
    cũ không còn được nạp), 1 biến `noSleep` khai báo lạc trong file phụ đề (đã chuyển về
    `core/wakelock.js`), 1 comment sai tên file.
