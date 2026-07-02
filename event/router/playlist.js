@@ -67,10 +67,12 @@ const routerPlaylist = (() => {
             case 'playlist.item.playClick': {
                 const { key } = msg.payload;
                 // Ver 12 "Multi Media": rẽ nhánh theo appState KHÁC (selectionMode) -> BẮT BUỘC qua
-                // VirtualMachineState (event-bus-flow.md mục 4C), kể cả chỉ 1 điều kiện/1 đích.
+                // VirtualMachineState. Nhánh selectionMode=true gọi WORKFLOW (không phải core thẳng)
+                // vì cần ĐỌC thêm domNodesByKey/selectedSongKeys rồi patch DOM nối tiếp — đúng hình
+                // dạng Workflow (event-bus-flow.md mục 4B), xem toggleSongSelectionAndRefresh().
                 const selectionMode = appState.get('selectionMode');
                 VirtualMachineState.run([
-                    { state: selectionMode, operation: '===', value: true, callback: () => toggleSongSelection(key) },
+                    { state: selectionMode, operation: '===', value: true, callback: () => workflowPlaylist.toggleSongSelectionAndRefresh(key) },
                     { state: selectionMode, operation: '===', value: false, callback: () => window.playSong(key) },
                 ]);
                 break;
@@ -186,8 +188,7 @@ const routerPlaylist = (() => {
 
             // ===================== Ver 12 "Multi Media" — Chọn nhiều (mục 4.b1) =====================
             case 'playlist.selection.toggle': {
-                const isOn = appState.get('selectionMode');
-                setSelectionMode(!isOn); // CHỈ 1 hàm core (đổi state + vẽ lại) -> gọi thẳng
+                workflowPlaylist.toggleSelectionMode(); // CẦN đọc domNodesByKey + patch DOM nối tiếp sau khi đổi state -> workflow
                 break;
             }
 
