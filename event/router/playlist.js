@@ -147,7 +147,16 @@ const routerPlaylist = (() => {
             }
 
             case 'playlist.uploadMenu.open': {
-                openUploadActionMenu(); // CHỈ 1 hàm core thuần UI -> gọi thẳng
+                // Ver 12 "Multi Media": rẽ nhánh theo appState (selectionMode) -> BẮT BUỘC qua
+                // VirtualMachineState. KHÔNG dùng event/block.js ở đây — block.js CHỈ dùng cho
+                // "chặn hẳn, không chạy gì cả" (xem comment đầu event/block.js); ở đây cần CHẠY 1
+                // thứ khi bị chặn (hiện modal thông báo), nên đúng là việc của switch/if/VMState
+                // trong router, không phải block gate.
+                const selectionMode = appState.get('selectionMode');
+                VirtualMachineState.run([
+                    { state: selectionMode, operation: '===', value: true, callback: () => workflowPlaylist.showUploadBlockedBySelectionModal() },
+                    { state: selectionMode, operation: '===', value: false, callback: () => openUploadActionMenu() },
+                ]);
                 break;
             }
 
@@ -192,23 +201,27 @@ const routerPlaylist = (() => {
                 break;
             }
 
-            case 'playlist.selection.playSelected': {
-                workflowPlaylist.playSelectedSongs(); // CẦN sort + set state + gọi playSong -> workflow
+            case 'playlist.selection.moreMenu.open': {
+                openSelectionMoreMenu(); // CHỈ 1 hàm core thuần UI -> gọi thẳng
                 break;
             }
 
-            case 'playlist.selection.exportZip': {
-                workflowPlaylist.exportSelectedSongsZip(); // CẦN shield + nhiều hàm core -> workflow
+            case 'playlist.selection.moreMenu.close': {
+                closeSelectionMoreMenu(); // CHỈ 1 hàm core thuần UI -> gọi thẳng
                 break;
             }
 
-            case 'playlist.selection.addToFolder': {
-                workflowPlaylist.openAddToFolderPicker(); // CẦN đọc danh sách folder + mở picker -> workflow
-                break;
-            }
-
-            case 'playlist.selection.deleteSelected': {
-                workflowPlaylist.deleteSelectedSongs(); // CẦN shield + nhiều hàm core -> workflow
+            case 'playlist.selection.moreMenu.select': {
+                const { action } = msg.payload;
+                closeSelectionMoreMenu(); // đóng menu trước khi chạy hành động, giống handleSongActionMenuSelect()
+                // 4 giá trị LOẠI TRỪ NHAU (đúng data-menu-action khai báo ở components/playlist-view.js)
+                // -> BẮT BUỘC qua VirtualMachineState, không viết switch/if tay.
+                VirtualMachineState.run([
+                    { state: action, operation: '===', value: 'play', callback: () => workflowPlaylist.playSelectedSongs() },
+                    { state: action, operation: '===', value: 'export', callback: () => workflowPlaylist.exportSelectedSongsZip() },
+                    { state: action, operation: '===', value: 'addToFolder', callback: () => workflowPlaylist.openAddToFolderPicker() },
+                    { state: action, operation: '===', value: 'delete', callback: () => workflowPlaylist.deleteSelectedSongs() },
+                ]);
                 break;
             }
 
