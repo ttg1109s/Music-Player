@@ -179,3 +179,34 @@ if (playlistSearchClear) {
     });
 }
 
+// ===================== Ver 12 "Multi Media" — Chọn nhiều (mục 4.b1) =====================
+if (btnToggleSelection) {
+    btnToggleSelection.addEventListener('click', () => {
+        eventBus.send({ router: 'playlist', type: 'playlist.selection.toggle', payload: {} });
+    });
+}
+
+if (btnSelectionPlay) {
+    btnSelectionPlay.addEventListener('click', () => {
+        eventBus.send({ router: 'playlist', type: 'playlist.selection.playSelected', payload: {} });
+    });
+}
+
+if (btnSelectionExport) {
+    btnSelectionExport.addEventListener('click', () => {
+        eventBus.send({ router: 'playlist', type: 'playlist.selection.exportZip', payload: {} });
+    });
+}
+
+if (btnSelectionAddFolder) {
+    btnSelectionAddFolder.addEventListener('click', () => {
+        eventBus.send({ router: 'playlist', type: 'playlist.selection.addToFolder', payload: {} });
+    });
+}
+
+if (btnSelectionDelete) {
+    btnSelectionDelete.addEventListener('click', () => {
+        eventBus.send({ router: 'playlist', type: 'playlist.selection.deleteSelected', payload: {} });
+    });
+}
+
