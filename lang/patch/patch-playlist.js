@@ -57,6 +57,7 @@ const LANG_PATCH_PLAYLIST = {
     // ── Chọn nhiều (ver 12 "Multi Media", plan-v12-multimedia.md mục 4.b1) ──────────────
     'playlistView.selection.toggleTitle': 'Select songs',
     'playlistView.selection.exitTitle': 'Cancel selection',
+    'playlistView.selection.moreTitle': 'More actions',
     'playlistView.selection.countLabel': '{count} selected',
     'playlistView.selection.btnPlay': 'Play',
     'playlistView.selection.btnExport': 'Export ZIP',
@@ -65,6 +66,7 @@ const LANG_PATCH_PLAYLIST = {
     'playlistView.selection.deleteSuccess': 'Deleted {count} song(s).',
     'playlistView.selection.exportZipFilename': 'songs.zip',
     'playlistView.selection.exportPartialFail': 'Some files could not be re-tagged and were exported using their original tag.',
+    'playlistView.selection.uploadBlocked': 'Exit selection mode before uploading files.',
     'playlistView.playbackError.title': "Can't play this song",
     'playlistView.playbackError.body': 'The file data may be corrupted or in an unsupported format. Keep it for later (in Storage Management) or delete it now?',
     'playlistView.playbackError.btnKeep': 'Keep',
