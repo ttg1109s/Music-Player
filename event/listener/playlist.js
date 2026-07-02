@@ -186,27 +186,26 @@ if (btnToggleSelection) {
     });
 }
 
-if (btnSelectionPlay) {
-    btnSelectionPlay.addEventListener('click', () => {
-        eventBus.send({ router: 'playlist', type: 'playlist.selection.playSelected', payload: {} });
+if (btnSelectionMore) {
+    btnSelectionMore.addEventListener('click', () => {
+        eventBus.send({ router: 'playlist', type: 'playlist.selection.moreMenu.open', payload: {} });
     });
 }
 
-if (btnSelectionExport) {
-    btnSelectionExport.addEventListener('click', () => {
-        eventBus.send({ router: 'playlist', type: 'playlist.selection.exportZip', payload: {} });
+if (selectionMoreMenu) {
+    selectionMoreMenu.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-menu-action]');
+        if (!btn) return; // không bấm trúng 1 trong 4 hành động -> không gửi gì cả, giống songActionMenu
+        eventBus.send({ router: 'playlist', type: 'playlist.selection.moreMenu.select', payload: { action: btn.dataset.menuAction } });
     });
 }
 
-if (btnSelectionAddFolder) {
-    btnSelectionAddFolder.addEventListener('click', () => {
-        eventBus.send({ router: 'playlist', type: 'playlist.selection.addToFolder', payload: {} });
-    });
-}
-
-if (btnSelectionDelete) {
-    btnSelectionDelete.addEventListener('click', () => {
-        eventBus.send({ router: 'playlist', type: 'playlist.selection.deleteSelected', payload: {} });
+if (songActionOverlay) {
+    // Listener THỨ 3 trên CÙNG #song-action-overlay (2 listener khác đã có cho song-action-menu/
+    // upload-action-menu, xem đầu file) — mỗi menu tự đóng menu CỦA MÌNH khi bấm ra ngoài, không
+    // ảnh hưởng nhau (đóng 1 menu đã ẩn sẵn là no-op vô hại), đúng pattern đã có.
+    songActionOverlay.addEventListener('click', () => {
+        eventBus.send({ router: 'playlist', type: 'playlist.selection.moreMenu.close', payload: {} });
     });
 }
 

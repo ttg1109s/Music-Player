@@ -1,7 +1,10 @@
 /**
  * event/listener/settings-misc.js — TẤT CẢ listener của cụm "settingsMisc" (aboutDrawer +
- * storageDrawer + appRecovery) nằm CHUNG file này — gộp vì mỗi nhánh quá nhỏ để xứng đáng 1
- * listener riêng (xem ghi chú đầu router/settings-misc.js).
+ * appRecovery) nằm CHUNG file này — gộp vì mỗi nhánh quá nhỏ để xứng đáng 1 listener riêng (xem
+ * ghi chú đầu router/settings-misc.js).
+ *
+ * Ver 12 "Multi Media": nhánh storageDrawer đã DỜI sang cụm "fileManagerSong" (xem
+ * event/listener/file-manager-song.js, plan-v12-multimedia.md mục 3).
  *
  * QUY TẮC (ẩn dụ "người gửi thư", không đổi):
  *   - Listener KHÔNG biết, KHÔNG quan tâm nội dung nghiệp vụ.
@@ -26,51 +29,10 @@ if (btnBackAbout) {
     });
 }
 
-// ===================== storageDrawer =====================
-
-if (btnOpenStorage) {
-    btnOpenStorage.addEventListener('click', () => {
-        drawerStorage.classList.remove('translate-y-full'); // thuần UI hiển thị drawer
-        eventBus.send({ router: 'settingsMisc', type: 'settingsMisc.storageDrawer.open', payload: {} });
-    });
-}
-
-if (btnBackStorage) {
-    btnBackStorage.addEventListener('click', () => {
-        drawerStorage.classList.add('translate-y-full'); // thuần UI, không có nghiệp vụ nào để gửi message
-    });
-}
-
-if (btnDownloadThenClear) {
-    btnDownloadThenClear.addEventListener('click', () => {
-        eventBus.send({ router: 'settingsMisc', type: 'settingsMisc.downloadThenClear.click', payload: {} });
-    });
-}
-
-if (btnClearNoDownload) {
-    btnClearNoDownload.addEventListener('click', () => {
-        eventBus.send({ router: 'settingsMisc', type: 'settingsMisc.clearNoDownload.click', payload: {} });
-    });
-}
-
-if (btnScanBroken) {
-    btnScanBroken.addEventListener('click', () => {
-        eventBus.send({ router: 'settingsMisc', type: 'settingsMisc.scanBroken.click', payload: {} });
-    });
-}
-
-if (btnDeleteBroken) {
-    btnDeleteBroken.addEventListener('click', () => {
-        // Không cần gửi gì trong payload — router tự đọc lastScanResults + currentKey trực tiếp.
-        eventBus.send({ router: 'settingsMisc', type: 'settingsMisc.deleteBroken.click', payload: {} });
-    });
-}
-
-if (btnDismissScan) {
-    btnDismissScan.addEventListener('click', () => {
-        eventBus.send({ router: 'settingsMisc', type: 'settingsMisc.dismissScan.click', payload: {} });
-    });
-}
+// ===================== storageDrawer — DỜI sang cụm "fileManagerSong" =====================
+// (event/listener/file-manager-song.js, ver 12 "Multi Media", plan-v12-multimedia.md mục 3).
+// #drawer-storage/#btn-open-storage/#btn-back-storage không còn tồn tại trong DOM (xem
+// components/file-manager.js) — bỏ hẳn khối listener cũ ở đây, không để lại `if (x)` rỗng.
 
 // ===================== appRecovery =====================
 
