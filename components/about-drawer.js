@@ -37,19 +37,9 @@ const TPL_ABOUT_DRAWER = `
                     </div>
                 </div>
 
-                <!-- SECTION: QUẢN LÝ DUNG LƯỢNG (mục mới — tách khỏi Thống kê, sang ngăn riêng) -->
-                <div>
-                    <h3 class="text-xs font-bold text-rose-400 uppercase tracking-widest mb-2 ml-2" data-i18n="aboutDrawer.storageSectionTitle">${t('aboutDrawer.storageSectionTitle')}</h3>
-                    <div class="bg-white/5 rounded-2xl border border-white/10 flex flex-col overflow-hidden">
-                        <button id="setting-open-storage" class="flex justify-between items-center p-4 hover:bg-white/5 transition-colors w-full text-left">
-                            <div>
-                                <div class="text-sm font-medium" data-i18n="aboutDrawer.openStorage.label">${t('aboutDrawer.openStorage.label')}</div>
-                                <div class="text-xs text-slate-400 mt-0.5" data-i18n="aboutDrawer.openStorage.hint">${t('aboutDrawer.openStorage.hint')}</div>
-                            </div>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                        </button>
-                    </div>
-                </div>
+                <!-- SECTION: QUẢN LÝ DUNG LƯỢNG — DỜI sang File Manager -> Song (ver 12 "Multi
+                     Media", plan-v12-multimedia.md mục 3 "Kéo ra thành mục riêng"). Mục này trước
+                     đây mở #drawer-storage (đã ngừng mount, xem main.js) — bỏ hẳn khỏi About. -->
 
                 <!-- SECTION: GIỚI THIỆU -->
                 <div>
