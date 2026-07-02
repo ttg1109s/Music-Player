@@ -14,6 +14,11 @@
         // động). Cùng xử lý chung qua handleAudioFiles() ở core/playlist/loader.js.
         const folderInput = document.getElementById('audio-upload-folder');
         const btnUploadAudio = document.getElementById('btn-upload-audio'), uploadActionMenu = document.getElementById('upload-action-menu');
+        // Ver 12 "Multi Media" (plan-v12-multimedia.md mục 4.b1) — "Chọn nhiều" trong Playlist.
+        const btnToggleSelection = document.getElementById('btn-toggle-selection');
+        const selectionActionBar = document.getElementById('selection-action-bar'), selectionCountLabel = document.getElementById('selection-count-label');
+        const btnSelectionPlay = document.getElementById('btn-selection-play'), btnSelectionExport = document.getElementById('btn-selection-export');
+        const btnSelectionAddFolder = document.getElementById('btn-selection-add-folder'), btnSelectionDelete = document.getElementById('btn-selection-delete');
         // FIX (ver 8 refine #2): nếu 1 trong các id trên không khớp với template HTML thật (lỗi gõ
         // nhầm id, hoặc component nạp sai thứ tự khiến #app-root chưa có nội dung lúc dom-refs.js
         // chạy), getElementById trả về null — gọi .addEventListener trên null ở loader.js sẽ throw
