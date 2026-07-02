@@ -2,7 +2,7 @@
  * lang.js — Bộ điều phối đa ngôn ngữ (i18n) cho toàn bộ app.
  *
  * ĐÃ DỜI từ js/core/lang.js sang /lang/lang.js. Lý do tách: object LANG_EN_KEYS (default tiếng
- * Anh, ~312 key) đã được CHIA NHỎ thành 5 file patch riêng trong /lang/patch/*.js (bắt buộc viết
+ * Anh, ~312 key) đã được CHIA NHỎ thành 6 file patch riêng trong /lang/patch/*.js (bắt buộc viết
  * dưới dạng .js, KHÔNG phải .json — project chạy qua file://, không thể fetch() file tĩnh nào,
  * nên dữ liệu default phải nạp qua <script> như mọi file core khác). File NÀY chỉ còn giữ ENGINE
  * i18n (gộp patch + t/tFormat/validate/save/apply/list) — không còn tự chứa key nào trực tiếp.
@@ -45,9 +45,10 @@
  *
  * THỨ TỰ NẠP (xem index.html):
  *   /lang/patch/patch-common.js, patch-playlist.js, patch-visualizer.js, patch-subtitle-settings.js,
- *   patch-settings-misc.js (thứ tự nội bộ giữa 5 file KHÔNG quan trọng — key không trùng nhau giữa
- *   các patch, Object.assign chỉ cần cả 5 biến đã tồn tại) -> /lang/lang.js (file này, gộp lại) ->
- *   /lang/language-settings.js (UI Settings ngôn ngữ, cần t/tFormat/saveLanguagePack/...).
+ *   patch-settings-misc.js, patch-file-manager.js (thứ tự nội bộ giữa 6 file KHÔNG quan trọng —
+ *   key không trùng nhau giữa các patch, Object.assign chỉ cần cả 6 biến đã tồn tại) ->
+ *   /lang/lang.js (file này, gộp lại) -> /lang/language-settings.js (UI Settings ngôn ngữ, cần
+ *   t/tFormat/saveLanguagePack/...).
  *   Khối /lang/ NÓI CHUNG vẫn giữ đúng vị trí nạp như lang.js cũ trước đây: NGAY SAU config.js,
  *   TRƯỚC mọi file components/core/playlist khác dùng hàm t()/tFormat(). PHẢI nạp SAU db.js nếu
  *   muốn dùng các hàm saveLanguagePack/applySavedLanguage/deleteLanguagePack (cần
@@ -68,7 +69,8 @@ const LANG_EN_KEYS = Object.assign(
     LANG_PATCH_PLAYLIST,
     LANG_PATCH_VISUALIZER,
     LANG_PATCH_SUBTITLE_SETTINGS,
-    LANG_PATCH_SETTINGS_MISC
+    LANG_PATCH_SETTINGS_MISC,
+    LANG_PATCH_FILE_MANAGER
 );
 
 /**
