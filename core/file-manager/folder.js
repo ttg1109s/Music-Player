@@ -22,7 +22,11 @@
  *                 sự TỒN TẠI của key folderId đã đủ biết "từng thêm vào folder này chưa"; trạng
  *                 thái đang-ở-trong hay đã-gỡ đọc thẳng từ folder_song[folderId].list[position].
  *
- * NẠP SAU: core/db.js (cần mọi hàm CRUD kể trên + slugify() dùng chung cho resolveFolderId).
+ * NẠP SAU: core/db.js (cần mọi hàm CRUD kể trên + slugify() dùng chung cho resolveFolderId),
+ * event/virtual-machine-state.js (addSongsToFolder() dùng VirtualMachineState.run() để chọn đúng
+ * hàm theo trạng thái thành viên — chỉ tham chiếu BÊN TRONG thân hàm, không chạy lúc parse, nên
+ * an toàn dù event/virtual-machine-state.js nạp SAU file này trong index.html thật, giống cách
+ * nhiều file core khác tham chiếu hàm định nghĩa muộn hơn).
  */
 
 /**
@@ -93,13 +97,39 @@ async function deleteFolder(folderId) {
 }
 
 /**
- * Thêm NHIỀU bài vào 1 folder — đúng thuật toán CHỐT ở plan mục 4.b1 "Thêm vào folder":
- *   - Chưa từng thêm (`folder[folderId]` không tồn tại) -> lần đầu tuyệt đối, push vào cuối list,
- *     KHÔNG đổi `empty`.
- *   - Đã từng thêm, đang bị gỡ (`list[position] === null`) -> tái điền đúng position cũ, `empty--`.
- *   - Đã từng thêm, đang ở trong rồi -> không làm gì (tránh thêm trùng).
- * 3 nhánh trên là 3 TRẠNG THÁI của ĐÚNG 1 tiến trình "đảm bảo bài có mặt trong folder" (idempotent
- * upsert) — không phải 3 tiến trình nghiệp vụ khác nhau, nên không vi phạm Rule 1.
+ * SỬA (sau trao đổi Rule 1/VMState): bản trước có if/else 3 nhánh (mới/tái điền/no-op) NẰM
+ * TRONG addSongsToFolder() — đây thật sự là 3 TIẾN TRÌNH khác nhau (không phải guard clause early-
+ * return thuần), vi phạm Rule 1. Tách thành 3 hàm đơn tuyến, addSongsToFolder() chỉ còn vai trò
+ * ĐIỀU PHỐI — dùng VirtualMachineState.run() để chọn đúng hàm theo `membershipState` (3 giá trị
+ * loại trừ nhau), đúng cơ chế Rule 1 đã chỉ định ("để nơi gọi Router/VirtualMachineState... quyết
+ * định gọi hàm nào").
+ */
+
+/** Lần đầu tuyệt đối: push vào cuối list, gắn position mới vào record.folder — pure, không I/O. */
+function insertNewFolderMembership(record, folderMap, folderId, songKey) {
+    const position = folderMap.list.length;
+    folderMap.list.push(songKey);
+    record.folder[folderId] = position;
+}
+
+/** Đã từng thêm, đang bị gỡ (tombstone) — tái điền đúng position cũ, giảm empty — pure, không I/O. */
+function refillTombstonedFolderMembership(record, folderMap, folderId, songKey) {
+    const position = record.folder[folderId];
+    folderMap.list[position] = songKey;
+    folderMap.empty--;
+}
+
+/**
+ * Xác định 1 trong 3 trạng thái LOẠI TRỪ NHAU của "songKey đối với folderId" — pure, không I/O,
+ * không mutate gì (chỉ đọc tham số truyền vào, KHÔNG phải appState.get()).
+ * @returns {'new'|'tombstoned'|'active'}
+ */
+function getFolderMembershipState(record, folderMap, folderId) {
+    if (!(folderId in record.folder)) return 'new';
+    return folderMap.list[record.folder[folderId]] === null ? 'tombstoned' : 'active';
+}
+
+/** Thêm NHIỀU bài vào 1 folder — đúng thuật toán CHỐT ở plan mục 4.b1 "Thêm vào folder".
  * @param {string[]} songKeys
  * @param {string} folderId
  * @returns {Promise<{status: 'notFound'|'ok', addedCount: number}>}
@@ -111,23 +141,15 @@ async function addSongsToFolder(songKeys, folderId) {
     let addedCount = 0;
     for (const songKey of songKeys) {
         const record = await getSongRecord(songKey);
-        if (!record) continue; // guard: bài không còn tồn tại — bỏ qua, không chặn cả lô
+        if (!record) continue; // guard: bài không còn tồn tại — bỏ qua, không chặn cả lô (early-exit thuần, đúng guard clause)
         if (!record.folder) record.folder = {};
 
-        if (!(folderId in record.folder)) {
-            const position = folderMap.list.length;
-            folderMap.list.push(songKey);
-            record.folder[folderId] = position;
-            addedCount++;
-        } else {
-            const position = record.folder[folderId];
-            if (folderMap.list[position] === null) {
-                folderMap.list[position] = songKey;
-                folderMap.empty--;
-                addedCount++;
-            }
-            // else: list[position] !== null -> đã ở trong rồi, không làm gì (đúng đặc tả)
-        }
+        const membershipState = getFolderMembershipState(record, folderMap, folderId);
+        VirtualMachineState.run([
+            { state: membershipState, operation: '===', value: 'new', callback: () => { insertNewFolderMembership(record, folderMap, folderId, songKey); addedCount++; } },
+            { state: membershipState, operation: '===', value: 'tombstoned', callback: () => { refillTombstonedFolderMembership(record, folderMap, folderId, songKey); addedCount++; } },
+            { state: membershipState, operation: '===', value: 'active', callback: () => {} }, // đã ở trong rồi — no-op có chủ đích (khai báo rõ, tránh cảnh báo "không rule nào khớp")
+        ]);
         await setSongRecord(songKey, record);
     }
     await setFolderSongMap(folderId, folderMap);

@@ -85,3 +85,59 @@ function openFolderPickerModal(folders, callbacks) {
     overlay.appendChild(card);
     document.body.appendChild(overlay);
 }
+
+/**
+ * Modal đổi tên 1 folder — 1 ô nhập liệu đã điền sẵn tên hiện tại + 2 nút Huỷ/Lưu. Dùng CHUNG kiểu
+ * dựng-DOM-động như openFolderPickerModal() ở trên, KHÔNG tái dùng chính nó (hình dạng khác hẳn:
+ * 1 input đơn, không có danh sách chọn).
+ * @param {string} currentName
+ * @param {function(string): void} onConfirm - nhận tên mới (đã trim, khác rỗng)
+ */
+function openRenameFolderModal(currentName, onConfirm) {
+    const stale = document.getElementById('rename-folder-overlay');
+    if (stale) stale.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'rename-folder-overlay';
+    overlay.className = 'fixed inset-0 z-[130] bg-black/70 backdrop-blur-sm flex items-center justify-center px-5';
+
+    const card = document.createElement('div');
+    card.className = 'bg-[#0f172a] border border-white/10 rounded-2xl w-full max-w-sm p-5 shadow-2xl flex flex-col gap-4';
+
+    const titleEl = document.createElement('h3');
+    titleEl.className = 'text-base font-bold text-white';
+    titleEl.textContent = t('fileManager.song.renameFolderTitle');
+    card.appendChild(titleEl);
+
+    function closeModal() { overlay.remove(); }
+
+    const inputEl = document.createElement('input');
+    inputEl.type = 'text';
+    inputEl.value = currentName;
+    inputEl.className = 'bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-sky-500 focus:bg-black/60 transition-colors';
+    card.appendChild(inputEl);
+
+    const btnRow = document.createElement('div');
+    btnRow.className = 'flex gap-3';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 text-sm font-semibold transition-colors';
+    cancelBtn.textContent = t('common.cancel');
+    cancelBtn.addEventListener('click', closeModal);
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'flex-1 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-white text-sm font-bold transition-colors';
+    saveBtn.textContent = t('common.ok');
+    saveBtn.addEventListener('click', () => {
+        const name = inputEl.value.trim();
+        if (!name) return; // guard clause thuần — chưa nhập tên thì không làm gì
+        closeModal();
+        onConfirm(name);
+    });
+    btnRow.appendChild(cancelBtn);
+    btnRow.appendChild(saveBtn);
+    card.appendChild(btnRow);
+
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+    inputEl.focus();
+    inputEl.select();
+}
