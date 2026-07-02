@@ -184,6 +184,11 @@
             dbReadyPromise: 'any',          // Promise — không validate sâu, chỉ tồn tại 1 lần lúc init
 
             // ── file manager / v12 "Multi Media" (plan-v12-multimedia.md mục 2) ─────
+            // Key điều hướng khung File Manager (mở/đóng overlay + tab đang chọn) — thêm cùng lúc
+            // với cụm event `fileManager` (bước sau của mục 5, không thêm ở bước hạ tầng ban đầu
+            // vì lúc đó UI chưa tồn tại).
+            isFileManagerOpen: 'boolean',
+            fileManagerActiveTab: 'string', // 'song' | 'image' | 'album' | 'text' — mặc định 'song', 3 tab còn lại CHƯA code (b2/b4/b5), hiện placeholder
             // Các key UI điều hướng riêng của từng cụm event (vd tab đang mở trong File
             // Manager) CHƯA thêm ở bước hạ tầng này — sẽ thêm cùng lúc với cụm event
             // tương ứng ở bước sau (mục 5 bước 2 của plan), tránh đoán trước UI chưa code.
@@ -325,6 +330,8 @@
                 dbReadyPromise: null, // gán thật ở db.js bằng appState.set('dbReadyPromise', openDatabase())
 
                 // ── file manager / v12 "Multi Media" ────────────────────────────
+                isFileManagerOpen: false,
+                fileManagerActiveTab: 'song',
                 // readerConfig/slideshowConfig gán THẬT ở dưới sau khi CONST đã sẵn sàng (giống
                 // vizConfig) — đặt {} tạm ở đây để key tồn tại sẵn trong schema/state ngay từ đầu.
                 activePlayListFolder: null,
