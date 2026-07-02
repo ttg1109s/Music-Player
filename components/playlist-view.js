@@ -49,6 +49,9 @@ const TPL_PLAYLIST_VIEW = `
                         <circle cx="12" cy="12" r="3"></circle>
                     </svg>
                 </button>
+                <button id="btn-toggle-selection" class="hover:text-sky-400 transition-colors" data-i18n-title="playlistView.selection.toggleTitle" title="${t('playlistView.selection.toggleTitle')}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                </button>
                 <button id="btn-upload-audio" class="hover:text-sky-400 transition-colors" data-i18n-title="playlistView.btnUploadAudio.title" title="${t('playlistView.btnUploadAudio.title')}">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
                 </button>
@@ -105,6 +108,32 @@ const TPL_PLAYLIST_VIEW = `
                 <p id="playlist-loading-text" class="text-sm font-medium tracking-wide">${t('playlistView.loading.generic')}</p>
             </div>
             <div id="playlist-container" class="flex flex-col pb-32"></div>
+        </div>
+
+        <!-- Thanh hành động "chọn nhiều" (ver 12 "Multi Media") — ẩn mặc định (class hidden), hiện
+             qua updateSelectionActionBar() (core/playlist/selection.js) khi selectionMode=true.
+             z-20: nổi trên #playlist-container (z-10 mặc định của flex-grow cha) nhưng vẫn dưới
+             mọi modal (z-[110]+). -->
+        <div id="selection-action-bar" class="hidden absolute bottom-0 inset-x-0 z-20 bg-[#0f172a]/95 backdrop-blur-md border-t border-white/10 px-4 py-3 flex items-center gap-2">
+            <span id="selection-count-label" class="text-sm font-semibold text-slate-200 shrink-0 pr-1"></span>
+            <div class="flex-1 flex items-center justify-end gap-1.5 overflow-x-auto">
+                <button id="btn-selection-play" class="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>
+                    <span data-i18n="playlistView.selection.btnPlay">${t('playlistView.selection.btnPlay')}</span>
+                </button>
+                <button id="btn-selection-export" class="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-8-4V4m0 8l-3-3m3 3l3-3" /></svg>
+                    <span data-i18n="playlistView.selection.btnExport">${t('playlistView.selection.btnExport')}</span>
+                </button>
+                <button id="btn-selection-add-folder" class="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+                    <span data-i18n="playlistView.selection.btnAddToFolder">${t('playlistView.selection.btnAddToFolder')}</span>
+                </button>
+                <button id="btn-selection-delete" class="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-600/80 hover:bg-rose-500 text-white text-xs font-semibold transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    <span data-i18n="playlistView.selection.btnDelete">${t('playlistView.selection.btnDelete')}</span>
+                </button>
+            </div>
         </div>
     </div>
 
