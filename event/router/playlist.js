@@ -66,7 +66,13 @@ const routerPlaylist = (() => {
 
             case 'playlist.item.playClick': {
                 const { key } = msg.payload;
-                window.playSong(key); // hàm core toàn cục có sẵn (window.playSong) — gọi thẳng
+                // Ver 12 "Multi Media": rẽ nhánh theo appState KHÁC (selectionMode) -> BẮT BUỘC qua
+                // VirtualMachineState (event-bus-flow.md mục 4C), kể cả chỉ 1 điều kiện/1 đích.
+                const selectionMode = appState.get('selectionMode');
+                VirtualMachineState.run([
+                    { state: selectionMode, operation: '===', value: true, callback: () => toggleSongSelection(key) },
+                    { state: selectionMode, operation: '===', value: false, callback: () => window.playSong(key) },
+                ]);
                 break;
             }
 
@@ -175,6 +181,33 @@ const routerPlaylist = (() => {
 
             case 'playlist.search.clear': {
                 clearPlaylistSearch(); // CHỈ 1 hàm core -> gọi thẳng
+                break;
+            }
+
+            // ===================== Ver 12 "Multi Media" — Chọn nhiều (mục 4.b1) =====================
+            case 'playlist.selection.toggle': {
+                const isOn = appState.get('selectionMode');
+                setSelectionMode(!isOn); // CHỈ 1 hàm core (đổi state + vẽ lại) -> gọi thẳng
+                break;
+            }
+
+            case 'playlist.selection.playSelected': {
+                workflowPlaylist.playSelectedSongs(); // CẦN sort + set state + gọi playSong -> workflow
+                break;
+            }
+
+            case 'playlist.selection.exportZip': {
+                workflowPlaylist.exportSelectedSongsZip(); // CẦN shield + nhiều hàm core -> workflow
+                break;
+            }
+
+            case 'playlist.selection.addToFolder': {
+                workflowPlaylist.openAddToFolderPicker(); // CẦN đọc danh sách folder + mở picker -> workflow
+                break;
+            }
+
+            case 'playlist.selection.deleteSelected': {
+                workflowPlaylist.deleteSelectedSongs(); // CẦN shield + nhiều hàm core -> workflow
                 break;
             }
 
