@@ -1,12 +1,9 @@
 /**
  * Lớp truy cập IndexedDB cho toàn bộ app, dựa trên idb-keyval (UMD, nạp qua CDN trong <head>).
- * Quản lý các store riêng trong database `musicPlayerDB`:
+ * Quản lý 2 store riêng trong database `musicPlayerDB`:
  *   - `songs`: mỗi record 1 bài hát (xem schema trong PLAN_INDEXEDDB.md mục 1).
  *   - `meta`:  key-value đơn lẻ (playlistOrder, totalListenSeconds, bgImage, videoBg).
- *   - `languages`: gói ngôn ngữ đã validate (batch i18n, DB_VERSION 3).
- *   - `folders`/`images`/`albums`/`documents`: ver 12 "Multi Media (Song First)"
- *     (DB_VERSION 4) — xem comment schema trong onupgradeneeded.
- * Tách store riêng để computeStats() (about-stats.js) chỉ cần liệt kê đúng store `songs`,
+ * Tách 2 store riêng để computeStats() (about-stats.js) chỉ cần liệt kê đúng store `songs`,
  * không lẫn key của ảnh/video nền hay playlistOrder.
  *
  * QUAN TRỌNG — KHÔNG dùng 2 lệnh `idbKeyval.createStore(DB_NAME, ...)` độc lập (1 cho mỗi store)
@@ -64,11 +61,24 @@
  *      (tránh loop nếu lỗi thật là do dữ liệu/quyền, không phải do connection chết).
  */
         const DB_NAME = 'musicPlayerDB';
-        // ver lang.js (batch i18n): tăng lên 3 để buộc onupgradeneeded chạy lại, tự bổ sung store
-        // 'languages' còn thiếu cho DB cũ (v1/v2) — KHÔNG mất dữ liệu songs/meta đã có.
-        // ver 12 "Multi Media (Song First)": tăng 3→4, bổ sung 4 store mới cho File Manager
-        // ('folders', 'images', 'albums', 'documents') — cùng cơ chế idempotent như đợt 2→3,
-        // DB cũ chỉ được BỔ SUNG store thiếu, không mất bất kỳ dữ liệu nào đã có.
+        // ver 12 "Multi Media" (plan-v12-multimedia.md mục 2/4): tăng lên 4 để buộc onupgradeneeded
+        // chạy lại, tự bổ sung 5 store còn thiếu cho DB cũ (v1/v2/v3) — KHÔNG mất dữ liệu
+        // songs/meta/languages đã có. 5 store mới:
+        //   - 'folders'     : metadata folder nhạc, key = folderId, value = { id, name }.
+        //   - 'folder_song' : mapping folderId -> danh sách bài trong folder, key = folderId,
+        //                     value = { list: [songKey|null, ...], empty: number } (tombstone
+        //                     null khi gỡ bài khỏi folder, KHÔNG splice — xem plan-v12 mục 4.b1
+        //                     "Schema — CHỐT bản đơn giản hoá cuối").
+        //   - 'images'      : ảnh người dùng thêm vào File Manager, key = imageKey, value =
+        //                     { blob, filename, addedAt }.
+        //   - 'albums'      : album ảnh dùng cho slideshow nền, key = albumId, value =
+        //                     { id, name, imageKeys: [...] }.
+        //   - 'documents'   : văn bản (txt/docx upload hoặc tự tạo), key = documentKey, value =
+        //                     { blob hoặc content, filename, type, addedAt }.
+        // Field `folder: { [folderId]: position }` trên record của store 'songs' KHÔNG cần đổi
+        // version DB (IndexedDB không ràng buộc schema trong value của 1 store) — chỉ cần các core
+        // function đọc/ghi record 'songs' biết thêm field này khi cần (việc của bước sau, xem
+        // plan-v12 mục 5 bước 2-3), KHÔNG thuộc phạm vi hạ tầng DB ở bước này.
         const DB_VERSION = 4;
 
         /** Mở 1 connection IndexedDB mới — tách hàm riêng để có thể gọi lại khi connection cũ chết. */
@@ -84,25 +94,11 @@
                     // saveLanguagePack() ở lang.js). 'en' KHÔNG nằm trong store này — nó nằm cứng
                     // trong RAM (const trong lang.js), không qua IndexedDB.
                     if (!db.objectStoreNames.contains('languages')) db.createObjectStore('languages');
-                    // ── 4 store mới của ver 12 "Multi Media (Song First)" (DB_VERSION 3→4) ──
-                    // 'folders'   (File Manager → Song → Folder): key = folderId, value =
-                    //             { name, list: [songKey|null,...], empty, createdAt } — `list`
-                    //             dùng tombstone `null` (KHÔNG splice), `empty` đếm số lỗ null để
-                    //             check "folder rỗng hoàn toàn" O(1) (empty === list.length).
-                    //             Chiều ngược lưu trên record bài hát: songRecord.folder =
-                    //             { [folderId]: position } (number thẳng, không có cờ remove).
-                    // 'images'    (File Manager → Ảnh): key = imageKey, value =
-                    //             { blob, filename, addedAt }.
-                    // 'albums'    (File Manager → Ảnh → Album, nguồn nền slideshow): key =
-                    //             albumId, value = { name, imageKeys: [...], createdAt }.
-                    // 'documents' (File Manager → Văn bản, nguồn cho Reader): key = docKey,
-                    //             value = { blob | text, filename, type: 'txt'|'docx'|'created',
-                    //             addedAt } — upload lưu NGUYÊN blob, không parse (parse là việc
-                    //             của Reader).
-                    // Nghiệp vụ CRUD (createFolder, saveImage, tombstone add/remove...) KHÔNG
-                    // nằm ở đây — db.js chỉ cấp accessor + get/set/del/keys thô cho từng store,
-                    // đúng vai trò như songs/meta/languages hiện có.
+                    // ver 12 "Multi Media" (plan-v12-multimedia.md) — 5 store mới, xem comment
+                    // đầy đủ ở khai báo DB_VERSION phía trên. Idempotent giống 'languages' ở trên,
+                    // để DB cũ (v1-v3) tự bổ sung mà không mất dữ liệu store khác đã có.
                     if (!db.objectStoreNames.contains('folders')) db.createObjectStore('folders');
+                    if (!db.objectStoreNames.contains('folder_song')) db.createObjectStore('folder_song');
                     if (!db.objectStoreNames.contains('images')) db.createObjectStore('images');
                     if (!db.objectStoreNames.contains('albums')) db.createObjectStore('albums');
                     if (!db.objectStoreNames.contains('documents')) db.createObjectStore('documents');
@@ -157,8 +153,9 @@
         const songsStore = makeStoreAccessor('songs');
         const metaStore = makeStoreAccessor('meta');
         const languagesStore = makeStoreAccessor('languages');
-        // ver 12 — 4 store File Manager (xem comment schema trong onupgradeneeded ở trên):
+        // ver 12 "Multi Media" — accessor cho 5 store mới (xem comment ở DB_VERSION).
         const foldersStore = makeStoreAccessor('folders');
+        const folderSongStore = makeStoreAccessor('folder_song');
         const imagesStore = makeStoreAccessor('images');
         const albumsStore = makeStoreAccessor('albums');
         const documentsStore = makeStoreAccessor('documents');
@@ -171,33 +168,33 @@
         function deleteLanguagePack(code) { return idbKeyval.del(code, languagesStore); }
         function getAllLanguageCodes() { return idbKeyval.keys(languagesStore); }
 
-        /** ── ver 12: CRUD thô cho 4 store File Manager ──────────────────────────────────
-         * Cùng vai trò/mức trừu tượng như getSongRecord/getLanguagePack ở trên: CHỈ đọc/ghi/xoá/
-         * liệt kê key thô trên đúng 1 store — KHÔNG chứa nghiệp vụ (tombstone folder, cascade
-         * xoá, resolve key trùng...) — nghiệp vụ đó thuộc core riêng của từng cụm File Manager
-         * (batch sau), tuân 4 rule ở core-function-conventions.md. */
-        // store 'folders' — key = folderId, value = { name, list, empty, createdAt }
-        function getFolderRecord(id) { return idbKeyval.get(id, foldersStore); }
-        function setFolderRecord(id, record) { return idbKeyval.set(id, record, foldersStore); }
-        function deleteFolderRecord(id) { return idbKeyval.del(id, foldersStore); }
-        function getAllFolderIds() { return idbKeyval.keys(foldersStore); }
+        /** CRUD thô cho 5 store mới ver 12 "Multi Media" (plan-v12-multimedia.md) — chỉ đọc/ghi
+         * NGUYÊN VẸN theo key, KHÔNG chứa nghiệp vụ (tạo id, cascade tombstone folder, validate
+         * upload...) — nghiệp vụ đó thuộc core function riêng ở bước sau (mục 5 bước 2 trở đi
+         * của plan), đúng Rule 1 core-function-conventions.md (đơn tuyến, không gộp nghiệp vụ vào
+         * lớp truy cập DB). */
+        function getFolderRecord(folderId) { return idbKeyval.get(folderId, foldersStore); }
+        function setFolderRecord(folderId, record) { return idbKeyval.set(folderId, record, foldersStore); }
+        function deleteFolderRecord(folderId) { return idbKeyval.del(folderId, foldersStore); }
+        function getAllFolderKeys() { return idbKeyval.keys(foldersStore); }
 
-        // store 'images' — key = imageKey, value = { blob, filename, addedAt }
-        function getImageRecord(key) { return idbKeyval.get(key, imagesStore); }
-        function setImageRecord(key, record) { return idbKeyval.set(key, record, imagesStore); }
-        function deleteImageRecord(key) { return idbKeyval.del(key, imagesStore); }
+        function getFolderSongMap(folderId) { return idbKeyval.get(folderId, folderSongStore); }
+        function setFolderSongMap(folderId, map) { return idbKeyval.set(folderId, map, folderSongStore); }
+        function deleteFolderSongMap(folderId) { return idbKeyval.del(folderId, folderSongStore); }
+
+        function getImageRecord(imageKey) { return idbKeyval.get(imageKey, imagesStore); }
+        function setImageRecord(imageKey, record) { return idbKeyval.set(imageKey, record, imagesStore); }
+        function deleteImageRecord(imageKey) { return idbKeyval.del(imageKey, imagesStore); }
         function getAllImageKeys() { return idbKeyval.keys(imagesStore); }
 
-        // store 'albums' — key = albumId, value = { name, imageKeys, createdAt }
-        function getAlbumRecord(id) { return idbKeyval.get(id, albumsStore); }
-        function setAlbumRecord(id, record) { return idbKeyval.set(id, record, albumsStore); }
-        function deleteAlbumRecord(id) { return idbKeyval.del(id, albumsStore); }
-        function getAllAlbumIds() { return idbKeyval.keys(albumsStore); }
+        function getAlbumRecord(albumId) { return idbKeyval.get(albumId, albumsStore); }
+        function setAlbumRecord(albumId, record) { return idbKeyval.set(albumId, record, albumsStore); }
+        function deleteAlbumRecord(albumId) { return idbKeyval.del(albumId, albumsStore); }
+        function getAllAlbumKeys() { return idbKeyval.keys(albumsStore); }
 
-        // store 'documents' — key = docKey, value = { blob|text, filename, type, addedAt }
-        function getDocumentRecord(key) { return idbKeyval.get(key, documentsStore); }
-        function setDocumentRecord(key, record) { return idbKeyval.set(key, record, documentsStore); }
-        function deleteDocumentRecord(key) { return idbKeyval.del(key, documentsStore); }
+        function getDocumentRecord(documentKey) { return idbKeyval.get(documentKey, documentsStore); }
+        function setDocumentRecord(documentKey, record) { return idbKeyval.set(documentKey, record, documentsStore); }
+        function deleteDocumentRecord(documentKey) { return idbKeyval.del(documentKey, documentsStore); }
         function getAllDocumentKeys() { return idbKeyval.keys(documentsStore); }
 
 
