@@ -36,7 +36,8 @@
  * @returns {Promise<string>}
  */
 async function resolveFolderId(name) {
-    const baseSlug = slugify(name) || 'folder';
+    const baseSlug = slugify(name) || 'folder'; // CÓ return, DÙNG ngay dưới -> hợp lệ Rule 3
+    console.log(`[resolveFolderId] callTo: "slugify", request: "chuẩn hoá tên '${name}' thành slug làm base cho id"`);
     let candidate = baseSlug;
     let suffix = 2;
     while (true) {
@@ -52,7 +53,8 @@ async function resolveFolderId(name) {
  * @returns {Promise<string>} folderId vừa tạo
  */
 async function createFolder(name) {
-    const folderId = await resolveFolderId(name);
+    const folderId = await resolveFolderId(name); // CÓ return, DÙNG ngay dưới -> hợp lệ Rule 3
+    console.log(`[createFolder] callTo: "resolveFolderId", request: "sinh id duy nhất từ tên '${name}'"`);
     await setFolderRecord(folderId, { id: folderId, name });
     await setFolderSongMap(folderId, { list: [], empty: 0 });
     return folderId;
@@ -83,7 +85,8 @@ async function deleteFolder(folderId) {
     const folderMap = await getFolderSongMap(folderId);
     if (!folderMap) return { status: 'notFound' };
 
-    const songKeys = getFolderSongKeys(folderMap);
+    const songKeys = getFolderSongKeys(folderMap); // CÓ return, DÙNG ngay dưới -> hợp lệ Rule 3
+    console.log(`[deleteFolder] callTo: "getFolderSongKeys", request: "lấy danh sách bài đang thật trong folder ${folderId} để dọn field trước khi xoá"`);
     for (const songKey of songKeys) {
         const record = await getSongRecord(songKey);
         if (!record || !record.folder) continue; // guard: record đã bị xoá/hỏng dữ liệu ở nơi khác — bỏ qua, không chặn xoá folder
@@ -97,27 +100,19 @@ async function deleteFolder(folderId) {
 }
 
 /**
- * SỬA (sau trao đổi Rule 1/VMState): bản trước có if/else 3 nhánh (mới/tái điền/no-op) NẰM
- * TRONG addSongsToFolder() — đây thật sự là 3 TIẾN TRÌNH khác nhau (không phải guard clause early-
- * return thuần), vi phạm Rule 1. Tách thành 3 hàm đơn tuyến, addSongsToFolder() chỉ còn vai trò
- * ĐIỀU PHỐI — dùng VirtualMachineState.run() để chọn đúng hàm theo `membershipState` (3 giá trị
- * loại trừ nhau), đúng cơ chế Rule 1 đã chỉ định ("để nơi gọi Router/VirtualMachineState... quyết
- * định gọi hàm nào").
+ * SỬA LẦN 2 (sau trao đổi Rule 3): bản trước tách `insertNewFolderMembership`/
+ * `refillTombstonedFolderMembership` thành 2 hàm core riêng rồi GỌI chúng (void, không return) từ
+ * bên trong `addSongsToFolder()` — dù đi qua VirtualMachineState, đây VẪN LÀ core gọi core void chỉ
+ * để side-effect (Rule 3, "bất kể đơn giản, bất kể qua cơ chế chọn hàm nào"). VMState chỉ giải
+ * quyết Rule 1 (CHỌN hàm nào chạy) — KHÔNG "miễn" Rule 3 (hàm được chọn có được phép void hay
+ * không). Sửa đúng: 2 callback của VMState.run() dưới đây là CODE NỘI BỘ (closure) của chính
+ * addSongsToFolder(), KHÔNG gọi ra hàm nào khác — không còn là "core gọi core" nữa nên Rule 3 không
+ * áp dụng, đồng thời vẫn giữ đúng Rule 1 (điều phối qua VMState, không if/else tay).
+ *
+ * `getFolderMembershipState()` GIỮ LẠI là hàm core riêng vì nó CÓ return value và addSongsToFolder
+ * DÙNG NGAY giá trị đó để chọn nhánh VMState — đúng tiêu chí "ĐƯỢC" của Rule 3 (kèm console.log
+ * callTo bắt buộc, xem bên dưới).
  */
-
-/** Lần đầu tuyệt đối: push vào cuối list, gắn position mới vào record.folder — pure, không I/O. */
-function insertNewFolderMembership(record, folderMap, folderId, songKey) {
-    const position = folderMap.list.length;
-    folderMap.list.push(songKey);
-    record.folder[folderId] = position;
-}
-
-/** Đã từng thêm, đang bị gỡ (tombstone) — tái điền đúng position cũ, giảm empty — pure, không I/O. */
-function refillTombstonedFolderMembership(record, folderMap, folderId, songKey) {
-    const position = record.folder[folderId];
-    folderMap.list[position] = songKey;
-    folderMap.empty--;
-}
 
 /**
  * Xác định 1 trong 3 trạng thái LOẠI TRỪ NHAU của "songKey đối với folderId" — pure, không I/O,
@@ -144,10 +139,23 @@ async function addSongsToFolder(songKeys, folderId) {
         if (!record) continue; // guard: bài không còn tồn tại — bỏ qua, không chặn cả lô (early-exit thuần, đúng guard clause)
         if (!record.folder) record.folder = {};
 
-        const membershipState = getFolderMembershipState(record, folderMap, folderId);
+        const membershipState = getFolderMembershipState(record, folderMap, folderId); // CÓ return, DÙNG ngay dưới -> hợp lệ Rule 3
+        console.log(`[addSongsToFolder] callTo: "getFolderMembershipState", request: "xác định trạng thái thành viên của ${songKey} trong folder ${folderId}"`);
         VirtualMachineState.run([
-            { state: membershipState, operation: '===', value: 'new', callback: () => { insertNewFolderMembership(record, folderMap, folderId, songKey); addedCount++; } },
-            { state: membershipState, operation: '===', value: 'tombstoned', callback: () => { refillTombstonedFolderMembership(record, folderMap, folderId, songKey); addedCount++; } },
+            // 2 callback dưới đây là CODE NỘI BỘ (đóng gói trong chính addSongsToFolder), KHÔNG
+            // gọi ra hàm core nào khác -> không phải "core gọi core", Rule 3 không áp dụng.
+            { state: membershipState, operation: '===', value: 'new', callback: () => {
+                const position = folderMap.list.length;
+                folderMap.list.push(songKey);
+                record.folder[folderId] = position;
+                addedCount++;
+            } },
+            { state: membershipState, operation: '===', value: 'tombstoned', callback: () => {
+                const position = record.folder[folderId];
+                folderMap.list[position] = songKey;
+                folderMap.empty--;
+                addedCount++;
+            } },
             { state: membershipState, operation: '===', value: 'active', callback: () => {} }, // đã ở trong rồi — no-op có chủ đích (khai báo rõ, tránh cảnh báo "không rule nào khớp")
         ]);
         await setSongRecord(songKey, record);
