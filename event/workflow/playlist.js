@@ -78,36 +78,59 @@ const workflowPlaylist = {
     // ===================== Ver 12 "Multi Media" — Chọn nhiều (plan-v12-multimedia.md mục 4.b1) =====================
     // Cụm sở hữu ĐÃ CHỐT: `playlist` (không phải `fileManagerSong`).
     //
-    // SỬA (sau trao đổi Rule 2): render.js (buildSongNode/renderPlaylistFull/renderPlaylistDiff)
-    // KHÔNG được sửa để tự đọc selectionMode/selectedSongKeys — những field đó CHỈ ảnh hưởng 1 lớp
-    // DOM-patch riêng (applySelectionVisual/applySelectionToAllNodes/updateSelectionActionBar,
-    // core/playlist/selection.js — hàm THUẦN, nhận state qua tham số). Nơi ĐỌC appState rồi gọi
-    // các hàm thuần đó nối tiếp nhau LÀ ĐÂY (workflow) — đúng vai trò được appState.get() tự do.
+    // SỬA (sau trao đổi Rule 1/2/VMState): render.js (buildSongNode/renderPlaylistFull/
+    // renderPlaylistDiff) KHÔNG được sửa để tự đọc selectionMode/selectedSongKeys — những field đó
+    // CHỈ ảnh hưởng 1 lớp DOM-patch riêng, tách hẳn theo tiến trình đơn tuyến (showSelectionIndicator/
+    // hideSelectionIndicator/refreshAllSelectionVisuals/updateSelectionActionBar/applySelectionChrome,
+    // core/playlist/selection.js — hàm THUẦN, nhận state qua tham số, tự chọn hàm nào chạy qua
+    // VirtualMachineState thay vì if/else). Nơi ĐỌC appState rồi gọi các hàm thuần đó nối tiếp nhau
+    // LÀ ĐÂY (workflow) — đúng vai trò được appState.get() tự do.
 
     /** Dọn dẹp DÙNG CHUNG khi thoát chế độ chọn (gọi từ 4 hành động dưới sau khi xong việc) —
      * KHÔNG phải core (workflow không bị 4 rule ràng buộc), chỉ là helper nội bộ tránh lặp code. */
     _exitSelectionMode() {
-        setSelectionMode(false);
-        applySelectionToAllNodes(appState.get('domNodesByKey'), false, appState.get('selectedSongKeys'));
+        disableSelectionMode();
+        appState.get('domNodesByKey').forEach((node) => hideSelectionIndicator(node));
         updateSelectionActionBar(false, 0);
+        applySelectionChrome(false);
     },
 
     /** Ứng với 'playlist.selection.toggle'. */
     toggleSelectionMode() {
         const enabled = !appState.get('selectionMode');
-        setSelectionMode(enabled); // core — chỉ set/mutate state, KHÔNG tự render
-        const selectedSongKeys = appState.get('selectedSongKeys'); // đọc LẠI sau khi core ghi xong (setSelectionMode có thể vừa clear nó)
-        applySelectionToAllNodes(appState.get('domNodesByKey'), enabled, selectedSongKeys);
+        VirtualMachineState.run([
+            { state: enabled, operation: '===', value: true, callback: () => enableSelectionMode() },
+            { state: enabled, operation: '===', value: false, callback: () => disableSelectionMode() },
+        ]);
+        const selectedSongKeys = appState.get('selectedSongKeys'); // đọc LẠI sau khi core ghi xong (disableSelectionMode có thể vừa clear nó)
+        refreshAllSelectionVisuals(appState.get('domNodesByKey'), enabled, selectedSongKeys);
         updateSelectionActionBar(enabled, selectedSongKeys.size);
+        applySelectionChrome(enabled);
     },
 
     /** Ứng với 'playlist.item.playClick' khi selectionMode=true (xem router). */
     toggleSongSelectionAndRefresh(key) {
-        toggleSongSelection(key); // core — chỉ mutate state
-        const selectedSongKeys = appState.get('selectedSongKeys');
+        const isCurrentlySelected = appState.get('selectedSongKeys').has(key);
+        VirtualMachineState.run([
+            { state: isCurrentlySelected, operation: '===', value: true, callback: () => deselectSong(key) },
+            { state: isCurrentlySelected, operation: '===', value: false, callback: () => selectSong(key) },
+        ]);
+
+        const selectedSongKeys = appState.get('selectedSongKeys'); // đọc LẠI sau khi core ghi xong ở trên
         const node = appState.get('domNodesByKey').get(key);
-        applySelectionVisual(node, key, appState.get('selectionMode'), selectedSongKeys);
+        // Không cần VMState ở đây: đang Ở TRONG chế độ chọn (hàm này chỉ được router gọi khi
+        // selectionMode=true, xem router/playlist.js), nên LUÔN showSelectionIndicator — việc
+        // chọn/bỏ-chọn CHỈ đổi màu/tick bên trong nó (ternary trình bày thuần theo isSelected,
+        // không phải rẽ nhánh tiến trình, khác hẳn quyết định BẬT/TẮT cả chế độ chọn ở trên).
+        showSelectionIndicator(node, key, selectedSongKeys);
         updateSelectionActionBar(appState.get('selectionMode'), selectedSongKeys.size);
+    },
+
+    /** Ứng với 'playlist.uploadMenu.open' khi selectionMode=true (xem router) — CHỈ hiện modal,
+     * không mở menu upload. alertModal() chỉ tồn tại ở tầng workflow (core không biết), nên dù chỉ
+     * 1 lời gọi vẫn thuộc workflow, không thể gọi thẳng từ router. */
+    async showUploadBlockedBySelectionModal() {
+        await alertModal(t('playlistView.selection.uploadBlocked'));
     },
 
     /**
