@@ -17,8 +17,7 @@
         // Ver 12 "Multi Media" (plan-v12-multimedia.md mục 4.b1) — "Chọn nhiều" trong Playlist.
         const btnToggleSelection = document.getElementById('btn-toggle-selection');
         const selectionActionBar = document.getElementById('selection-action-bar'), selectionCountLabel = document.getElementById('selection-count-label');
-        const btnSelectionPlay = document.getElementById('btn-selection-play'), btnSelectionExport = document.getElementById('btn-selection-export');
-        const btnSelectionAddFolder = document.getElementById('btn-selection-add-folder'), btnSelectionDelete = document.getElementById('btn-selection-delete');
+        const btnSelectionMore = document.getElementById('btn-selection-more'), selectionMoreMenu = document.getElementById('selection-more-menu');
         // FIX (ver 8 refine #2): nếu 1 trong các id trên không khớp với template HTML thật (lỗi gõ
         // nhầm id, hoặc component nạp sai thứ tự khiến #app-root chưa có nội dung lúc dom-refs.js
         // chạy), getElementById trả về null — gọi .addEventListener trên null ở loader.js sẽ throw
@@ -212,9 +211,18 @@
         // trong storage-manager.js — vi phạm quy ước CHUNG của project là dom-refs.js PHẢI là nơi
         // DUY NHẤT gọi getElementById, mọi file khác chỉ dùng lại biến đã có ở đây. Gom về đúng 1
         // chỗ, theo đúng style các khối phía trên.
-        const drawerStorage = document.getElementById('drawer-storage');
-        const btnOpenStorage = document.getElementById('setting-open-storage');
-        const btnBackStorage = document.getElementById('btn-back-storage');
+        // Ver 12 "Multi Media" — khung File Manager (THAY #drawer-storage/#btn-back-storage/
+        // #setting-open-storage cũ, xem components/file-manager.js). Các id thống kê/dung lượng/
+        // quét lỗi (stat-storage-*, btn-storage-*, storage-scan-*) GIỮ NGUYÊN bên dưới — không đổi.
+        const btnOpenFileManager = document.getElementById('btn-open-file-manager');
+        const fileManagerOverlay = document.getElementById('file-manager-overlay');
+        const btnCloseFileManager = document.getElementById('btn-close-file-manager');
+        const fileManagerTabBtns = Array.from(document.querySelectorAll('.file-manager-tab-btn'));
+        const fileManagerPanes = Array.from(document.querySelectorAll('.file-manager-pane'));
+        const fileManagerNewFolderInput = document.getElementById('file-manager-new-folder-input');
+        const btnFileManagerCreateFolder = document.getElementById('btn-file-manager-create-folder');
+        const fileManagerFolderList = document.getElementById('file-manager-folder-list');
+        const fileManagerFolderEmpty = document.getElementById('file-manager-folder-empty');
         const statStorageTotalSongs = document.getElementById('stat-storage-total-songs');
         const statStorageTotalBytes = document.getElementById('stat-storage-total-bytes');
         const btnDownloadThenClear = document.getElementById('btn-storage-download-then-clear');
