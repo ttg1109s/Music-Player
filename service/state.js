@@ -183,15 +183,16 @@
             _pendingResumeSnapshot: 'any',  // object | null
             dbReadyPromise: 'any',          // Promise — không validate sâu, chỉ tồn tại 1 lần lúc init
 
-            // ── file manager / multi media (ver 12) ──────────────────────────
-            // Key khai báo TRƯỚC theo plan-v12-multimedia.md mục 2 — code tính năng dùng chúng
-            // vào theo từng batch sau (folder CRUD, chọn nhiều, slideshow, reader...).
-            activePlayListFolder: 'nullable-string', // null = Playlist scoping "tất cả bài"; folderId = chỉ bài trong folder đó (VMState rẽ nhánh ở initPlaylistFromDB — batch scoping)
-            selectionMode: 'boolean',                // Playlist đang ở chế độ chọn nhiều (checkbox) hay không
-            selectedSongKeys: 'set',                 // tập songKey đang tick trong chế độ chọn nhiều
-            activeBackgroundAlbum: 'nullable-string',// null = không dùng album slideshow làm nền; albumId = album đang "Set for visual"
-            slideshowConfig: 'object',               // { mode, transitionType, intervalSeconds, intervalSecondsMax } — khởi tạo từ CONST.DEFAULT_SLIDESHOW_CONFIG (xem cuối file, giống vizConfig)
-            readerConfig: 'object',                  // { fontFamily, fontSize, textColor, bgColor, bgOpacity } — TÁCH RIÊNG khỏi vizConfig (câu hỏi 11 của plan: chốt tách — Reader là tính năng độc lập, không kéo theo saveConfig của visualizer); khởi tạo từ CONST.DEFAULT_READER_CONFIG
+            // ── file manager / v12 "Multi Media" (plan-v12-multimedia.md mục 2) ─────
+            // Các key UI điều hướng riêng của từng cụm event (vd tab đang mở trong File
+            // Manager) CHƯA thêm ở bước hạ tầng này — sẽ thêm cùng lúc với cụm event
+            // tương ứng ở bước sau (mục 5 bước 2 của plan), tránh đoán trước UI chưa code.
+            activePlayListFolder: 'nullable-string', // null/undefined = tất cả bài; có giá trị = đang scoping theo folderId
+            selectionMode: 'boolean',                // chế độ chọn nhiều (checkbox) trong Playlist
+            selectedSongKeys: 'set',                 // tập songKey đang được chọn khi selectionMode = true
+            activeBackgroundAlbum: 'nullable-string', // albumId đang dùng làm nền slideshow, null = không dùng
+            slideshowConfig: 'object',               // { mode, intervalSeconds, transitionType } — xem CONST.DEFAULT_SLIDESHOW_CONFIG
+            readerConfig: 'object',                  // { fontFamily, fontSize, bgColor, textColor, opacity } — xem CONST.DEFAULT_READER_CONFIG
         };
 
         /** Giá trị khởi tạo mặc định — copy NGUYÊN VẸN giá trị/kiểu thật từ source gốc. */
@@ -323,13 +324,13 @@
                 _pendingResumeSnapshot: null,
                 dbReadyPromise: null, // gán thật ở db.js bằng appState.set('dbReadyPromise', openDatabase())
 
-                // ── file manager / multi media (ver 12) ─────────────────────────
+                // ── file manager / v12 "Multi Media" ────────────────────────────
+                // readerConfig/slideshowConfig gán THẬT ở dưới sau khi CONST đã sẵn sàng (giống
+                // vizConfig) — đặt {} tạm ở đây để key tồn tại sẵn trong schema/state ngay từ đầu.
                 activePlayListFolder: null,
                 selectionMode: false,
                 selectedSongKeys: new Set(),
                 activeBackgroundAlbum: null,
-                // slideshowConfig/readerConfig gán THẬT ở cuối file sau khi CONST sẵn sàng —
-                // cùng pattern với vizConfig ở trên.
                 slideshowConfig: {},
                 readerConfig: {},
             };
@@ -382,26 +383,22 @@
             AUTO_SWITCH_VISUAL_TASK_TIMER: 'autoSwitchVisualTimer',
             AUTO_SWITCH_VISUAL_TASK_MARKS: 'autoSwitchVisualMarks',
             SHIELD_FADE_MS: 200,
-            // ── ver 12 "Multi Media (Song First)" ────────────────────────────
-            // Mặc định slideshow nền (album — plan mục 4.b3). intervalSeconds là chu kỳ đổi ảnh
-            // với mode 'sequential'; mode 'random' bốc ngẫu nhiên trong [intervalSeconds,
-            // intervalSecondsMax] (max do người dùng đặt trong Cài đặt slideshow). Sàn cứng
-            // SLIDESHOW_MIN_INTERVAL_SECONDS = 5 — input nào < 5 đều bị kẹp về 5.
-            SLIDESHOW_MIN_INTERVAL_SECONDS: 5,
-            SLIDESHOW_TASK_TIMER: 'slideshowTimer', // tên task đăng ký qua taskManager (đúng quy ước timer tập trung)
+            // ── v12 "Multi Media" (plan-v12-multimedia.md mục 4.b3/4.e) ─────────────
+            // [GIẢ ĐỊNH — cần bác xác nhận, xem câu hỏi 11 mục 6 của plan]: giữ readerConfig
+            // TÁCH RIÊNG khỏi vizConfig (không gộp) — đơn giản hơn khi bước sau cần đọc/ghi độc
+            // lập (Reader không nên phụ thuộc toàn bộ shape của vizConfig). Nếu bác chốt gộp
+            // chung, đổi lại 1 chỗ này + bỏ key readerConfig riêng trong STATE_SCHEMA/STATE.
             DEFAULT_SLIDESHOW_CONFIG: Object.freeze({
-                mode: 'sequential',        // 'sequential' | 'random'
-                transitionType: 'fade',    // 1 trong ~13 kiểu transition CSS thuần (plan 4.b3)
-                intervalSeconds: 10,
-                intervalSecondsMax: 30,
+                mode: 'sequential', // 'sequential' | 'random'
+                intervalSeconds: 5, // tối thiểu 5s theo plan mục 4.b3
+                transitionType: 'fade',
             }),
-            // Mặc định Reader (plan mục 4.e) — font, cỡ chữ, màu chữ, màu nền, độ trong suốt nền.
             DEFAULT_READER_CONFIG: Object.freeze({
                 fontFamily: 'system-ui',
-                fontSize: 16,              // px
-                textColor: '#ffffff',
+                fontSize: 18,
                 bgColor: '#000000',
-                bgOpacity: 0.7,            // 0..1 — overlay đè lên visualizer nên cần nền mờ đọc được chữ
+                textColor: '#ffffff',
+                opacity: 0.85,
             }),
         });
 
@@ -569,9 +566,6 @@
 
         /** vizConfig khởi tạo thật SAU khi CONST sẵn sàng — { ...DEFAULT_VIZ_CONFIG } đúng hành vi gốc. */
         appState.set('vizConfig', { ...CONST.DEFAULT_VIZ_CONFIG });
-
-        /** ver 12 — cùng pattern với vizConfig: copy nông từ CONST default (giá trị lưu của người
-         * dùng — nếu có — sẽ được nạp đè ở batch tính năng tương ứng, giống cách vizConfig nạp từ
-         * saveConfig). */
+        // v12 "Multi Media" — cùng pattern với vizConfig ở trên.
         appState.set('slideshowConfig', { ...CONST.DEFAULT_SLIDESHOW_CONFIG });
         appState.set('readerConfig', { ...CONST.DEFAULT_READER_CONFIG });
